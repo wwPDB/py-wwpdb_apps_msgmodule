@@ -61,14 +61,14 @@ from wwpdb.utils.session.WebRequest                    import InputRequest,Respo
 from wwpdb.apps.msgmodule.depict.MessagingDepict        import MessagingDepict
 from wwpdb.apps.msgmodule.io.MessagingIo                import MessagingIo
 from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
-from wwpdb.apps.msgmodule.models.Message               import Message
+from wwpdb.apps.msgmodule.models.Message                import Message
 #
 #from wwpdb.apps.msgmodule.utils.WfTracking              import WfTracking
 #
-from wwpdb.wwpdb.utils.wf.DataReference                     import DataFileReference
-from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
+from wwpdb.io.locator.DataReference                     import DataFileReference
+from wwpdb.utils.config.ConfigInfo                      import ConfigInfo
 #
-from wwpdb.utils.wf.dbapi.WfDbApi                     import WfDbApi
+from wwpdb.utils.wf.dbapi.WfDbApi                       import WfDbApi
 #
 from wwpdb.apps.wf_engine.engine.WFEapplications        import getdepUIPassword
 #

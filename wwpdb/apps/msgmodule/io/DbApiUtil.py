@@ -26,7 +26,7 @@ import time
 import datetime
 import MySQLdb
 #
-from wwpdb.api.status.dbapi.DbConnection import DbConnection    
+from wwpdb.utils.wf.dbapi.DbConnection import DbConnection    
 
 class DbApiUtil(object):
     def __init__(self, dbServer=None, dbHost=None, dbName=None, dbUser=None, dbPw=None, dbSocket=None, dbPort=None, verbose=False, log=sys.stderr):

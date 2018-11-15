@@ -131,9 +131,9 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
-from pdbx_v2.message.PdbxMessage      import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+from mmcif_utils.message.PdbxMessage      import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
 from mmcif_utils.message.PdbxMessageIo    import PdbxMessageIo
-from pdbx_v2.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
+from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 #
 from mmcif.io.PdbxReader import PdbxReader
 #
@@ -142,18 +142,20 @@ from wwpdb.apps.msgmodule.io.MessagingDataImport        import MessagingDataImpo
 from wwpdb.apps.msgmodule.io.MessagingDataExport        import MessagingDataExport
 from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
-from wwpdb.apps.msgmodule.models.Message               import Message, Note, AutoMessage, ReminderMessage
+from wwpdb.apps.msgmodule.models.Message                import Message, Note, AutoMessage, ReminderMessage
 #
-from wwpdb.utils.dp.RcsbDpUtility       import RcsbDpUtility
-from wwpdb.io.file.DataFileAdapter       import DataFileAdapter
-from wwpdb.apps.wf_engine.engine.dbAPI    import dbAPI
+from wwpdb.utils.dp.RcsbDpUtility                       import RcsbDpUtility
+from wwpdb.utils.dp.DataFileAdapter                     import DataFileAdapter
+from wwpdb.utils.wf.dbapi.dbAPI                         import dbAPI
 #
 from mmcif_utils.persist.PdbxPersist   import PdbxPersist
-from pdbx_v2.persist.LockFile      import LockFile
-from mmcif.io.IoAdapterCore import IoAdapterCore
-from pdbx_v2.trans.InstanceMapper import InstanceMapper
+from mmcif_utils.persist.LockFile      import LockFile
+from mmcif.io.IoAdapterCore            import IoAdapterCore
+from mmcif_utils.trans.InstanceMapper import InstanceMapper
 #
-from wwpdb.apps.ann_tasks_v2.em3d.EmHeaderUtils import EmHeaderUtils
+# Here for now - should be relocated.
+from wwpdb.apps.msgmodule.io.EmHeaderUtils import EmHeaderUtils
+
 import os
 import filecmp
 
