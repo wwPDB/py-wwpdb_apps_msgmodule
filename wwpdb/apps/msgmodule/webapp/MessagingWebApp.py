@@ -57,7 +57,7 @@ import os, sys, time, types, string, traceback, ntpath, threading, shutil, HTMLP
 from json import loads, dumps
 from time import localtime, strftime
 
-from wwpdb.apps.msgmodule.webapp.WebRequest             import MessagingInputRequest,ResponseContent
+from wwpdb.utils.session.WebRequest                    import InputRequest,ResponseContent
 from wwpdb.apps.msgmodule.depict.MessagingDepict        import MessagingDepict
 from wwpdb.apps.msgmodule.io.MessagingIo                import MessagingIo
 from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
@@ -108,7 +108,7 @@ class MessagingWebApp(object):
             self.__lfh.write("+MessagingWebApp.__init() - dumping input parameter dictionary \n" )                        
             self.__lfh.write("%s" % (''.join(self.__dumpRequest())))
             
-        self.__reqObj=MessagingInputRequest(self.__myParameterDict,verbose=self.__verbose,log=self.__lfh)
+        self.__reqObj=InputRequest(self.__myParameterDict,verbose=self.__verbose,log=self.__lfh)
         #
         self.__reqObj.setValue("TopSessionPath", self.__topSessionPath)
         self.__reqObj.setValue("TemplatePath",   self.__templatePath)
