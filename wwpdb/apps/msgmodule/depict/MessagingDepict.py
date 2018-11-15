@@ -51,7 +51,7 @@ __version__   = "V0.02"
 import os, sys, time
 from wwpdb.apps.msgmodule.io.MessagingIo                import MessagingIo
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
-from wwpdb.api.facade.ConfigInfo                        import ConfigInfo
+from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
 
 
 class MessagingDepict(object):

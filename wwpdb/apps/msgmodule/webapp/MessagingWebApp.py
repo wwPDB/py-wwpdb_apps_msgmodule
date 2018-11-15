@@ -65,14 +65,14 @@ from wwpdb.apps.msgmodule.models.Message               import Message
 #
 #from wwpdb.apps.msgmodule.utils.WfTracking              import WfTracking
 #
-from wwpdb.api.facade.DataReference                     import DataFileReference
-from wwpdb.api.facade.ConfigInfo                        import ConfigInfo
+from wwpdb.wwpdb.utils.wf.DataReference                     import DataFileReference
+from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
 #
-from wwpdb.api.status.dbapi.WfDbApi                     import WfDbApi
+from wwpdb.utils.wf.dbapi.WfDbApi                     import WfDbApi
 #
 from wwpdb.apps.wf_engine.engine.WFEapplications        import getdepUIPassword
 #
-from wwpdb.utils.rcsb.PathInfo                          import PathInfo
+from wwpdb.io.locator.PathInfo                          import PathInfo
 
 class MessagingWebApp(object):
     """Handle request and response object processing for the wwPDB messaging tool application.

@@ -132,25 +132,25 @@ from dateutil import tz
 
 #
 from pdbx_v2.message.PdbxMessage      import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
-from pdbx_v2.message.PdbxMessageIo    import PdbxMessageIo
+from mmcif_utils.message.PdbxMessageIo    import PdbxMessageIo
 from pdbx_v2.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 #
-from pdbx_v2.reader.PdbxReader import PdbxReader
+from mmcif.io.PdbxReader import PdbxReader
 #
-from wwpdb.api.facade.ConfigInfo                        import ConfigInfo
+from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
 from wwpdb.apps.msgmodule.io.MessagingDataImport        import MessagingDataImport
 from wwpdb.apps.msgmodule.io.MessagingDataExport        import MessagingDataExport
 from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
 from wwpdb.apps.msgmodule.models.Message               import Message, Note, AutoMessage, ReminderMessage
 #
-from wwpdb.utils.rcsb.RcsbDpUtility       import RcsbDpUtility
-from wwpdb.utils.rcsb.DataFileAdapter       import DataFileAdapter
+from wwpdb.utils.dp.RcsbDpUtility       import RcsbDpUtility
+from wwpdb.io.file.DataFileAdapter       import DataFileAdapter
 from wwpdb.apps.wf_engine.engine.dbAPI    import dbAPI
 #
-from pdbx_v2.persist.PdbxPersist   import PdbxPersist
+from mmcif_utils.persist.PdbxPersist   import PdbxPersist
 from pdbx_v2.persist.LockFile      import LockFile
-from pdbx_v2.adapter.IoAdapterCore import IoAdapterCore
+from mmcif.io.IoAdapterCore import IoAdapterCore
 from pdbx_v2.trans.InstanceMapper import InstanceMapper
 #
 from wwpdb.apps.ann_tasks_v2.em3d.EmHeaderUtils import EmHeaderUtils
@@ -327,7 +327,7 @@ class MessagingIo(object):
             
             :Helpers:
                 wwpdb.apps.msgmodule.io.MessagingDataImport
-                pdbx_v2.message.PdbxMessageIo
+                mmcif_utils.message.PdbxMessageIo
                 
             :param `p_msgId`:    unique message ID
             :param `p_depId`:    ID of deposition dataset for message being requested

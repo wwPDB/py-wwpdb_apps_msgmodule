@@ -31,8 +31,8 @@ __version__   = "V0.01"
 
 import sys, os, os.path, traceback, time
 
-from wwpdb.api.facade.DataReference  import DataFileReference
-from wwpdb.api.facade.ConfigInfo     import ConfigInfo
+from wwpdb.wwpdb.utils.wf.DataReference  import DataFileReference
+from wwpdb.utils.config.ConfigInfo     import ConfigInfo
 import logging
 logger = logging.getLogger(__name__)
 
