@@ -257,16 +257,18 @@ class MessagingIo(object):
                         # parse model cif file and verify blockname
                         #########################################################################################################
                         pdbxReader = IoAdapterCore(self.__verbose,self.__lfh)
-                        containerNameList = pdbxReader.readFile(pdbxFilePath=modelFilePath,selectList=MessagingIo.ctgrsReqrdFrmModelFile)
-                        dataBlockName = containerNameList[0].getName()
+                        containerList = pdbxReader.readFile(inputFilePath=modelFilePath,selectList=MessagingIo.ctgrsReqrdFrmModelFile)
+
+                        iCountNames = len(containerList)
+                        assert( iCountNames == 1 ), ("+%s.%s() -- expecting containerNameList to have single member but list had %s members\n" % (self.__class__.__name__,
+                                                                                                                                                  sys._getframe().f_code.co_name,
+                                                                                                                                                  iCountNames) )                        
+
+                        dataBlockName = self.__containerList[0].getName().encode('utf-8')
                         logger.debug("--------------------------------------------\n")        
                         logger.debug("identified datablock name %s in sample pdbx data file at: %s\n" % (
                                 dataBlockName, modelFilePath )) 
                         #
-                        iCountNames = len(containerNameList)
-                        assert( iCountNames == 1 ), ("+%s.%s() -- expecting containerNameList to have single member but list had %s members\n" % (self.__class__.__name__,
-                                                                                                                                                  sys._getframe().f_code.co_name,
-                                                                                                                                                  iCountNames) )
                     #
                     except:
                         logger.exception("problem processing pdbx data file: %s" % 
@@ -274,7 +276,7 @@ class MessagingIo(object):
                                                              
                     try:
                         myPersist=PdbxPersist(self.__verbose,self.__lfh)
-                        myPersist.setContainerList(containerNameList)
+                        myPersist.setContainerList(containerList)
                         myPersist.store(self.__dbFilePath)
 
                         logger.debug("shelved cif data to %s\n" % self.__dbFilePath)
@@ -286,7 +288,8 @@ class MessagingIo(object):
                     logger.debug("pdbx data file not found/accessible at: %s\n" % modelFilePath)
             else:
                 logger.info("skipping creation of database file b/c already exists at: %s\n" % self.__dbFilePath)
-        
+        else:
+            logger.debug("Not a workflow - noop")
         #
      
     def getMsgColList(self,p_bCommHstryRqstd=False):
