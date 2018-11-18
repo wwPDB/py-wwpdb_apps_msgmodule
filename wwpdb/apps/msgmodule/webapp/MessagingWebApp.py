@@ -53,14 +53,18 @@ __email__     = "rsala@rcsb.rutgers.edu"
 __license__   = "Creative Commons Attribution 3.0 Unported"
 __version__   = "V0.07"
 
-import os, sys, time, types, string, traceback, ntpath, threading, shutil, HTMLParser
+import os, sys, time, types, string, traceback, ntpath, threading, shutil
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
 from json import loads, dumps
 from time import localtime, strftime
 
 from wwpdb.utils.session.WebRequest                    import InputRequest,ResponseContent
 from wwpdb.apps.msgmodule.depict.MessagingDepict        import MessagingDepict
 from wwpdb.apps.msgmodule.io.MessagingIo                import MessagingIo
-from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
+from wwpdb.utils.wf.dbapi.StatusDbApi                   import StatusDbApi
 from wwpdb.apps.msgmodule.models.Message                import Message
 #
 #from wwpdb.apps.msgmodule.utils.WfTracking              import WfTracking
@@ -1449,7 +1453,7 @@ class MessagingWebAppWorker(object):
         return p_content.encode('ascii','xmlcharrefreplace').replace('\n;','\n ;').replace('\\\\xa0',' ')
     
     def __decodeCifToUtf8(self,p_content):
-        h = HTMLParser.HTMLParser()
+        h = HTMLParser()
         return h.unescape(p_content).encode('utf-8')
     
     def __encodeForSearching(self,p_content):

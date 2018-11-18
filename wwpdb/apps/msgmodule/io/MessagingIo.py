@@ -126,7 +126,11 @@ __email__     = "rsala@rcsb.rutgers.edu"
 __license__   = "Creative Commons Attribution 3.0 Unported"
 __version__   = "V0.01"
 
-import sys, traceback, time, os, os.path, shutil, re, operator, smtplib, base64, mimetypes, HTMLParser, textwrap
+import sys, traceback, time, os, os.path, shutil, re, operator, smtplib, base64, mimetypes, textwrap
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
 from datetime import datetime, date, timedelta
 from dateutil import tz
 
@@ -140,7 +144,7 @@ from mmcif.io.PdbxReader import PdbxReader
 from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
 from wwpdb.apps.msgmodule.io.MessagingDataImport        import MessagingDataImport
 from wwpdb.apps.msgmodule.io.MessagingDataExport        import MessagingDataExport
-from wwpdb.apps.msgmodule.io.StatusDbApi                import StatusDbApi
+from wwpdb.utils.wf.dbapi.StatusDbApi                   import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
 from wwpdb.apps.msgmodule.models.Message                import Message, Note, AutoMessage, ReminderMessage
 #
@@ -2604,7 +2608,7 @@ class MessagingIo(object):
         return p_content.encode('ascii','xmlcharrefreplace').replace('\n;','\n ;').replace('\\xa0',' ')
     
     def __decodeCifToUtf8(self,p_content):
-        h = HTMLParser.HTMLParser()
+        h = HTMLParser()
         return h.unescape(p_content).replace('\\xa0',' ').encode('utf-8')
     
     def __convertToLocalTimeZone(self,p_timeStamp):
