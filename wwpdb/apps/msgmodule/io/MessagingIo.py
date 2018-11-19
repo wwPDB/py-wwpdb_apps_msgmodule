@@ -141,12 +141,13 @@ from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 #
 from mmcif.io.PdbxReader import PdbxReader
 #
-from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
+from wwpdb.utils.config.ConfigInfo                      import ConfigInfo
 from wwpdb.apps.msgmodule.io.MessagingDataImport        import MessagingDataImport
 from wwpdb.apps.msgmodule.io.MessagingDataExport        import MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi                   import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
-from wwpdb.apps.msgmodule.models.Message                import Message, Note, AutoMessage, ReminderMessage
+from wwpdb.apps.msgmodule.models.Message                import AutoMessage
+from wwpdb.apps.msgmodule.io.DateUtil                   import DateUtil
 #
 from wwpdb.utils.dp.RcsbDpUtility                       import RcsbDpUtility
 from wwpdb.utils.dp.DataFileAdapter                     import DataFileAdapter
@@ -3181,13 +3182,14 @@ class MsgTmpltHlpr(object):
         
         return sAccessionIdsString
     
-    def populateTmpltDict(self,p_returnDict):
+    def populateTmpltDict(self, p_returnDict):
         className = self.__class__.__name__
         methodName = sys._getframe().f_code.co_name
-        
+
+        du = DateUtil()
         ########### ACCESSION ID HANDLING ##############################################
         accessionIdList = self.__rqstdAccessionIdsLst[:]
-        if( "BMRB" in accessionIdList and "PDB" in accessionIdList ):
+        if "BMRB" in accessionIdList and "PDB" in accessionIdList:
             accessionIdList.remove("BMRB")
             # acknowleding here that X-RAY and NMR processing both result in a single "PDB" accession ID being granted to depositor for a given deposition (i.e. no separate "BMRB" id)
             # so the "accessionIdList" at this time only consists of single member (but perhaps this may change in the future?)
@@ -3208,8 +3210,8 @@ class MsgTmpltHlpr(object):
         p_returnDict['status_code'] = self.__statusCode if( self.__statusCode is not None and len(self.__statusCode) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['entry_status'] = self.__entryStatus if( self.__entryStatus is not None and len(self.__entryStatus) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['auth_rel_status_code'] = self.__authRelStatusCode if( self.__authRelStatusCode is not None and len(self.__authRelStatusCode) > 0 ) else "[NOT AVAILABLE]"
-        p_returnDict['expire_date'] = self.__expireDate
-        p_returnDict['recvd_date'] = self.__initRecvdDate if( self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate) ) else "[NOT AVAILABLE]"
+        p_returnDict['expire_date'] = du.date_to_display(self.__expireDate)
+        p_returnDict['recvd_date'] = du.date_to_display(self.__initRecvdDate) if( self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate) ) else "[NOT AVAILABLE]"
         p_returnDict['processing_site'] = self.__procSite if( self.__procSite is not None and len(self.__procSite) > 0 ) else "[NOT AVAILABLE]"  # processing site used in statement regarding upcoming Thursday cutoff date
         #
         p_returnDict['citation_authors'] = ",".join(self.__citAuthors) if( self.__citAuthors is not None and len(self.__citAuthors) > 0 ) else "[NOT AVAILABLE]"
@@ -3225,9 +3227,9 @@ class MsgTmpltHlpr(object):
         #
         p_returnDict['default_msg_tmplt'] = self.__defaultMsgTmpltType
         #
-        p_returnDict['outbound_rprt_date'] = self.__lastOutboundRprtDate if( self.__lastOutboundRprtDate is not None and len(self.__lastOutboundRprtDate) > 0 ) else "[NOT AVAILABLE]"
+        p_returnDict['outbound_rprt_date'] = du.date_to_display(self.__lastOutboundRprtDate) if( self.__lastOutboundRprtDate is not None and len(self.__lastOutboundRprtDate) > 0 ) else "[NOT AVAILABLE]"
         #
-        p_returnDict['release_date'] = self.__releaseDate if( self.__releaseDate is not None and len(self.__releaseDate) > 0 ) else "[NOT AVAILABLE]"
+        p_returnDict['release_date'] = du.date_to_display(self.__releaseDate) if( self.__releaseDate is not None and len(self.__releaseDate) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['withdrawn_date'] = p_returnDict['release_date']
         p_returnDict['thurs_prerelease_clause'] = self.__thursPreRlsClause if( self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0 ) else ""
         p_returnDict['thurs_wdrn_clause'] = self.__thursWdrnClause if( self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0 ) else ""
@@ -3329,7 +3331,7 @@ class MsgTmpltHlpr(object):
             p_returnDict['auth_rel_status_code_em_rel'] = p_returnDict['auth_rel_status_code']
             p_returnDict['expire_date_em_map'] = self.__expireDateEmMap
             #
-            p_returnDict['outbound_rprt_date_em'] = self.__lastOutboundRprtDateEm if( self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0 ) else "[NOT AVAILABLE]"
+            p_returnDict['outbound_rprt_date_em'] = du.date_to_display(self.__lastOutboundRprtDateEm) if( self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0 ) else "[NOT AVAILABLE]"
             #
             p_returnDict['caveat_records'] = " with CAVEAT records highlighting any outstanding issues" if self.__emMapAndModelEntry else ""
             p_returnDict['vldtn_rprt'] = "validation report and " if self.__emMapAndModelEntry else ""
@@ -3869,7 +3871,9 @@ class MsgTmpltHlpr(object):
         
         if self.__annotatorUserNameDict:
             userNameMap = self.__annotatorUserNameDict.get(procSite,None)
-        
+        else:
+            userNameMap = None
+
         if userNameMap:
             annotatorDict = userNameMap.get(annotatorId, None)
             
