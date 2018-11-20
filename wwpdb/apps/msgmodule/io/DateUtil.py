@@ -39,13 +39,23 @@ class DateUtil(object):
 
         return ret
 
+    @staticmethod
+    def datetime_to_display(date):
+        """Converts a datetime.date object to ISO 8601 format"""
+        try:
+            dt = date.strftime('%-d %B %Y')
+        except ValueError:
+            dt = date
+        return dt
+
 
 def main():
     du = DateUtil()
     print(du.date_to_display('2018-10-08'))
     print(du.date_to_display('2018-10'))
     print(du.date_to_display('.'))
-
+    dt = datetime.date(2018, 10, 3)
+    print(du.datetime_to_display(dt))
 
 if __name__ == '__main__':
     main()
