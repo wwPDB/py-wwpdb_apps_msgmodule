@@ -12,6 +12,7 @@ __email__ = "peisach@rcsb.rutgers.edu"
 __license__ = "Creative Commons Attribution 3.0 Unported"
 __version__ = "V0.01"
 
+import datetime
 import unittest
 
 from wwpdb.apps.msgmodule.io.DateUtil import DateUtil
@@ -25,6 +26,10 @@ class DateUtilTests(unittest.TestCase):
         du = DateUtil()
         self.assertEqual(du.date_to_display(din), dexpect)
 
+    def _testsamedatetime(self, din, dexpect):
+        du = DateUtil()
+        self.assertEqual(du.datetime_to_display(din), dexpect)
+
     def testDates(self):
         """Tests date conversion"""
         self._testsame('2018-10-01', '1 October 2018')
@@ -34,6 +39,11 @@ class DateUtilTests(unittest.TestCase):
         # 2018 is not a leap year - no conversion
         self._testsame('2018-02-29', '2018-02-29')
         self._testsame('2016-02-29', '29 February 2016')
+
+    def testDateTime(self):
+        dt = datetime.date(2018, 10, 3)
+        self._testsamedatetime(dt, "3 October 2018")
+
 
 if __name__ == '__main__':
     unittest.main()

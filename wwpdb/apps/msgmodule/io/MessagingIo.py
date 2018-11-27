@@ -3210,7 +3210,7 @@ class MsgTmpltHlpr(object):
         p_returnDict['status_code'] = self.__statusCode if( self.__statusCode is not None and len(self.__statusCode) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['entry_status'] = self.__entryStatus if( self.__entryStatus is not None and len(self.__entryStatus) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['auth_rel_status_code'] = self.__authRelStatusCode if( self.__authRelStatusCode is not None and len(self.__authRelStatusCode) > 0 ) else "[NOT AVAILABLE]"
-        p_returnDict['expire_date'] = du.date_to_display(self.__expireDate)
+        p_returnDict['expire_date'] = self.__expireDate
         p_returnDict['recvd_date'] = du.date_to_display(self.__initRecvdDate) if( self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate) ) else "[NOT AVAILABLE]"
         p_returnDict['processing_site'] = self.__procSite if( self.__procSite is not None and len(self.__procSite) > 0 ) else "[NOT AVAILABLE]"  # processing site used in statement regarding upcoming Thursday cutoff date
         #
@@ -3227,9 +3227,9 @@ class MsgTmpltHlpr(object):
         #
         p_returnDict['default_msg_tmplt'] = self.__defaultMsgTmpltType
         #
-        p_returnDict['outbound_rprt_date'] = du.date_to_display(self.__lastOutboundRprtDate) if( self.__lastOutboundRprtDate is not None and len(self.__lastOutboundRprtDate) > 0 ) else "[NOT AVAILABLE]"
+        p_returnDict['outbound_rprt_date'] = self.__lastOutboundRprtDate if( self.__lastOutboundRprtDate is not None and len(self.__lastOutboundRprtDate) > 0 ) else "[NOT AVAILABLE]"
         #
-        p_returnDict['release_date'] = du.date_to_display(self.__releaseDate) if( self.__releaseDate is not None and len(self.__releaseDate) > 0 ) else "[NOT AVAILABLE]"
+        p_returnDict['release_date'] = self.__releaseDate if( self.__releaseDate is not None and len(self.__releaseDate) > 0 ) else "[NOT AVAILABLE]"
         p_returnDict['withdrawn_date'] = p_returnDict['release_date']
         p_returnDict['thurs_prerelease_clause'] = self.__thursPreRlsClause if( self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0 ) else ""
         p_returnDict['thurs_wdrn_clause'] = self.__thursWdrnClause if( self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0 ) else ""
@@ -3331,7 +3331,7 @@ class MsgTmpltHlpr(object):
             p_returnDict['auth_rel_status_code_em_rel'] = p_returnDict['auth_rel_status_code']
             p_returnDict['expire_date_em_map'] = self.__expireDateEmMap
             #
-            p_returnDict['outbound_rprt_date_em'] = du.date_to_display(self.__lastOutboundRprtDateEm) if( self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0 ) else "[NOT AVAILABLE]"
+            p_returnDict['outbound_rprt_date_em'] = self.__lastOutboundRprtDateEm if( self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0 ) else "[NOT AVAILABLE]"
             #
             p_returnDict['caveat_records'] = " with CAVEAT records highlighting any outstanding issues" if self.__emMapAndModelEntry else ""
             p_returnDict['vldtn_rprt'] = "validation report and " if self.__emMapAndModelEntry else ""
@@ -3749,8 +3749,10 @@ class MsgTmpltHlpr(object):
                                                     
                     except:
                         pass
-                
-                self.__holdDate = "[none listed]" if( self.__holdDate is None or len(self.__holdDate) < 1 or self.__isCifNull(self.__holdDate) ) else self.__holdDate
+
+                du = DateUtil()
+                self.__holdDate = "[none listed]" if( self.__holdDate is None or len(self.__holdDate) < 1 or self.__isCifNull(self.__holdDate) ) else \
+                    du.date_to_display(self.__holdDate)
                     
                 if( self.__statusCode is not None and len(self.__statusCode) > 0 ):
                     if( self.__statusCode == 'HPUB'):
@@ -3775,7 +3777,8 @@ class MsgTmpltHlpr(object):
                             initRecvdDatePlusOneYr = initRecvdDate.replace( year=(initRecvdDate.year+1), month=3, day=1 )
                         else:
                             initRecvdDatePlusOneYr = initRecvdDate.replace(year=(initRecvdDate.year+1))
-                        self.__expireDate = str( initRecvdDatePlusOneYr.strftime('%Y-%m-%d') )
+                        du = DateUtil()
+                        self.__expireDate = du.datetime_to_display(initRecvdDatePlusOneYr)
                         
                     else:
                         self.__expireDate = '[NO DATE AVAIL]'
@@ -3842,7 +3845,8 @@ class MsgTmpltHlpr(object):
                         dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace( year=(dpstnDateEmMap.year+1), month=3, day=1 )
                     else:
                         dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace(year=(dpstnDateEmMap.year+1))
-                    self.__expireDateEmMap = str( dpstnDateEmMapPlusOneYr.strftime('%Y-%m-%d') )
+                    du = DateUtil()
+                    self.__expireDateEmMap = du.datetime_to_display(dpstnDateEmMapPlusOneYr)
                     
                 else:
                     self.__expireDateEmMap = '[NO DATE AVAIL]'
@@ -4143,6 +4147,7 @@ class MsgTmpltHlpr(object):
                     
             
     def __getLastOutboundRprtDate(self,p_IdType="PDB"):
+        """Returns a string of last timestamp"""
         
         if( p_IdType == "PDB"):
             cType = 'validation-report-full-annotate'
@@ -4156,7 +4161,8 @@ class MsgTmpltHlpr(object):
         archiveFilePth = pathDict['annotPth']
                     
         if( archiveFilePth is not None ):
-            lastModfdTime = ( date.fromtimestamp( os.path.getmtime(archiveFilePth) ) ).strftime('%Y-%m-%d')
+            du = DateUtil()
+            lastModfdTime = du.datetime_to_display(date.fromtimestamp( os.path.getmtime(archiveFilePth)))
             lastOutboundRprtDate = lastModfdTime
             if (self.__verbose):
                 self.__lfh.write("\n%s.%s() -- 'lastOutboundRprtDate was found to be [%s].\n" % (self.__class__.__name__,
@@ -4207,7 +4213,7 @@ class MsgTmpltHlpr(object):
     def __getReleaseDateInfo(self):
         
         '''determine release date which is Wednesday of week following the current week.
-        '''        
+        '''
         dateRef = date.today()
         weekDayIndex = dateRef.weekday() # Monday through Sunday represented by indexes 0 through 6
         
@@ -4221,32 +4227,32 @@ class MsgTmpltHlpr(object):
         
         # now that we're at Sunday, advance to Wednesday
         dateRef += timedelta(days=3)
-        
-        self.__releaseDate = str( dateRef.strftime('%Y-%m-%d') )
+
+        du = DateUtil()
+        self.__releaseDate = du.datetime_to_display(dateRef)
         
         '''also need to determine date threshold of acceptable change request from depositor, which is Thursday (morning, before 11am) of week prior to Wednesday release
         '''
         notherDateRef = date.today() # to determine which day of the week today is (as opposed to numerical date)
         now = datetime.now() # to determine what the current time is
         
-        if( ( notherDateRef.weekday() > 3 and notherDateRef.weekday() < 5 ) or ( notherDateRef.weekday() == 3 and now.hour >= 11 ) ): # i.e. if we're past the deadline for acceptable change requests
+        if ( notherDateRef.weekday() > 3 and notherDateRef.weekday() < 5 ) or ( notherDateRef.weekday() == 3 and now.hour >= 11 ): # i.e. if we're past the deadline for acceptable change requests
             self.__thursPreRlsClause = ""
             self.__thursWdrnClause = ""
         else:
             # i.e. if we're still before the deadline for acceptable change requests
             processingSite = self.__procSite if( self.__procSite is not None and len(self.__procSite) > 0 ) else "[not available]"
-            
+
             if( notherDateRef.weekday() != 3 ):
                 # not Thursday yet, so can tell depositor that they have until noon of Thursday this week to communicate any changes
                 
                 while notherDateRef.weekday() != 3:
                     # advancing to next coming Thursday (Monday through Sunday represented as 0 through 6)
                     notherDateRef += timedelta(days=1)
-                
-                self.__thursPreRlsClause = 'If you have changes to make to the entry, please inform us by noon local time at '+processingSite+' on Thursday '+str( notherDateRef.strftime('%Y-%m-%d') )+'.'
+
+                self.__thursPreRlsClause = 'If you have changes to make to the entry, please inform us by noon local time at %s on Thursday %s.' % (processingSite, du.datetime_to_display(notherDateRef))
                 self.__thursWdrnClause = """
-If this is incorrect or if you have any questions please inform us by noon local time at """+processingSite+' on Thursday '+str( notherDateRef.strftime('%Y-%m-%d') )+""".
-"""
+If this is incorrect or if you have any questions please inform us by noon local time at %s on Thursday %s.""" % (processingSite, du.datetime_to_display(notherDateRef))
             
             else:
                 # else today is Thursday before 11am, so need to tell depositor that they have to communicate any changes by noon today!
