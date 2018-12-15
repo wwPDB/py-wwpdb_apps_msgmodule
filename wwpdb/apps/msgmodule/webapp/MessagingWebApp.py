@@ -220,7 +220,7 @@ class MessagingWebAppWorker(object):
                          '/service/messaging/display_msg':                          '_displayMsg',
                          '/service/messaging/view_correspondence':                  '_viewCorrespondence',
                          '/service/messaging/verify_depid':                         '_verifyDepositionId',
-                         '/service/messaging/toggle_notes_flagging':                '_toggleNotesFlagging',
+                         '/service/messaging/toggle_notes_flagging':                '_toggleNotesFlaggingOp',
                          '/service/messaging/get_depui_pwd':                        '_getDepUiPwd',
                          '/service/messaging/get_msg_tmplts':                       '_getMsgTmplts',
                          ###############  below are URLs to be used for WFM environ######################
@@ -798,6 +798,17 @@ class MessagingWebAppWorker(object):
         #
         return activateNotesFlagging
     
+    def _toggleNotesFlaggingOp(self):
+        """ Toggles flagging status for notest content
+       
+            :Returns:
+                Operation output is packaged in a ResponseContent() object.
+        """
+        rC=ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose,log=self.__lfh)
+        fstatus = self._toggleNotesFlagging()
+        rC.setText(fstatus)
+        return rC
+
     def _toggleNotesFlagging(self,subtype=""):
         """ Toggles flagging status for notes content
             Relies on simple mechanism of having a file containing "true" or "false" value, 
