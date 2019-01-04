@@ -267,6 +267,7 @@ Your %(accession_ids)s which corresponds to Deposition ID %(identifier)s has bee
 Entry authors:
 
 %(em_entry_authors_newline_list)s
+
 Please review the curated data and either reply with your approval or let us know if any additional changes are required. Your approval will be assumed if we do not hear from you within three weeks from the time when the annotation report is made available and assuming there are no major issues with the submission.
 
 Header XML files (i.e., the metadata associated with the EMDB entry) are released immediately after curation.
