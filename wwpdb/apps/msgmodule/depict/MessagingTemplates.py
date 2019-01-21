@@ -256,7 +256,7 @@ Thank you for your attention.
 %(msg_closing)s
 '''
 
-    msgTmplt_mapOnly_authStatus_em='''Dear Depositors,
+    msgTmplt_mapOnly_authStatus_em = '''Dear Depositors,
 
 Your %(accession_ids)s which corresponds to Deposition ID %(identifier)s has been annotated and the status is now AUTH.
 
@@ -268,13 +268,13 @@ Entry authors:
 
 %(em_entry_authors_newline_list)s
 
+Please review the curated data and either reply with your approval or let us know if any additional changes are required. Your approval will be assumed if we do not hear from you within three weeks from the time when the annotation report is made available and assuming there are no major issues with the submission.
 
-**Please review the curated data and either reply with your approval or let us know if any additional changes are required.
+Header XML files (i.e., the metadata associated with the EMDB entry) are released immediately after curation.
 
-**When the primary citation associated with your entry is published, please notify us through the deposition system and provide the PubMed ID (if available), journal name, volume, page numbers, title, authors list and DOI.
+When the primary citation associated with your entry is published, please notify us through the deposition system and provide the PubMed ID (if available), journal name, volume, page numbers, title, authors list and DOI.
 
-**Please be aware that all public access to your entry will be via the accession code, %(emdb_id)s, which is distinct from the deposition number.
-
+Please be aware that all public access to your entry will be via the accession code, %(accession_ids)s, which is distinct from the deposition number.
 
 Thank you for your attention.
 

@@ -256,7 +256,7 @@ class MessagingIo(object):
                 # parse info from model file
                 if( modelFilePath is not None and os.access(modelFilePath,os.R_OK) ):    
                     #
-                    containerNameList = []
+                    containerList = []
                     try:
                         #########################################################################################################
                         # parse model cif file and verify blockname
@@ -265,11 +265,11 @@ class MessagingIo(object):
                         containerList = pdbxReader.readFile(inputFilePath=modelFilePath,selectList=MessagingIo.ctgrsReqrdFrmModelFile)
 
                         iCountNames = len(containerList)
-                        assert( iCountNames == 1 ), ("+%s.%s() -- expecting containerNameList to have single member but list had %s members\n" % (self.__class__.__name__,
-                                                                                                                                                  sys._getframe().f_code.co_name,
-                                                                                                                                                  iCountNames) )                        
+                        assert( iCountNames == 1 ), ("+%s.%s() -- expecting containerList to have single member but list had %s members\n" % (self.__class__.__name__,
+                                                                                                                                              sys._getframe().f_code.co_name,
+                                                                                                                                              iCountNames) )                        
 
-                        dataBlockName = self.__containerList[0].getName().encode('utf-8')
+                        dataBlockName = containerList[0].getName().encode('utf-8')
                         logger.debug("--------------------------------------------\n")        
                         logger.debug("identified datablock name %s in sample pdbx data file at: %s\n" % (
                                 dataBlockName, modelFilePath )) 
