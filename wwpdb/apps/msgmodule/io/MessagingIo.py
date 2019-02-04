@@ -501,7 +501,11 @@ class MessagingIo(object):
                     else:
                         # no messages content created yet
                         rtrnDict['CURRENT_NUM_MSGS_TO_DPSTR'] = 0
-                
+                else:
+                    # A vary rare race condition. MessagingDataImport will create file - but might be createed simultaneously in another process during time from creation - to detecting
+                    # file present.
+                    # no messages content created yet
+                    rtrnDict['CURRENT_NUM_MSGS_TO_DPSTR'] = 0
                             
             if( contentType == "notes" or bCommHstryRqstd ):
                 self.__lfh.write("+%s.%s() -- self.__notesFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notesFilePath) )
