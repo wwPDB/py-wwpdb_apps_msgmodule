@@ -657,6 +657,9 @@ class MessagingIo(object):
                             'val-report':'pdf',
                             'val-report-full':'pdf',
                             'val-data':'xml',
+                            'val-report-slider':'png',
+                            'val-report-wwpdb-2fo-fc-edmap-coef':'pdbx',
+                            'val-report-wwpdb-fo-fc-edmap-coef':'pdbx',
                             'mr':'any', # 'any' mapped to 'dat' in ConfigInfoData
                             'cs':'pdbx',
                             'em-volume':'map',
@@ -678,6 +681,18 @@ class MessagingIo(object):
         except:
             traceback.print_exc(file=self.__lfh)
         #
+
+        # See if validation report is included - create a hybrid if so.
+
+        valreport = False
+        for f in rtrnList:
+            if 'val-report' in f:
+                valreport = True
+                break
+
+        if valreport:
+            rtrnList.append('val-report-batch')
+
         return rtrnList
     
     def getFilesRfrncd(self,p_depDataSetId,p_msgIdFilter=None):
@@ -1749,8 +1764,11 @@ class MessagingIo(object):
         sIsEmMapAndModel = self.__reqObj.getValue("em_map_and_model")
         #
         workingFileRefsList = list(p_msgObj.fileReferences)
+        depositionId = p_msgObj.depositionId
+
         logger.info("-- p_msgObj.fileReferences is: %r \n" % (p_msgObj.fileReferences ) )
         logger.info("-- workingFileRefsList is: %r \n" % workingFileRefsList )
+
         msgFileRefs = []
         failedMsgFileRefs = []
         bOk = True
@@ -1762,6 +1780,15 @@ class MessagingIo(object):
         
         bAtLeastOneAuxFile = False # i.e. answer to question: have we encountered at least one auxiliary file yet?
         auxFilePartNum = 0
+        # Handle validation bundle
+        if "val-report-batch" in workingFileRefsList:
+            workingFileRefsList.remove("val-report-batch")
+            # Determine available reports
+            avail = self.checkAvailFiles(depositionId)
+            for f in avail:
+                if 'val-' in f and 'val-report-batch' != f:
+                    workingFileRefsList.append(f)
+
         if( self.__verbose and sIsEmEntry == 'true' ):
             sType = "Map Only" if sIsEmMapOnly == 'true' else "Map and Model"
             
@@ -2301,17 +2328,20 @@ class MessagingIo(object):
     def __getContentFormat(self,acronym,auxFileIndx):
         
         contentTypeToFormatMap = { 'model':'pdbx',
-                                'model_pdb':'pdb',
-                                'sf':'pdbx',
-                                'val-report':'pdf',
-                                'val-report-full':'pdf',
-                                'val-data':'xml',
-                                'mr':'dat',
-                                'cs':'pdbx',
-                                'em-volume':'map',
-                                'em-mask-volume':'map',
-                                'em-volume-header':'xml'
-                            }
+                                   'model_pdb':'pdb',
+                                   'sf':'pdbx',
+                                   'val-report':'pdf',
+                                   'val-report-full':'pdf',
+                                   'val-data':'xml',
+                                   'val-report-slider':'png',
+                                   'val-report-wwpdb-2fo-fc-edmap-coef':'pdbx',
+                                   'val-report-wwpdb-fo-fc-edmap-coef':'pdbx',
+                                   'mr':'dat',
+                                   'cs':'pdbx',
+                                   'em-volume':'map',
+                                   'em-mask-volume':'map',
+                                   'em-volume-header':'xml'
+                               }
         
         contentFormat = None
         
