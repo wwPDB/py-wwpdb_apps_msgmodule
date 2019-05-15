@@ -97,7 +97,6 @@ class MessagingDataImport(object):
     ###########################################################################################################
 
     def __getWfFilePath(self,contentType,format='pdbx',fileSource='archive',version='latest',createAsNeeded=False,partitionNum=None):
-        logger.debug("XXXXX %s" % __name__)
         try:
             fPath=self.__getWfFilePathRef(contentType=contentType,format=format,fileSource=fileSource,version=version,partitionNum=partitionNum)
             logger.debug("checking %s path %s\n" % (contentType,fPath))
