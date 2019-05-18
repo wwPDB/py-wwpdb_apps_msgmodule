@@ -1785,8 +1785,10 @@ class MessagingIo(object):
             workingFileRefsList.remove("val-report-batch")
             # Determine available reports
             avail = self.checkAvailFiles(depositionId)
-            for f in avail:
-                if 'val-' in f and 'val-report-batch' != f:
+            preference = ['val-report', 'val-report-full', 'val-data', 
+                          'val-report-wwpdb-2fo-fc-edmap-coef', 'val-report-wwpdb-fo-fc-edmap-coef']
+            for f in preference:
+                if f in avail:
                     workingFileRefsList.append(f)
 
         if( self.__verbose and sIsEmEntry == 'true' ):
