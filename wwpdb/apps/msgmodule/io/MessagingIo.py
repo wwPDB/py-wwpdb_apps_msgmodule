@@ -2408,7 +2408,7 @@ class MessagingIo(object):
         
         haveUploadFile = False   #attachment not being utilized at this time
         #
-        senderEmail = "noreply@mail.wwpdb.org"
+        senderEmail = self.__cI.get("SITE_NOREPLY_EMAIL", "noreply@mail.wwpdb.org")
         subject = p_msgObj.messageSubject
         recipientLst = []
         
