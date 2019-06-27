@@ -146,7 +146,7 @@ from wwpdb.apps.msgmodule.io.MessagingDataImport        import MessagingDataImpo
 from wwpdb.apps.msgmodule.io.MessagingDataExport        import MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi                   import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
-from wwpdb.apps.msgmodule.models.Message                import AutoMessage
+from wwpdb.apps.msgmodule.models.Message                import AutoMessage, AutoNote
 from wwpdb.apps.msgmodule.io.DateUtil                   import DateUtil
 #
 from wwpdb.utils.dp.RcsbDpUtility                       import RcsbDpUtility
@@ -938,6 +938,8 @@ class MessagingIo(object):
                 with LockFile(outputFilePth,timeoutSeconds=self.__timeoutSeconds,retrySeconds=self.__retrySeconds,verbose=self.__verbose,log=self.__lfh) as lf:
                     bOk = mIIo.write(outputFilePth)
                 
+                # print "XXXXX", p_msgObj.contentType, self.__isWorkflow()
+                # Need to allow sending of message for notes here XXXX
                 if bOk and not self.__groupId:
                     if self.__isWorkflow() and p_msgObj.contentType == "msgs":
                         # update copy of messages-to-depositor file in depositor file system if necessary
@@ -1186,14 +1188,28 @@ class MessagingIo(object):
             #if( 'EMDB' in templateDict['accession_ids'] ):   #if( templateDict['em_entry'] == "true" ):
             #    bEmDeposition = True
             #
-            if( p_tmpltType == "release-publ" ): #if( tmpltType == "release-publ" ):
-                msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_releaseWthPblctn
-            elif( p_tmpltType == "release-nopubl" ): #elif( tmpltType == "release-nopubl" ):
-                msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_releaseWthOutPblctn
-            #
-            #subject = "DEPOSITION ID '"+depId+"' -- Release of PDB ID '"+templateDict['pdb_id']+"'"
+
+            # Attach model files again (for auto-release) but not for a reminder
+            attachFiles = True
+            # Should this be archived as a Note?
+            isNote = False
+
+            # Default subject
             sAccessionIdString = templateDict['accession_ids_em_rel'] if p_isEmdbEntry else templateDict['accession_ids']
             subject = "Release of "+sAccessionIdString
+
+            # Template specific flags
+            if( p_tmpltType == "release-publ" ): 
+                msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_releaseWthPblctn
+            elif( p_tmpltType == "release-nopubl" ): 
+                msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_releaseWthOutPblctn
+            elif( p_tmpltType == "remind-unlocked" ): 
+                msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
+                attachFiles = False
+                isNote = True
+                subject = "Please attend to your unlocked deposition session"
+
+            # Assemble message with templates    
             msg = (msgTmplt % templateDict)
             #
             messageDict={
@@ -1208,8 +1224,11 @@ class MessagingIo(object):
             }
             #
             #fileRefList = ['model', 'model_pdb', 'sf', 'val-report', 'val-report-full', 'val-data']
-            fileRefList = self.checkAvailFiles(depId)
-            
+            if attachFiles:
+                fileRefList = self.checkAvailFiles(depId)
+            else:
+                fileRefList = []
+
             if (self.__verbose):
                 self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (className, methodName, depId) )
                 self.__lfh.write("+%s.%s() -- msg is: %r\n" % (className, methodName, msg) )
@@ -1237,7 +1256,11 @@ class MessagingIo(object):
             #
             rtrnDict[depId] = {}
             #
-            autoMsgObj = AutoMessage(messageDict,fileRefList,self.__verbose,self.__lfh)
+            if isNote:
+                autoMsgObj = AutoNote(messageDict,fileRefList,self.__verbose,self.__lfh)
+            else:
+                autoMsgObj = AutoMessage(messageDict,fileRefList,self.__verbose,self.__lfh)
+
             bOk, bPdbxMdlFlUpdtd, failedFileRefs = self.processMsg( autoMsgObj )
             #
             rtrnDict[depId]['success'] = "true" if bOk is True else "false"            
@@ -3272,7 +3295,7 @@ class MsgTmpltHlpr(object):
         # message template closing details
         p_returnDict['annotator_group_signoff'] = MessagingTemplates.msgTmplt_annotatorGroupSignoff
         p_returnDict['site_contact_details'] = self.__closingSiteDetails
-        
+        p_returnDict['unlock_date'] = "[NOT AVAILBLE]"
         
         #############################################################
         ########### EM ENTRY PROCESSING #############################
