@@ -3114,6 +3114,7 @@ class MsgTmpltHlpr(object):
         self.__lastCommDate = None 
         self.__lastOutboundRprtDate = None 
         self.__lastOutboundRprtDateEm= None 
+        self.__lastUnlockDate = None
         #        
         self.__emMapReleased = False
         self.__emModelReleased = False
@@ -3304,7 +3305,7 @@ class MsgTmpltHlpr(object):
         # message template closing details
         p_returnDict['annotator_group_signoff'] = MessagingTemplates.msgTmplt_annotatorGroupSignoff
         p_returnDict['site_contact_details'] = self.__closingSiteDetails
-        p_returnDict['unlock_date'] = "[NOT AVAILBLE]"
+        p_returnDict['unlock_date'] = du.date_to_display(self.__lastUnlockDate) if (self.__lastUnlockDate is not None and len(self.__lastUnlockDate) > 0) else "[NOT AVAILBLE]"
         
         #############################################################
         ########### EM ENTRY PROCESSING #############################
@@ -4171,6 +4172,7 @@ class MsgTmpltHlpr(object):
                                                                                  self.__defaultMsgTmpltType) )
 
     def __getLastCommDate(self):
+        # Retrieves last message sent date as well as last unlocked message
         myContainerList=[]
         ifh = open(self.__messagingFilePath, "r")
         pRd=PdbxReader(ifh)
@@ -4194,17 +4196,24 @@ class MsgTmpltHlpr(object):
                     #
                 idxOrdinalId=itDict['_pdbx_deposition_message_info.ordinal_id']
                 idxLastCommDate=itDict['_pdbx_deposition_message_info.timestamp']
+                idxMsgSubj=itDict['_pdbx_deposition_message_info.message_subject']
                 
                 maxOrdId=0
+                maxUnlockOrdId=0
                 for row in catObj.getRowList():
                     try:
                         ordinalId = int(row[idxOrdinalId])
-                        
+
                         if ordinalId > maxOrdId:
                             maxOrdId = ordinalId
                             self.__lastCommDate = str(row[idxLastCommDate])
-                            
-                    except:
+
+                        msgsubj = row[idxMsgSubj]
+                        if msgsubj == 'System Unlocked':
+                            if ordinalId > maxUnlockOrdId:
+                                maxUnlockOrdId = ordinalId
+                                self.__lastUnlockDate = str(row[idxLastCommDate]).split(' ')[0]
+                    except Exception as e:
                         pass
         
         else:
