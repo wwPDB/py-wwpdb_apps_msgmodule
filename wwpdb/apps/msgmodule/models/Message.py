@@ -426,5 +426,16 @@ class Note(Message):
         return Note.notesContentType
         #return "notes"
             
+class AutoNote(Note):
+    """ Subclass to represent message that is being automatically sent by another server-side python module and destined for notes (e.g. Release module)
+            (i.e. as opposed to being invoked via URL request by a web app client )
+            Support for optional email sending of message as well
         
+    """
+    def __init__(self,p_msgDict,p_fileRefLst=[],p_verbose=True,p_log=sys.stderr):
+        Note.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
+        #
+        self._bIsAutoMsg = True
+        self._msgDict['message_state'] = 'livemsg' # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
+    
     
