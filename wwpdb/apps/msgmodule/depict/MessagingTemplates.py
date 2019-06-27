@@ -26,6 +26,7 @@
 #    2017-08-18    RPS    Accommodating updates in "withdrawn" letter template
 #    2017-10-09    RPS    Updating template for "explicit approval". Adjusting signoff content for EM Map Only cases.
 #    2018-01-30    RPS    Readjusting signoff content for EM Map Only cases.
+#    2019-06-19    EP     Add msgTmplt_remindUnlocked for automatic sending of message for unlocked
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -223,6 +224,24 @@ and check your coordinates to ensure the quality of your structure prior to re-s
 
 %(msg_closing)s
 '''
+
+    msgTmplt_remindUnlocked='''Dear Depositors,
+
+Please acknowledge receipt of this message.
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) is still awaiting your input. The entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+This entry was unlocked on %(unlock_date)s per your request. However, the updated files and/or corrections have not been submitted yet. Please upload the new files, make corrections to the data in the deposition interface if needed, and press the 'Submit deposition' button so that we can finalize the processing of your deposition.
+
+Thank you for your attention.
+
+%(msg_closing)s
+'''
+
 #############################################################################################
 ####### TEMPLATE COMPONENTS BELOW ARE USED FOR ELECTRON MICROSCOPY ENTRIES ##################
 #############################################################################################
