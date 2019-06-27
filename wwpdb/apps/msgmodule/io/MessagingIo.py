@@ -938,8 +938,7 @@ class MessagingIo(object):
                 with LockFile(outputFilePth,timeoutSeconds=self.__timeoutSeconds,retrySeconds=self.__retrySeconds,verbose=self.__verbose,log=self.__lfh) as lf:
                     bOk = mIIo.write(outputFilePth)
                 
-                # print "XXXXX", p_msgObj.contentType, self.__isWorkflow()
-                # Need to allow sending of message for notes here XXXX
+                # Write message to depositor message file and send email
                 if bOk and not self.__groupId:
                     if self.__isWorkflow() and p_msgObj.contentType == "msgs":
                         # update copy of messages-to-depositor file in depositor file system if necessary
@@ -953,6 +952,16 @@ class MessagingIo(object):
                         except:
                             self.__lfh.write("Warning: problem sending notification email.\n")                
                             traceback.print_exc(file=self.__lfh)
+
+                    elif self.__isWorkflow() and p_msgObj.contentType == "notes" and p_msgObj.isNoteEmail:
+                        try:
+                            # send notification email to contact authors
+                            if(  p_msgObj.isBeingSent and not p_msgObj.isReminderMsg ):
+                                self.__sendNotificationEmail( p_msgObj, bVldtnRprtBeingSent )
+                        except:
+                            self.__lfh.write("Warning: problem sending notification email.\n")                
+                            traceback.print_exc(file=self.__lfh)
+
                     else:
                         # execution here is for DEV TESTING purposes
                         if self.__devMode and p_msgObj.contentType == "msgs":

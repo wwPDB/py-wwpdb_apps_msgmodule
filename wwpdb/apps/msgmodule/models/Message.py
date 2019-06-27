@@ -115,6 +115,8 @@ class Message(object):
         #
         self._bIsAutoMsg = False
         self._bIsReminderMsg = False
+        # Should the MessageClass force sending of email (note)
+        self._bIsNoteEmail = False
         #
         self.fileReferences = p_fileRefLst
         
@@ -372,6 +374,21 @@ class Message(object):
         else:
             #else we are in the standalone dev environment
             return False
+
+    @property
+    def isNoteEmail(self):
+        ''' Is the message is being automatically sent by another server-side python module (e.g. reminder), but
+            does not normally trigger an email message, force sending
+            
+            :Params:
+                :param na
+                
+            :Returns:
+                boolean indicating whether message should send email
+        
+        '''
+        return self._bIsNoteEmail == True
+    
     
 class AutoMessage(Message):
     """ Subclass to represent message that is being automatically sent by another server-side python module (e.g. Release module)
@@ -432,10 +449,11 @@ class AutoNote(Note):
             Support for optional email sending of message as well
         
     """
-    def __init__(self,p_msgDict,p_fileRefLst=[],p_verbose=True,p_log=sys.stderr):
+    def __init__(self,p_msgDict,p_fileRefLst=[],p_verbose=True,p_log=sys.stderr, p_email=True):
         Note.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsAutoMsg = True
+        self._bIsNoteEmail = p_email
         self._msgDict['message_state'] = 'livemsg' # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
     
     
