@@ -52,6 +52,7 @@ os.environ['IN_ANNOTATION'] = "no"
 # ##################################################
 
 from wwpdb.apps.msgmodule.webapp.MessagingWebApp  import MessagingWebApp
+from wwpdb.apps.msgmodule.util.AutoMessage  import AutoMessage
 
 class ImportTests(unittest.TestCase):
     def setUp(self):
