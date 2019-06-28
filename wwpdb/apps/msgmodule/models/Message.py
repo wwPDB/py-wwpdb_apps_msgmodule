@@ -288,8 +288,9 @@ class Message(object):
         
             Can be one of the following:
                 "text"               - default, conventional msg that is captured in messages data file (seen by both annotator and depositor), OR conventional note authored by annotator and captured in notes data file (seen by annotator only)
-                "archive"            - msg that is archived to notes data file via URL request (called by email server processing), does not trigger flag for annotator attention
+                "archive{_auto}"     - msg that is archived to notes data file via URL request (called by email server processing), does not trigger flag for annotator attention
                 "archive_manual"     - msg that is archived to notes data file via manual user interaction with UI, triggers flag for annotator attention
+                "archive_auto_noorig"- msg that is archived to notes via automatic server process (not by email handler), but does not contain _pdbx_deposition_message_origcomm_reference 
                 "archive_flag"       - msg that is archived to notes data file via URL request (called by email server processing), but needs to be flagged for annotator attention 
                 "forward"            - msg that is forwarded into system via URL request (called by email server processing), captured in messages data file, seen by both annotator and depositor
                 "forward_manual"     - msg that is forwarded via manual user interaction with UI, captured in messages data file, seen by both annotator and depositor
@@ -455,5 +456,5 @@ class AutoNote(Note):
         self._bIsAutoMsg = True
         self._bIsNoteEmail = p_email
         self._msgDict['message_state'] = 'livemsg' # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
-    
+        self._msgDict['message_type'] = 'archive_auto_noorig' # Archive a note, but not original message
     

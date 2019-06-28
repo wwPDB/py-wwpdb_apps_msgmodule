@@ -930,7 +930,7 @@ class MessagingIo(object):
                         return bSuccess, False, failedFileRefs
                     
                 # if this is a message to be archived or forwarded, handle reference to the original communication
-                if( 'archive' in p_msgObj.messageType or 'forward' in p_msgObj.messageType ): 
+                if ('archive' in p_msgObj.messageType or 'forward' in p_msgObj.messageType) and 'noorig' not in p_msgObj.messageType: 
                     self._handleOrigCommReferences(p_msgObj,mIIo)
                 
                 self._updateSnapshotHistory(outputFilePth)
