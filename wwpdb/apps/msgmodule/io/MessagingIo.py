@@ -1216,7 +1216,7 @@ class MessagingIo(object):
                 msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
                 attachFiles = False
                 isNote = True
-                subject = "Please attend to your unlocked deposition session - " + sAccessionIdString
+                subject = "ARCHIVED: Please attend to your unlocked deposition session - " + sAccessionIdString
 
             # Assemble message with templates    
             msg = (msgTmplt % templateDict)
@@ -2513,6 +2513,15 @@ class MessagingIo(object):
         msgStrDict['mime_hdr'] = MessagingTemplates.emailNotif_mimeHdr
         msgStrDict['msg_content'] = msgBody
         #
+        # Adjust subject to strip archiving 'ARCHIVED: '
+        if p_msgObj.contentType == 'notes':
+            spre = 'ARCHIVED: '
+            if len(msgStrDict['subject']) > len(spre) and msgStrDict['subject'][0:len(spre)] == spre:
+                msgStrDict['subject'] = msgStrDict['subject'][len(spre):]
+            if len(msgStrDict['comm_subject']) > len(spre) and msgStrDict['comm_subject'][0:len(spre)] == spre:
+                msgStrDict['comm_subject'] = msgStrDict['comm_subject'][len(spre):]
+            
+        # Generate message with template
         message = MessagingTemplates.emailNotif_msgTmplt%msgStrDict
         #
         try:
