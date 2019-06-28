@@ -1216,7 +1216,7 @@ class MessagingIo(object):
                 msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
                 attachFiles = False
                 isNote = True
-                subject = "Please attend to your unlocked deposition session"
+                subject = "Please attend to your unlocked deposition session - " + sAccessionIdString
 
             # Assemble message with templates    
             msg = (msgTmplt % templateDict)
