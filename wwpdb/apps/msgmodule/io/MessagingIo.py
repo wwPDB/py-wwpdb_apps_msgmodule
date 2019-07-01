@@ -1184,6 +1184,14 @@ class MessagingIo(object):
             self.__reqObj.setValue("em_map_only", "false")
             self.__reqObj.setValue("em_map_and_model", "false")
         
+            useAnnotatorName = False
+            if p_tmpltType == "remind-unlocked":
+                useAnnotatorName = True
+
+            # Trigger lookup of annotator initial to name if desired by template
+            if useAnnotatorName:
+                self.__reqObj.setValue("useAnnotatorName", "True")
+
             # qualifying name of database file, in case code calling this function does so with list of depIDs
             # in which case we will need to create individual database files for each depID, but all in same session path.
             self.__dbFilePath = os.path.join(self.__sessionPath,depId+"_modelFileData.db") 
@@ -3115,6 +3123,7 @@ class MsgTmpltHlpr(object):
         self.__citPdbxDbIdPubMed = None # used only to determine default msg tmplt type
         #
         self.__procSite = None # processing site used in statement regarding upcoming Thursday cutoff date
+        self.__pdbxAnnotator = ""
         self.__annotatorFullName = ""
         self.__closingSiteDetails = ""
         #
@@ -3471,12 +3480,11 @@ class MsgTmpltHlpr(object):
         p_returnDict['known_file_extensions'] = ", ".join(listKnownFileExtensions)
         #
         p_returnDict['full_name_annotator'] = self.__annotatorFullName
-        
+
         if( self.__emDeposition and self.__emMapOnly ):
             p_returnDict['msg_closing'] = MessagingTemplates.msgTmplt_closing_emMapOnly%p_returnDict
         else:
             p_returnDict['msg_closing'] = MessagingTemplates.msgTmplt_closing%p_returnDict
-        
             
     ################################################################################################################
     # ------------------------------------------------------------------------------------------------------------
@@ -3811,8 +3819,7 @@ class MsgTmpltHlpr(object):
                 idxInitRecvdDate=itDict['_pdbx_database_status.recvd_initial_deposition_date']
                 idxDatePdbRelease=itDict['_pdbx_database_status.date_of_ndb_release']
                 idxProcSite=itDict['_pdbx_database_status.process_site']
-                
-                
+                idxPdbAnnotator=itDict['_pdbx_database_status.pdbx_annotator']
                 
                 
                 for row in catObj.getRowList():
@@ -3824,6 +3831,7 @@ class MsgTmpltHlpr(object):
                         self.__initRecvdDate = str(row[idxInitRecvdDate])
                         self.__pdbReleaseDate = str(row[idxDatePdbRelease])
                         self.__procSite = str(row[idxProcSite])
+                        self.__pdbxAnnotator = str(row[idxPdbAnnotator])
                                                     
                     except:
                         pass
@@ -3939,10 +3947,15 @@ class MsgTmpltHlpr(object):
 
 
     def __getAnnotatorDetails(self):
-        annotatorId = self.__reqObj.getValue("sender").upper()
         
         procSite = self.__procSite.upper()
         
+        useAnnotatorName = self.__reqObj.getValueOrDefault('useAnnotatorName', None)
+
+        annotatorId = self.__reqObj.getValue("sender").upper()
+        if useAnnotatorName:
+            annotatorId=self.__pdbxAnnotator
+
         if( procSite == "RCSB" ):
             #self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_rcsb_em if( self.__emDeposition ) else MessagingTemplates.msgTmplt_site_contact_details_rcsb
             self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_rcsb
@@ -3964,7 +3977,6 @@ class MsgTmpltHlpr(object):
                 lname = annotatorDict.get("lname", "")
                 
                 self.__annotatorFullName = fname + " " + lname
-                     
                      
                  
     def __getCitationInfo(self):
