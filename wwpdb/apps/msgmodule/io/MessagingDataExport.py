@@ -136,7 +136,7 @@ class MessagingDataExport(object):
         """ Return the path to the latest version of the 
         """                
         
-        dfRef=DataFileReference()
+        dfRef=DataFileReference(siteId=self.__siteId)
         logger.debug("site id is %s" % dfRef.getSitePrefix())
 
         dfRef.setDepositionDataSetId(self.__identifier)        

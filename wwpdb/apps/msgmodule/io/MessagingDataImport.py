@@ -62,6 +62,7 @@ class MessagingDataImport(object):
             self.__sessionPath = self.__sessionObj.getPath()
             self.__identifier  = str(self.__reqObj.getValue("identifier")).upper()
             self.__instance    = str(self.__reqObj.getValue("instance")).upper()
+            self.__siteId      = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
             self.__fileSource = "archive" # fixing value to "archive" for now
             '''
             self.__fileSource  = str(self.__reqObj.getValue("filesource")).lower()
@@ -124,7 +125,7 @@ class MessagingDataImport(object):
         """ Return the path to the latest version of the contentType
         """                
         
-        dfRef=DataFileReference()
+        dfRef=DataFileReference(siteId=self.__siteId)
         logger.debug("site id is %s\n" % dfRef.getSitePrefix())
 
         dfRef.setDepositionDataSetId(self.__identifier)        
