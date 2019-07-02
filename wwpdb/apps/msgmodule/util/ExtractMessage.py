@@ -16,7 +16,6 @@ __license__ = "Creative Commons Attribution 3.0 Unported"
 import os
 import sys
 import logging
-from wwpdb.utils.config.ConfigInfo import getSiteId
 from mmcif.io.PdbxReader import PdbxReader
 from wwpdb.io.locator.PathInfo import PathInfo
 
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class ExtractMessage(object):
     def __init__(self, siteId=None, verbose=False, log=sys.stderr):
-        self.__siteId = getSiteId(siteId)
+        self.__siteId = siteId
         self.__verbose = verbose
         self.__log = log
         self.__pI = PathInfo(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
