@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 
 class AutoMessage(object):
     def __init__(self, siteId=None, topSessionDir=None, verbose=False, log=sys.stderr):
-        self.__siteId = getSiteId(siteId)
+        if siteId:
+            self.__siteId = siteId
+        else:
+            self.__siteId = getSiteId()
+        logger.debug("Site id is %s" % self.__siteId)
         self.__cI = ConfigInfo(self.__siteId)
         self.__verbose = verbose
         self.__log = log
