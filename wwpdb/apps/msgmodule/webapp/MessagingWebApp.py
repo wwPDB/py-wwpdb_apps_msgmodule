@@ -646,6 +646,10 @@ class MessagingWebAppWorker(object):
             
         rtrnDict['html'] = '\n'.join(oL)
         
+        statusCode=self.__reqObj.getValueOrDefault('status_code', default=None)
+        if statusCode:
+            rtrnDict['status_code'] = statusCode
+        
         rC.addDictionaryItems( rtrnDict )
         
         return rC 

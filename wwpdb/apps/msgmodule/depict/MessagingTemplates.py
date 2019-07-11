@@ -225,6 +225,14 @@ and check your coordinates to ensure the quality of your structure prior to re-s
 %(msg_closing)s
 '''
 
+    msgTmplt_systemUnlockedPostRel='''Dear Depositor, 
+    
+The deposition interface has been unlocked as per your request in order to facilitate replacement of your model. You will be able to upload a replacement model, without any change to experimental data. As this entry has already been released, we will treat this as an entry that is to be released as soon as revisions are complete.
+Make sure to press the 'SUBMIT' button once you have finished making your changes within the deposition interface. 
+
+%(msg_closing)s
+'''
+
     msgTmplt_remindUnlocked='''Dear Depositors,
 
 Please acknowledge receipt of this message.

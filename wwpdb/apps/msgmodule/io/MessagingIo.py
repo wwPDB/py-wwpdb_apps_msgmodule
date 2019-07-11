@@ -3208,6 +3208,9 @@ class MsgTmpltHlpr(object):
                     self.__getRqstdAccessionIds()
                     
                     self.__getProcessingStatusInfo()
+                    # Pass info back with get_msg_templates..
+                    if self.__statusCode:
+                        self.__reqObj.setValue('status_code', self.__statusCode)
                     
                     if( self.__emDeposition ):
                         self.__getId("EMDB")

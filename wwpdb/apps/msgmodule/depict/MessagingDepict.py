@@ -245,7 +245,13 @@ class MessagingDepict(object):
         strParamDict['msg_tmplt_release-nopubl'] = (MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict)
         strParamDict['msg_tmplt_withdrawn'] =  (MessagingTemplates.msgTmplt_withdrawn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_withdrawn % strParamDict)
         strParamDict['msg_tmplt_vldtn'] =  (MessagingTemplates.msgTmplt_vldtn % strParamDict)
-        strParamDict['msg_tmplt_system-unlocked'] =  (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
+
+        statusCode = strParamDict.get('status_code', '???')
+        if statusCode == 'REL' and strParamDict.get('pdb_id', '') != '[PDBID NOT AVAIL]':
+            # Post Release Unlock
+            strParamDict['msg_tmplt_system-unlocked'] =  MessagingTemplates.msgTmplt_systemUnlockedPostRel % strParamDict
+        else:
+            strParamDict['msg_tmplt_system-unlocked'] =  (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
         strParamDict['msg_tmplt_maponly-authstatus-em'] =  (MessagingTemplates.msgTmplt_mapOnly_authStatus_em% strParamDict) if bEmDeposition else ""
             
         oL.append( self.processTemplate(tmpltPth=tmpltPath,fn="msg_tmplts.html", parameterDict=strParamDict) )
