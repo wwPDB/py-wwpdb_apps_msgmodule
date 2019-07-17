@@ -3103,6 +3103,7 @@ class MsgTmpltHlpr(object):
         #
         self.__statusCode = None
         self.__entryStatus = None
+        self.__postRelStatus = None
         #
         self.__authRelStatusCode = None
         self.__authApprovalType = None # only used to determine default msg template
@@ -3823,6 +3824,7 @@ class MsgTmpltHlpr(object):
                 idxDatePdbRelease=itDict['_pdbx_database_status.date_of_ndb_release']
                 idxProcSite=itDict['_pdbx_database_status.process_site']
                 idxPdbAnnotator=itDict['_pdbx_database_status.pdbx_annotator']
+                idxPostRelStatus=itDict.get('_pdbx_database_status.post_rel_status', None)
                 
                 
                 for row in catObj.getRowList():
@@ -3834,8 +3836,10 @@ class MsgTmpltHlpr(object):
                         self.__initRecvdDate = str(row[idxInitRecvdDate])
                         self.__pdbReleaseDate = str(row[idxDatePdbRelease])
                         self.__procSite = str(row[idxProcSite])
-                        self.__pdbxAnnotator = str(row[idxPdbAnnotator])
-                                                    
+                        if idxPostRelStatus:
+                            self.__postRelStatus = str(row[idxPostRelStatus])
+                        else:
+                            self.__postRelStatus = '?'
                     except:
                         pass
 
@@ -4164,12 +4168,16 @@ class MsgTmpltHlpr(object):
         If _pdbx_database_status.status_code= WDRN -> launch withdrawn_letter_template
         If it is an EM map only entry --> if _pdbx_database_status.status_code= AUTH -> launch mapOnly-AuthStatus_letter_template
         '''
-        
+
         if( self.__emDeposition ):
             statusCode = self.__statusCodeEmMap
         else:
-            statusCode = self.__statusCode
-        
+            # Not a question mark
+            if self.__postRelStatus is not None and len(self.__postRelStatus) > 1:
+                statusCode = self.__postRelStatus
+            else:
+                statusCode = self.__statusCode
+
         if( statusCode and len(statusCode) > 1 ):
             if( statusCode == 'HPUB' or statusCode == 'HOLD'):
                 if( self.__authApprovalType and len(self.__authApprovalType) > 1 ):
