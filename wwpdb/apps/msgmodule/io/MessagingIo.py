@@ -1212,6 +1212,7 @@ class MessagingIo(object):
             isNote = False
 
             # Default subject
+            # sAccessionString is for entries being released - may not list all ids
             sAccessionIdString = templateDict['accession_ids_em_rel'] if p_isEmdbEntry else templateDict['accession_ids']
             subject = "Release of "+sAccessionIdString
 
@@ -1224,7 +1225,9 @@ class MessagingIo(object):
                 msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
                 attachFiles = False
                 isNote = True
-                subject = "ARCHIVED: Please attend to your unlocked deposition session - " + sAccessionIdString
+                # Need all ids
+                accstr = templateDict['accession_ids']
+                subject = "ARCHIVED: Please attend to your unlocked deposition session - " + accstr
 
             # Assemble message with templates    
             msg = (msgTmplt % templateDict)
