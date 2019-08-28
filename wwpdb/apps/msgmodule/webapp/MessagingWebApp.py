@@ -102,7 +102,7 @@ class MessagingWebApp(object):
         self.__templatePath = os.path.join(self.__topPath,"htdocs","msgmodule")
         #
 
-        if type( parameterDict ) == types.DictType:
+        if isinstance(parameterDict, dict):
             self.__myParameterDict=parameterDict
         else:
             self.__myParameterDict={}
@@ -252,7 +252,7 @@ class MessagingWebAppWorker(object):
         """
         #
         reqPath=self.__reqObj.getRequestPath()
-        if not self.__appPathD.has_key(reqPath):
+        if reqPath not in self.__appPathD:
             # bail out if operation is unknown -
             rC=ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose,log=self.__lfh)
             rC.setError(errMsg='Unknown operation')
@@ -272,7 +272,7 @@ class MessagingWebAppWorker(object):
         #
         try:
             reqPath=self.__reqObj.getRequestPath()
-            if not self.__appPathD.has_key(reqPath):
+            if reqPath not in self.__appPathD:
                 # bail out if operation is unknown -
                 rC=ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose,log=self.__lfh)
                 rC.setError(errMsg='Unknown operation')
@@ -1929,14 +1929,19 @@ class MessagingWebAppWorker(object):
     def __isFileUpload(self,fileTag='file'):
         """ Generic check for the existence of request paramenter "file".
         """ 
+        try:
+            stringtypes = (unicode, str)
+        except NameError:
+            stringtypes = (str, bytes)
+
         # Gracefully exit if no file is provide in the request object - 
         fs=self.__reqObj.getRawValue(fileTag)
-        if( self.__verbose and self.__debug ):
+        if self.__verbose and self.__debug:
             self.__lfh.write("+MessagingWebApp.__isFileUpload() - type of 'fs' is %s\n"% type(fs))
         
-        if ( (fs is None) or (type(fs) == types.StringType) or (type(fs) == types.UnicodeType) ):
+        if (fs is None) or isinstance(fs, stringtypes):
             return False
-        if( self.__verbose and self.__debug ):
+        if self.__verbose and self.__debug:
             self.__lfh.write("+MessagingWebApp.__isFileUpload() - file upload is found to be True\n")
         return True
 

@@ -32,8 +32,11 @@ class Message(object):
         ''' Encoding unicode/utf-8 content into cif friendly ascii
             Have to replace any ';' that begin a newline with a ' ;' in order to preserve ; matching required for multiline items
         '''
-        return p_content.encode('ascii','xmlcharrefreplace').replace('\n;','\n ;').replace('\\\\xa0',' ')
-    
+        if sys.version_info[0] < 3:
+            return p_content.encode('ascii','xmlcharrefreplace').replace('\n;','\n ;').replace('\\\\xa0',' ')
+        else:
+            return p_content.encode('ascii','xmlcharrefreplace').decode('ascii').replace('\n;','\n ;').replace('\\\\xa0',' ')
+
     @staticmethod
     def fromReqObj(p_reqObj,verbose=True,log=sys.stderr):
         ''' Factory method that takes input requestObject and depending on the given request parameters

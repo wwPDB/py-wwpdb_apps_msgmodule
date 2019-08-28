@@ -128,12 +128,11 @@ __version__   = "V0.01"
 
 import sys, traceback, time, os, os.path, shutil, re, operator, smtplib, base64, mimetypes, textwrap
 try:
-    from html.parser import HTMLParser
+    from html import unescape
 except ImportError:
     from HTMLParser import HTMLParser
 from datetime import datetime, date, timedelta
 from dateutil import tz
-
 #
 from mmcif_utils.message.PdbxMessage      import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
 from mmcif_utils.message.PdbxMessageIo    import PdbxMessageIo
@@ -2512,6 +2511,9 @@ class MessagingIo(object):
         msgStrDict['dep_email_url'] = depEmailUrl
         msgStrDict['mention_vldtn_rprts'] = "and validation report(s) " if( p_bVldtnRprtFlg is True ) else ""
         msgStrDict['orig_commui_msg_content'] = self.__protectLineBreaks( self.__decodeCifToUtf8(p_msgObj.messageText) )
+        if sys.version_info[0] < 3:
+            # A unicode encoded string does not work well with templates - which is ASCII only in python 2
+            msgStrDict['orig_commui_msg_content'] = msgStrDict['orig_commui_msg_content'].decode('utf-8').encode('ascii', 'replace')
         #
         msgStrDict['msg_body_main'] = MessagingTemplates.emailNotif_msgBodyMain%msgStrDict if not p_msgObj.isAutoMsg else ( (p_msgObj.messageText).replace('\n','<br />') + MessagingTemplates.emailNotif_replyRedirectFooter%msgStrDict)
         msgBody = MessagingTemplates.emailNotif_msgBodyTmplt%msgStrDict
@@ -2538,8 +2540,13 @@ class MessagingIo(object):
         try:
            smtpObj = smtplib.SMTP('localhost')
            
+           # Ascii strings
+           message=message.encode('ascii', 'replace')
+           if sys.version_info[0] > 2:
+               message=message.decode('ascii')
+
            smtpObj.sendmail(senderEmail, recipientLst, message)
-                      
+                     
            # also send copy to notification archive
            if( archiveNotifEmails is not None and archiveNotifEmails == 'yes' ):
                smtpObj.sendmail(senderEmail, self.__notifEmailArchAddress, message)
@@ -2697,8 +2704,11 @@ class MessagingIo(object):
         return p_content.encode('ascii','xmlcharrefreplace').replace('\n;','\n ;').replace('\\xa0',' ')
     
     def __decodeCifToUtf8(self,p_content):
-        h = HTMLParser()
-        return h.unescape(p_content).replace('\\xa0',' ').encode('utf-8')
+        if sys.version_info[0] < 3:
+            h = HTMLParser()
+            return h.unescape(p_content).replace('\\xa0',' ').encode('utf-8')
+        else:
+            return unescape(p_content).replace('\\xa0',' ')
     
     def __convertToLocalTimeZone(self,p_timeStamp):
         ''' convert from the timestamp in gmtime to one in localtime for display in the user interface '''
@@ -2953,7 +2963,7 @@ class MessagingIo(object):
     def __hasParent(self,id,pD):
         """ id --> parentId?
         """
-        if not pD.has_key(id):
+        if id not in pD:
             return False
         elif pD[id] == id:
             return False
