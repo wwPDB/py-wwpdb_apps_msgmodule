@@ -2511,6 +2511,9 @@ class MessagingIo(object):
         msgStrDict['dep_email_url'] = depEmailUrl
         msgStrDict['mention_vldtn_rprts'] = "and validation report(s) " if( p_bVldtnRprtFlg is True ) else ""
         msgStrDict['orig_commui_msg_content'] = self.__protectLineBreaks( self.__decodeCifToUtf8(p_msgObj.messageText) )
+        if sys.version_info[0] < 3:
+            # A unicode encoded string does not work well with templates - which is ASCII only in python 2
+            msgStrDict['orig_commui_msg_content'] = msgStrDict['orig_commui_msg_content'].decode('utf-8').encode('ascii', 'replace')
         #
         msgStrDict['msg_body_main'] = MessagingTemplates.emailNotif_msgBodyMain%msgStrDict if not p_msgObj.isAutoMsg else ( (p_msgObj.messageText).replace('\n','<br />') + MessagingTemplates.emailNotif_replyRedirectFooter%msgStrDict)
         msgBody = MessagingTemplates.emailNotif_msgBodyTmplt%msgStrDict
