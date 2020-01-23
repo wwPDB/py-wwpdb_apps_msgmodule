@@ -2255,7 +2255,7 @@ class MessagingIo(object):
         
         if( p_srcFilePath and p_dstFilePath ):
             
-            startTime = time.clock()
+            startTime = time.time()
             logger.debug("Starting at %s" % time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
             try:
                 #
@@ -2271,7 +2271,7 @@ class MessagingIo(object):
                 bOk = False
                 return bOk
     
-            endTime = time.clock()
+            endTime = time.time()
             logger.debug("Completed at %s (%.2f seconds)\n" % (time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
                                                                endTime - startTime))
 
@@ -2300,7 +2300,7 @@ class MessagingIo(object):
         
         if( p_srcFilePath and p_dstFilePath ):
             
-            startTime = time.clock()
+            startTime = time.time()
             self.__lfh.write("\nStarting %s %s at %s\n" % (self.__class__.__name__,
                                                            sys._getframe().f_code.co_name,
                                                            time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
@@ -2316,7 +2316,7 @@ class MessagingIo(object):
                 bOk = False
                 return bOk
     
-            endTime = time.clock()
+            endTime = time.time()
             self.__lfh.write("\nCompleted %s %s at %s (%.2f seconds)\n" % (self.__class__.__name__,
                                                                            sys._getframe().f_code.co_name,
                                                                            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
