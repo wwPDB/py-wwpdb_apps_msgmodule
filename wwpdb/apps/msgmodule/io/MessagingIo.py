@@ -3343,6 +3343,15 @@ class MsgTmpltHlpr(object):
         p_returnDict['unlock_date'] = du.date_to_display(self.__lastUnlockDate) if (self.__lastUnlockDate is not None and len(self.__lastUnlockDate) > 0) else "[NOT AVAILBLE]"
         
         #############################################################
+        ########### DOI NOTICE HANDLINE #############################
+        #############################################################
+        if self.__emDeposition and self.__emMapOnly:
+            p_returnDict['doinotice'] = ''
+        else:
+            p_returnDict['doinotice'] = 'Your entry has been assigned the following DOI: https://doi.org/10.2210/pdb{}/pdb\n\nPlease use the above DOI to link to your data.\n'.format(p_returnDict['pdb_id'])
+
+
+        #############################################################
         ########### EM ENTRY PROCESSING #############################
         #############################################################
         
