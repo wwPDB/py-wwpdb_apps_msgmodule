@@ -298,8 +298,6 @@ Entry authors:
 
 Please review the curated data and either reply with your approval or let us know if any additional changes are required. Your approval will be assumed if we do not hear from you within three weeks from the time when the annotation report is made available and assuming there are no major issues with the submission.
 
-Header XML files (i.e., the metadata associated with the EMDB entry) are released immediately after curation.
-
 When the primary citation associated with your entry is published, please notify us through the deposition system and provide the PubMed ID (if available), journal name, volume, page numbers, title, authors list and DOI.
 
 Please be aware that all public access to your entry will be via the accession code, %(accession_ids)s, which is distinct from the deposition number.
@@ -316,8 +314,6 @@ Thank you for your response, this message is to inform you that your %(accession
 %(horiz_line)s
 %(em_title)s
 %(horiz_line)s
-
-EMDB header information will be released.  Please note that the EMDB header contains the information entered via the deposition system but excludes any uploaded files (map, structure factors, layer-lines, masks, images) or any information derived from them.
 
 We have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s). Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released. 
 
@@ -336,8 +332,6 @@ This message is to inform you that your %(accession_ids)s (Deposition ID %(ident
 %(horiz_line)s
 
 As we have not heard from you since we sent the %(vldtn_rprt)sprocessed files to you on %(outbound_rprt_date_em)s, we have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s) with implicit approval in accordance with wwPDB policies, http://www.wwpdb.org/documentation/policy.html.
-
-EMDB header information will be released.  Please note that the EMDB header contains the information entered via the deposition system but excludes any uploaded files (map, structure factors, layer-lines, masks, images) or any information derived from them.
 
 Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released. 
 
