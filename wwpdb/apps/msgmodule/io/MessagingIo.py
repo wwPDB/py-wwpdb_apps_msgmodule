@@ -3348,7 +3348,7 @@ class MsgTmpltHlpr(object):
         if self.__emDeposition and self.__emMapOnly:
             p_returnDict['doinotice'] = ''
         else:
-            p_returnDict['doinotice'] = 'Your entry has been assigned the following DOI: https://doi.org/10.2210/pdb{}/pdb\n\nPlease use the above DOI to link to your data.\n'.format(p_returnDict['pdb_id'])
+            p_returnDict['doinotice'] = 'Your entry has been assigned the following PDB DOI: https://doi.org/10.2210/pdb{}/pdb\n\nPlease use the above PDB DOI link to access your data.\n'.format(p_returnDict['pdb_id'])
 
 
         #############################################################
