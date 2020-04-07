@@ -151,6 +151,7 @@ from wwpdb.apps.msgmodule.io.DateUtil                   import DateUtil
 from wwpdb.utils.dp.RcsbDpUtility                       import RcsbDpUtility
 from wwpdb.utils.dp.DataFileAdapter                     import DataFileAdapter
 from wwpdb.utils.wf.dbapi.dbAPI                         import dbAPI
+from wwpdb.utils.nmr.NmrDpUtility                       import NmrDpUtility
 #
 from mmcif_utils.persist.PdbxPersist   import PdbxPersist
 from mmcif_utils.persist.LockFile      import LockFile
@@ -661,6 +662,7 @@ class MessagingIo(object):
                             'val-report-wwpdb-fo-fc-edmap-coef':'pdbx',
                             'mr':'any', # 'any' mapped to 'dat' in ConfigInfoData
                             'cs':'pdbx',
+                            'nmr-data-str' : 'pdbx',
                             'em-volume':'map',
                             'em-mask-volume':'map',
                             'em-volume-header':'xml'
@@ -1873,6 +1875,7 @@ class MessagingIo(object):
                 else:
                     fPath = msgDI.getFilePath(contentType,contentFormat)
                 
+                print("YYYYY", fPath, fileRef)
                 if( fPath is not None and os.access(fPath,os.R_OK) ):
                     
                     # make straight copy of the file to generate "-annotate" milestone version of the file
@@ -1894,6 +1897,14 @@ class MessagingIo(object):
                         
                         if( not bOk ):
                             break
+
+                    if( fileRef == 'nmr-data-str' ):
+                        # if dealing with nmr-data-str  file then additionally make copy of cs file in which internal view items are stripped out--this serves as "-review" version of the file
+                        bOk = self.__createNmrDataStarReviewCopy(p_msgObj.depositionId,p_msgObj.messageId,fPath,acronym,contentType,"nmr-star",msgFileRefs,failedMsgFileRefs)
+                        
+                        if( not bOk ):
+                            break
+
                 else:
                     bOk = False
                     failedMsgFileRefs.append(acronym)
@@ -2237,6 +2248,141 @@ class MessagingIo(object):
         
         return bOk
     
+    def __createNmrDataStarReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):
+        ##################################################################################
+        # if dealing with nmr-data file then make additional copy of cs file in which  
+        # internal view items are stripped out--this serves as "-review" version of the file
+        # Also generate NEF file.
+        ##################################################################################
+        self.__lfh.write("+%s.%s() -- Starting fPath=%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, fPath))
+
+
+        bOk = True
+        #
+        msgDE=MessagingDataExport(self.__reqObj,verbose=self.__verbose,log=self.__lfh)
+        reviewCntntTyp = contentType+'-review'
+        reviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp,contentFormat)
+
+        # next version
+        reviewAnnotMilestoneFilePth = reviewFilePthDict['annotPth']
+        reviewDpstMilestoneFilePth = reviewFilePthDict['dpstPth'] #same filename as "archive" version of file, but different path for "deposit" area 
+        # current version
+        reviewAnnotCurMilestoneFilePth = reviewFilePthDict['curPth']
+        reviewDpstCurMilestoneFilePth = reviewFilePthDict['curDpstPth'] #same filename as "archive" version of file, but different path for "deposit" area 
+        
+        if reviewAnnotMilestoneFilePth is not None:
+            
+            dp = RcsbDpUtility(tmpPath=self.__sessionPath, siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+            dp.imp(fPath)
+            dp.addInput(name="pdb_id", value=p_depId)
+            dp.op("annot-generte-nmr-data-str-file")
+            dp.exp(reviewAnnotMilestoneFilePth)
+            dp.cleanup()
+
+            self.__lfh.write("+%s.%s() -- generated %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, reviewAnnotMilestoneFilePth))
+                
+            annotVersionNum = reviewAnnotMilestoneFilePth.rsplit(".V")[1]
+            annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".",1)[0]
+            
+            if( self.__verbose and self.__debug ):
+                logger.debug("reviewAnnotMilestoneFilePth is: %s" % reviewAnnotMilestoneFilePth) 
+                
+            if reviewDpstMilestoneFilePth is not None:
+                        
+                if os.access(reviewAnnotMilestoneFilePth, os.R_OK):
+                    if self.__copyMilestoneDeposit:
+                        shutil.copyfile(reviewAnnotMilestoneFilePth, reviewDpstMilestoneFilePth)
+                                    
+                        if ( os.access(reviewDpstMilestoneFilePth,os.R_OK) ):
+                            if( self.__verbose and self.__debug ):
+                                logger.debug("reviewDpstMilestoneFilePth is: %s" % reviewDpstMilestoneFilePth)
+                                
+                            msgFileRefs.append( self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum ) )
+                                
+                        else:
+                            bOk = False
+                            failedMsgFileRefs.append(reviewCntntTyp)
+                            logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % reviewDpstMilestoneFilePth)
+                    else:
+                        # For not copying to deposit, register attachment
+                        msgFileRefs.append( self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum ) )
+                                    
+                else:
+                    bOk = False
+                    failedMsgFileRefs.append(reviewCntntTyp)
+                    logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % reviewAnnotMilestoneFilePth)
+
+                    
+            else:
+                bOk = False
+                failedMsgFileRefs.append(reviewCntntTyp)
+                if( self.__verbose ):
+                    self.__lfh.write("+%s.%s() -- problem with depositor milestone path for copyng %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, reviewAnnotMilestoneFilePth) )
+
+        if os.access(reviewAnnotMilestoneFilePth, os.R_OK) and bOk == True:
+
+            reviewCntntTyp = "model"
+            modelFilePthDict = msgDE.getMileStoneFilePaths("model", "pdbx")
+            modelFilePath = modelFilePthDict['curPth']
+
+
+            reviewCntntTyp = "nmr-data-nef-review"
+            nefReviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp,contentFormat)
+            nefReviewDpstMilestoneFilePth = nefReviewFilePthDict['dpstPth'] #same filename as "archive" version of file, but different path for "deposit" area 
+            nefReviewAnnotMilestoneFilePth = nefReviewFilePthDict['annotPth']
+
+            logger.info("About to generate NEF file %s -> %s", reviewAnnotMilestoneFilePth, nefReviewAnnotMilestoneFilePth)
+
+
+            logOutPath2 = os.path.join(self.__sessionPath, p_depId + "-logstrnef.json") # output log for converted NEF file in "nmr-str2nef-release" op
+            logOutPath1 = os.path.join(self.__sessionPath, p_depId + "-logstrstr.json") # output log for converted NMR-STAR file in "nmr-str2nef-release" op
+            strOut = os.path.join(self.__sessionPath, p_depId + "-str.str")
+
+            np = NmrDpUtility()
+            # Must be before setDestination
+
+            np.setSource(reviewAnnotMilestoneFilePth)
+
+            np.setDestination(strOut)
+            np.addOutput(name='nef_file_path', value=nefReviewAnnotMilestoneFilePth, type='file')
+
+            # Need to specify report_file path again???
+            np.addOutput(name='report_file_path', value=logOutPath2, type='file') # Yes, see comments above
+            np.addOutput(name='insert_entry_id_to_loops', value=True, type='param')
+            np.setLog(logOutPath1) # 
+            logging.info("About to do OP")
+            np.op("nmr-str2nef-release")
+
+            nexists = os.access(nefReviewAnnotMilestoneFilePth, os.R_OK)
+            logger.info("NMRStar conversion to NEF completed out_exists %s", nexists)
+
+            if nexists:
+                if self.__copyMilestoneDeposit:
+                    shutil.copyfile(newReviewAnnotMilestoneFilePth, nefReviewDpstMilestoneFilePth)
+                                    
+                    if ( os.access(nefReviewDpstMilestoneFilePth,os.R_OK) ):
+                        if( self.__verbose and self.__debug ):
+                            logger.debug("nefReviewDpstMilestoneFilePth is: %s" % nefReviewDpstMilestoneFilePth)
+                                
+                            msgFileRefs.append( self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum ) )
+                                
+                    else:
+                        bOk = False
+                        failedMsgFileRefs.append(reviewCntntTyp)
+                        logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % nefReviewDpstMilestoneFilePth)
+                else:
+                    # For not copying to deposit, register attachment
+                    msgFileRefs.append( self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum ) )
+            else:
+                bOk = False
+                failedMsgFileRefs.append(reviewCntntTyp)
+                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % nefReviewAnnotMilestoneFilePth)
+
+            
+        
+        return bOk
+
+    
     def __genAnnotMilestoneEmdVrsn(self,p_depId,p_srcFilePath,p_dstFilePath):
     
         bOk = True
@@ -2382,6 +2528,7 @@ class MessagingIo(object):
                                    'val-report-wwpdb-fo-fc-edmap-coef':'pdbx',
                                    'mr':'dat',
                                    'cs':'pdbx',
+                                   'nmr-data-str':'pdbx',
                                    'em-volume':'map',
                                    'em-mask-volume':'map',
                                    'em-volume-header':'xml'
