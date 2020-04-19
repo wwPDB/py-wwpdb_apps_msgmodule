@@ -53,6 +53,9 @@ class AutoMessage(object):
     def sendRemindUnlocked(self, depidlist):
         self._sendReminderBulk(depidlist, p_tmplt="remind-unlocked")
 
+    def sendImplicitApproved(self, depidlist):
+        self._sendReminderBulk(depidlist, p_tmplt="implicit-approved")
+
     def _sendReminderBulk(self, depidlist, p_tmplt):
         """Sends the bulk messages - handling setting EM flag"""
 

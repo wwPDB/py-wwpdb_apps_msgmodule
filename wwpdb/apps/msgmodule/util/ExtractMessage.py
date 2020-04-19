@@ -93,7 +93,8 @@ class ExtractMessage(object):
         return ret
 
     def getLastValidation(self, depid):
-        """Returns (datetime, major issue)  of the last time a validation was sent as determined by presence of attached validation pdf and parsing message. 
+        """Returns (datetime, major issue)  of the last time a validation was sent as determined by
+        presence of attached validation pdf and parsing message.
         """
 
         logger.info("Starting for deposition %s", depid)
@@ -115,12 +116,10 @@ class ExtractMessage(object):
         if len(myContainerList) >= 1:
             c0 = myContainerList[0]
 
-
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:
                 logger.debug("Deposition %s no pdbx_deposition_message_file_reference category" % depid)
                 return (None, None)
-
 
             # Get list of msgids of validtion report
             msgids = set()
@@ -147,12 +146,10 @@ class ExtractMessage(object):
                 except Exception as e:
                     logger.exception("Error processing %s %s", depid, str(e))
 
-
             if len(msgids) == 0:
                 return (None, None)
 
             logger.debug("Message ids: %s", msgids)
-
 
             # Now check messages
 
@@ -169,18 +166,15 @@ class ExtractMessage(object):
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
             #
-            idxOrdinalId = itDict['_pdbx_deposition_message_info.ordinal_id']
             idxTimeStamp = itDict['_pdbx_deposition_message_info.timestamp']
             idxMsgId = itDict['_pdbx_deposition_message_info.message_id']
             idxMsgText = itDict['_pdbx_deposition_message_info.message_text']
             idxSendStatus = itDict['_pdbx_deposition_message_info.send_status']
 
-
             lastvalid = None
 
             for row in catObj.getRowList():
                 try:
-                    ordinalId = int(row[idxOrdinalId])
                     timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), '%Y-%m-%d %H:%M:%S')
                     msgId = str(row[idxMsgId])
                     status = str(row[idxSendStatus])
@@ -202,7 +196,6 @@ class ExtractMessage(object):
 
             ret = lastvalid
 
-
         else:
             logger.debug("Deposition %s empty message file" % depid)
             ret = None
@@ -215,10 +208,82 @@ class ExtractMessage(object):
         """Returns true if there appears to be a major error in the validation test - otherwise False"""
 
         ret = False
-        if re.search('Some major issues', msgText) != None:
+        if re.search('Some major issues', msgText) is not None:
             ret = True
 
         # logger.debug("Major validation %s", ret)
         return ret
 
+    def getLastSentMessageDate(self, depid, msgtodepositor):
+        """Returns datetime  of the ast message sent.  Will return None if no messages sent.
+        msgtodepositor is boolean indicating which direction message sent
+        """
 
+        logger.info("Starting for deposition %s msgtodepositor %s", depid, msgtodepositor)
+
+        if msgtodepositor:
+            msg_content = "messages-to-depositor"
+        else:
+            msg_content = "messages-from-depositor"
+
+        msgfile = self.__pI.getFilePath(depid, contentType=msg_content, formatType='pdbx',
+                                        fileSource="archive", versionId="1")
+
+        if not os.path.exists(msgfile):
+            return None
+
+        ret = None
+
+        myContainerList = []
+        ifh = open(msgfile, "r")
+        pRd = PdbxReader(ifh)
+        pRd.read(myContainerList)
+
+        if len(myContainerList) >= 1:
+            c0 = myContainerList[0]
+
+            # Now check messages
+
+            catObj = c0.getObj("pdbx_deposition_message_info")
+            if catObj is None:
+                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                return None
+
+            #
+            # Get column name index.
+            #
+            itDict = {}
+            itNameList = catObj.getItemNameList()
+            for idxIt, itName in enumerate(itNameList):
+                itDict[str(itName).lower()] = idxIt
+            #
+            idxTimeStamp = itDict['_pdbx_deposition_message_info.timestamp']
+            idxSendStatus = itDict['_pdbx_deposition_message_info.send_status']
+
+            lastsent = None
+
+            for row in catObj.getRowList():
+                try:
+                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), '%Y-%m-%d %H:%M:%S')
+                    status = str(row[idxSendStatus])
+
+                    if status == "Y":
+                        if lastsent:
+                            if timeStamp > lastsent:
+                                # logger.debug("Updating lastvalid %s %s", lastsent, timeStamp)
+                                lastsent = timeStamp
+                        else:
+                            lastsent = timeStamp
+
+                except Exception as e:
+                    logger.exception("Error processing %s %s", depid, str(e))
+
+            ret = lastsent
+
+        else:
+            logger.debug("Deposition %s empty message file" % depid)
+            ret = None
+
+        logger.info("Returning %s", ret)
+
+        return ret

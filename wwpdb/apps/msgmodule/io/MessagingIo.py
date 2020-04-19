@@ -1186,7 +1186,7 @@ class MessagingIo(object):
             self.__reqObj.setValue("em_map_and_model", "false")
         
             useAnnotatorName = False
-            if p_tmpltType == "remind-unlocked":
+            if p_tmpltType in ["remind-unlocked", "implicit-approved"]:
                 useAnnotatorName = True
 
             # Trigger lookup of annotator initial to name if desired by template
@@ -1229,6 +1229,12 @@ class MessagingIo(object):
                 # Need all ids
                 accstr = templateDict['accession_ids']
                 subject = "ARCHIVED: Please attend to your unlocked deposition session - " + accstr
+            elif( p_tmpltType == "implicit-approved" ): 
+                msgTmplt = MessagingTemplates.msgTmplt_approvalImplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalImplicit
+                attachFiles = False
+                # Need all ids
+                accstr = templateDict['accession_ids']
+                subject = "Implicit Approval of Your Structure - " + accstr
 
             # Assemble message with templates    
             msg = (msgTmplt % templateDict)
@@ -4130,7 +4136,7 @@ class MsgTmpltHlpr(object):
 
         annotatorId = self.__reqObj.getValue("sender").upper()
         if useAnnotatorName:
-            annotatorId=self.__pdbxAnnotator
+            annotatorId = self.__pdbxAnnotator
 
         if( procSite == "RCSB" ):
             #self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_rcsb_em if( self.__emDeposition ) else MessagingTemplates.msgTmplt_site_contact_details_rcsb
