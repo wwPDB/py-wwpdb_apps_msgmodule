@@ -121,7 +121,7 @@ Thank you for your response, this message is to inform you that your structure %
 
 We have changed the status of the entry to %(status_code)s (%(entry_status)s). Your structure is now on hold until %(expire_date)s. It may be released earlier if you notify us that the structure is published or can be released. 
 
-
+%(doinotice)s
 Thank you for your attention.
 
 %(msg_closing)s
@@ -139,6 +139,7 @@ As we have not heard from you since we sent the validation report and processed 
 
 Your structure is now on hold until %(expire_date)s. It may be released earlier if you notify us that the structure is published or can be released. 
 
+%(doinotice)s
 Thank you for your attention.
 
 %(msg_closing)s
@@ -181,7 +182,7 @@ Title:   %(citation_title)s
 
 Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
 
-%(thurs_prerelease_clause)s
+%(doinotice)s%(thurs_prerelease_clause)s
 
 %(msg_closing)s
 '''
@@ -196,7 +197,7 @@ The entry is entitled:
 %(title)s
 %(horiz_line)s
 
-%(thurs_prerelease_clause)s
+%(doinotice)s%(thurs_prerelease_clause)s
 
 %(msg_closing)s
 '''
@@ -316,7 +317,7 @@ Thank you for your response, this message is to inform you that your %(accession
 
 We have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s). Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released. 
 
-
+%(doinotice)s
 Thank you for your attention.
 
 %(msg_closing)s
@@ -334,7 +335,7 @@ As we have not heard from you since we sent the %(vldtn_rprt)sprocessed files to
 
 Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released. 
 
-
+%(doinotice)s
 Thank you for your attention.
 
 %(msg_closing)s
@@ -378,7 +379,7 @@ Title:   %(citation_title)s
 
 Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
 
-%(thurs_prerelease_clause)s
+%(doinotice)s%(thurs_prerelease_clause)s
 
 %(msg_closing)s
 '''
@@ -393,7 +394,7 @@ The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
 %(em_title)s
 %(horiz_line)s
 
-%(thurs_prerelease_clause)s
+%(doinotice)s%(thurs_prerelease_clause)s
 
 %(msg_closing)s
 '''
