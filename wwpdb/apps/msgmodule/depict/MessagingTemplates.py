@@ -50,7 +50,7 @@ class MessagingTemplates(object):
 %(annotator_group_signoff)s
 %(site_contact_details)s 
 '''
-    msgTmplt_annotatorGroupSignoff="The wwPDB Annotation Staff"
+    msgTmplt_annotatorGroupSignoff="The wwPDB Biocuration Staff"
     
     msgTmplt_site_contact_details_rcsb='''
 --------------------------------------------------------------------------------------------------------------
@@ -259,10 +259,10 @@ Thank you for your attention.
     
 %(full_name_annotator)s
 
-The PDB and EMDB Biocuration Staff
+The wwPDB Biocuration Staff
 '''
 
-    msgTmplt_annotatorGroupSignoff_em="The %(wwpdb_and)sEMDB Annotation Staff"
+    msgTmplt_annotatorGroupSignoff_em="The wwPDB Biocuration Staff"
     
     msgTmplt_default_em='''Dear Depositors,
 
