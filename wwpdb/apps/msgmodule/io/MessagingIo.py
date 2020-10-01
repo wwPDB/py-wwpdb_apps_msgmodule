@@ -231,6 +231,7 @@ class MessagingIo(object):
         self.__cI = ConfigInfo(self.__siteId)
         self.__emdDialectMappingFile = self.__cI.get('SITE_EXT_DICT_MAP_EMD_FILE_PATH')
         self.__contentTypeDict = self.__cI.get('CONTENT_TYPE_DICTIONARY')
+        self.__release_message_subjects = self.__cI.get('RELEASE_MESSAGE_SUBJECTS')
         #
         self.__dbFilePath = os.path.join(self.__sessionPath, "modelFileData.db")
         #
@@ -1831,7 +1832,7 @@ class MessagingIo(object):
                             if msg['message_id'] == msgStatus['message_id']:
                                 msgFound = True
                         if not msgFound:
-                            if msg['message_subject'] in ['release request', 'citation update']:
+                            if msg['message_subject'] in self.__release_message_subjects:
                                 bReturnStatus = False
                                 return bReturnStatus
             #
