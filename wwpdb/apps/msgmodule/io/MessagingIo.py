@@ -1434,6 +1434,40 @@ class MessagingIo(object):
 
         return rtrnText
 
+    def get_message_list_from_depositor(self):
+        message_list = []
+        msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+        self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType='messages-from-depositor', format="pdbx")
+        self.__lfh.write("+%s.%s() -- self.__msgsFromDpstrFilePath is: %s\n" % (
+            self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
+        mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+        with LockFile(self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds,
+                      retrySeconds=self.__retrySeconds, verbose=self.__verbose,
+                      log=self.__lfh) as lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose,
+                                                            log=self.__lfh) as fsl:
+            pid = os.getpid()
+            ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+            if ok:
+                message_list = mIIo.getMessageInfo()
+
+        return message_list
+
+    def get_message_subject_from_depositor(self, message_id):
+        message_list = self.get_message_list_from_depositor()
+        self.__lfh.write('Depositor message list\n')
+        for row in message_list:
+            if row.get('message_id') == message_id:
+                return row.get('message_subject')
+        return ''
+
+    def is_release_request(self, message_id):
+        subject = self.get_message_subject_from_depositor(message_id=message_id)
+        self.__lfh.write('Message {} subject is: {}\n'.format(message_id, subject))
+        if subject in self.__release_message_subjects:
+            self.__lfh.write('Message is a release request\n')
+            return True
+        return False
+
     def markMsgAsRead(self, p_msgStatusDict):
         ''' handle request to mark message as already "read"
 
@@ -1467,6 +1501,7 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType='messages-to-depositor', format="pdbx")
                 self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (
                     self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+
             #
             if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
                 try:
@@ -1485,16 +1520,21 @@ class MessagingIo(object):
                 recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 msgAlreadySeen = False
                 for idx, record in enumerate(recordSetLst):
-                    if (record['message_id'] == msgId):
+                    if record['message_id'] == msgId:
                         msgAlreadySeen = True
-                        if (record['read_status'] == 'Y'):
+                        if record['read_status'] == 'Y':
                             # message had already been marked as "read" so can return True to caller
                             return True
                         else:
+                            # message not been marked as read before - but is in the list of messages in recordSetLst
                             mIIo.update('pdbx_deposition_message_status', 'read_status', 'Y', idx)
+
 
                 mIIo.newBlock('messages')
                 if not msgAlreadySeen:
+                    self.__lfh.write('new message: {}\n'.format(msgId))
+                    if self.is_release_request(message_id=msgId):
+                        mS.setReadyForRelStatus('Y')
                     mIIo.appendMsgReadStatus(mS.get())
                 with LockFile(self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds,
                               retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as lf:
@@ -1504,7 +1544,7 @@ class MessagingIo(object):
 
             else:
                 # OR if there was no container list BUT the file is accessible-->indicates no content yet b/c no messages sent to depositor yet
-                if (os.access(self.__msgsToDpstrFilePath, os.W_OK)):
+                if os.access(self.__msgsToDpstrFilePath, os.W_OK):
                     mIIo.newBlock('messages')
                     mIIo.appendMsgReadStatus(mS.get())
                     with LockFile(self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds,
@@ -1813,8 +1853,8 @@ class MessagingIo(object):
                     for row in annotatorMsgsLst:
 
                         for msgStatus in msgStatusLst:
-                            if (row['message_id'] == msgStatus['message_id']):
-                                if (msgStatus[p_statusToCheck] == p_flagForFalseReturn):
+                            if row['message_id'] == msgStatus['message_id']:
+                                if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                                     bReturnStatus = False
                                     self.__lfh.write(
                                         "+%s.%s() -- found flag of '%s' for status '%s' so returning False\n" % (
@@ -1824,10 +1864,22 @@ class MessagingIo(object):
                                             p_statusToCheck))
                                     return bReturnStatus
 
-                else:
                     for msg in msgsFrmDpstrLst:
                         msgFound = False
+                        # checking if a new message from a depositor is a release request
+                        for msgStatus in msgStatusLst:
+                            if msg['message_id'] == msgStatus['message_id']:
+                                msgFound = True
+                        if not msgFound:
+                            if msg['message_subject'] in self.__release_message_subjects:
+                                bReturnStatus = False
+                                return bReturnStatus
 
+                else:
+                    # annotators haven't sent any messages
+                    for msg in msgsFrmDpstrLst:
+                        msgFound = False
+                        # checking if a new message from a deposotor is a release request
                         for msgStatus in msgStatusLst:
                             if msg['message_id'] == msgStatus['message_id']:
                                 msgFound = True
