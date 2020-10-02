@@ -1977,7 +1977,7 @@ class MessagingWebAppWorker(object):
         msgingIo = MessagingIo(self.__reqObj,self.__verbose,self.__lfh)
         bOk = msgingIo.doExport(exprtDirPath,exprtFilePath)
         '''
-        return bOk
+        return True
 
     def __isFileUpload(self, fileTag='file'):
         """ Generic check for the existence of request paramenter "file".
