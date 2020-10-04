@@ -231,7 +231,7 @@ class MessagingIo(object):
         self.__cI = ConfigInfo(self.__siteId)
         self.__emdDialectMappingFile = self.__cI.get('SITE_EXT_DICT_MAP_EMD_FILE_PATH')
         self.__contentTypeDict = self.__cI.get('CONTENT_TYPE_DICTIONARY')
-        self.__release_message_subjects = self.__cI.get('RELEASE_MESSAGE_SUBJECTS')
+        self.__release_message_subjects = self.__cI.get('COMMUNICATION_RELEASE_MESSAGE_SUBJECTS')
         #
         self.__dbFilePath = os.path.join(self.__sessionPath, "modelFileData.db")
         #
@@ -1528,7 +1528,6 @@ class MessagingIo(object):
                         else:
                             # message not been marked as read before - but is in the list of messages in recordSetLst
                             mIIo.update('pdbx_deposition_message_status', 'read_status', 'Y', idx)
-
 
                 mIIo.newBlock('messages')
                 if not msgAlreadySeen:
