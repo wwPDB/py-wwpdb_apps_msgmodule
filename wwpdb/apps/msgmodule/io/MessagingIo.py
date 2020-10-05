@@ -2617,7 +2617,7 @@ class MessagingIo(object):
 
             if nexists:
                 if self.__copyMilestoneDeposit:
-                    shutil.copyfile(newReviewAnnotMilestoneFilePth, nefReviewDpstMilestoneFilePth)
+                    shutil.copyfile(nefReviewAnnotMilestoneFilePth, nefReviewDpstMilestoneFilePth)
 
                     if (os.access(nefReviewDpstMilestoneFilePth, os.R_OK)):
                         if (self.__verbose and self.__debug):
