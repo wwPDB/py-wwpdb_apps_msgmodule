@@ -60,7 +60,7 @@ import time
 import traceback
 
 try:
-    from html.parser import HTMLParser
+    from html import unescape
 except ImportError:
     from HTMLParser import HTMLParser
 
@@ -1484,15 +1484,12 @@ class MessagingWebAppWorker(object):
         #
         return rC
 
-    def __encodeUtf8ToCif(self, p_content):
-        ''' Encoding unicode/utf-8 content into cif friendly ascii
-            Have to replace any ';' that begin a newline with a ' ;' in order to preserve ; matching required for multiline items
-        '''
-        return p_content.encode('ascii', 'xmlcharrefreplace').replace('\n;', '\n ;').replace('\\\\xa0', ' ')
-
     def __decodeCifToUtf8(self, p_content):
-        h = HTMLParser()
-        return h.unescape(p_content).encode('utf-8')
+        if sys.version_info[0] < 3:
+            h = HTMLParser()
+            return h.unescape(p_content).encode('utf-8')
+        else:
+            return unescape(p_content.decode('utf-8'))
 
     def __encodeForSearching(self, p_content):
         ##################################################################
