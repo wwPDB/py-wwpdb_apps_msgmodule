@@ -2072,7 +2072,6 @@ class MessagingIo(object):
                 else:
                     fPath = msgDI.getFilePath(contentType, contentFormat)
 
-                print("YYYYY", fPath, fileRef)
                 if (fPath is not None and os.access(fPath, os.R_OK)):
 
                     # make straight copy of the file to generate "-annotate" milestone version of the file
@@ -3140,7 +3139,11 @@ class MessagingIo(object):
         ''' Encoding unicode/utf-8 content into cif friendly ascii
             Have to replace any ';' that begin a newline with a ' ;' in order to preserve ; matching required for multiline items
         '''
-        return p_content.encode('ascii', 'xmlcharrefreplace').replace('\n;', '\n ;').replace('\\xa0', ' ')
+        if sys.version_info[0] < 3:
+            return p_content.encode('ascii', 'xmlcharrefreplace').replace('\n;', '\n ;').replace('\\xa0', ' ')
+        else:
+            # Coming in as string already - no need to encode to bytes, however, we would like the xml character replacement
+            return p_content.encode('ascii', 'xmlcharrefreplace').decode('ascii').replace('\n;', '\n ;').replace('\\xa0', ' ')
 
     def __decodeCifToUtf8(self, p_content):
         if sys.version_info[0] < 3:
