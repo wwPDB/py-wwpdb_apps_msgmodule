@@ -1726,7 +1726,7 @@ class MessagingWebAppWorker(object):
             # Store upload file in session directory - 
 
             fPathAbs = os.path.join(self.__sessionPath, fName)
-            ofh = open(fPathAbs, 'w')
+            ofh = open(fPathAbs, 'wb')
             ofh.write(rawFile.file.read())
             ofh.close()
 
