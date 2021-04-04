@@ -45,7 +45,7 @@ setup(
     #
     install_requires=['wwpdb.io', 'wwpdb.utils.config',
                       'wwpdb.utils.session', 'wwpdb.utils.wf >= 0.8', 'mmcif',
-                      'mmcif.utils', 'wwpdb.utils.dp', 'wwpdb.utils.emdb',
+                      'mmcif.utils', 'wwpdb.utils.dp', 'wwpdb.utils.emdb>=0.17.dev1',
                       'wwpdb.apps.wf_engine'],
     packages=find_packages(exclude=['wwpdb.apps.tests-msgmodule', 'mock-data']),
     # Enables Manifest to be used

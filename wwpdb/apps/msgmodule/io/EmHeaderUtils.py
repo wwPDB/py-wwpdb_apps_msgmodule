@@ -102,8 +102,7 @@ class EmHeaderUtils(object):
             translator.set_logger_logging(log_error=True, error_log_file_name=logFilePath)
             translator.read_emd_map_v2_cif_file()
             if validateXml:
-                schema = os.path.join(self.__cI.get('SITE_EM_DICT_PATH'), 'emdb-v3.xsd')
-                translator.translate_and_validate(in_cif=inpFilePath, out_xml=outFilePath, in_schema = schema)
+                translator.translate_and_validate(in_cif=inpFilePath, out_xml=outFilePath)
             else:
                 translator.translate(in_cif=inpFilePath, out_xml=outFilePath)
             # This will close the output file
