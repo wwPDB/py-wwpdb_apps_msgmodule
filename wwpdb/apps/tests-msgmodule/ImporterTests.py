@@ -39,12 +39,6 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo, getSiteId
 import os
 import os.path
 cI = ConfigInfo()
-FILE_UPLOAD_TEMP_DIR = os.path.join(
-    cI.get("SITE_DEPOSIT_STORAGE_PATH"),
-    "deposit",
-    "temp_files")
-if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
-    os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
 # Django envivonment setup
 #os.environ['DJANGO_SETTINGS_MODULE'] = "wwpdb.apps.deposit.settings"
