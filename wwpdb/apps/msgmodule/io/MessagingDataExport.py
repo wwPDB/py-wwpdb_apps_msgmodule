@@ -32,6 +32,7 @@ __version__   = "V0.01"
 import sys, os, os.path, traceback, time
 
 from wwpdb.io.locator.DataReference  import DataFileReference
+from wwpdb.io.locator.PathInfo import PathInfo
 from wwpdb.utils.config.ConfigInfo     import ConfigInfo
 import logging
 logger = logging.getLogger(__name__)
@@ -67,7 +68,8 @@ class MessagingDataExport(object):
             self.__instance    = str(self.__reqObj.getValue("instance")).upper()
             self.__siteId  = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
             self.__cI=ConfigInfo(self.__siteId)
-            self.__dpstStoragePath = os.path.join(self.__cI.get('SITE_DEPOSIT_STORAGE_PATH'),"deposit",self.__identifier)
+            self.__pI = PathInfo()
+            self.__dpstStoragePath = self.__pI.getDepositPath(self.__identifier)
             self.__fileSource = "deposit" # fixing value to "deposit" for now
             '''
             self.__fileSource  = str(self.__reqObj.getValue("filesource")).lower()
