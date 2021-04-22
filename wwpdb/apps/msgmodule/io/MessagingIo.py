@@ -698,6 +698,7 @@ class MessagingIo(object):
                             'val-report': 'pdf',
                             'val-report-full': 'pdf',
                             'val-data': 'xml',
+                            'val-data-cif': 'pdbx',  # pseudo type
                             'val-report-slider': 'png',
                             'val-report-wwpdb-2fo-fc-edmap-coef': 'pdbx',
                             'val-report-wwpdb-fo-fc-edmap-coef': 'pdbx',
@@ -708,6 +709,7 @@ class MessagingIo(object):
                             'em-mask-volume': 'map',
                             'em-volume-header': 'xml'
                             }
+
         #
         try:
             if self.__isWorkflow():
@@ -2024,7 +2026,7 @@ class MessagingIo(object):
             workingFileRefsList.remove("val-report-batch")
             # Determine available reports
             avail = self.checkAvailFiles(depositionId)
-            preference = ['val-report', 'val-report-full', 'val-data',
+            preference = ['val-report', 'val-report-full', 'val-data', 'val-data-cif',
                           'val-report-wwpdb-2fo-fc-edmap-coef', 'val-report-wwpdb-fo-fc-edmap-coef']
             for f in preference:
                 if f in avail:
@@ -2777,6 +2779,9 @@ class MessagingIo(object):
         if (acronym == 'model_pdb'):
             contentType = "model"
 
+        if (acronym == 'val-data-cif'):
+            contentType = "validation-data"
+
         return contentType
 
     def __getContentFormat(self, acronym, auxFileIndx):
@@ -2787,6 +2792,7 @@ class MessagingIo(object):
                                   'val-report': 'pdf',
                                   'val-report-full': 'pdf',
                                   'val-data': 'xml',
+                                  'val-data-cif': 'pdbx',
                                   'val-report-slider': 'png',
                                   'val-report-wwpdb-2fo-fc-edmap-coef': 'pdbx',
                                   'val-report-wwpdb-fo-fc-edmap-coef': 'pdbx',
