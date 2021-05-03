@@ -151,6 +151,7 @@ from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 from mmcif.io.PdbxReader import PdbxReader
 #
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
 from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
@@ -229,7 +230,8 @@ class MessagingIo(object):
         #
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         self.__cI = ConfigInfo(self.__siteId)
-        self.__emdDialectMappingFile = self.__cI.get('SITE_EXT_DICT_MAP_EMD_FILE_PATH')
+        self.__cIA = ConfigInfoAppEm(self.__siteId)
+        self.__emdDialectMappingFile = self.__cIA.get_emd_mapping_file_path()
         self.__contentTypeDict = self.__cI.get('CONTENT_TYPE_DICTIONARY')
         self.__release_message_subjects = self.__cI.get('COMMUNICATION_RELEASE_MESSAGE_SUBJECTS')
         #

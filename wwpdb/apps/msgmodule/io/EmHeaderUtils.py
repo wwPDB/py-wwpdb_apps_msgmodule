@@ -22,6 +22,7 @@ import traceback
 import logging
 import shutil
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from wwpdb.utils.emdb.cif_emdb_translator.cif_emdb_translator import CifEMDBTranslator
 #
@@ -39,7 +40,8 @@ class EmHeaderUtils(object):
         self.__lfh = log
         self.__siteId = siteId
         self.__cI = ConfigInfo(self.__siteId)
-        self.__mappingFilePath = self.__cI.get('SITE_EXT_DICT_MAP_EMD_FILE_PATH')
+        self.__cIA = ConfigInfoAppEm(self.__siteId)
+        self.__mappingFilePath = self.__cIA.get_emd_mapping_file_path()
 
     def __mkdir(self, path):
         if (not os.path.isdir(path)):
