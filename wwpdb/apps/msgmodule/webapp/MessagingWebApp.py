@@ -80,6 +80,10 @@ from wwpdb.apps.wf_engine.engine.WFEapplications import getdepUIPassword
 #
 from wwpdb.io.locator.PathInfo import PathInfo
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class MessagingWebApp(object):
     """Handle request and response object processing for the wwPDB messaging tool application.
@@ -1128,7 +1132,7 @@ class MessagingWebAppWorker(object):
         fileLst = []
         #
         if (self.__verbose):
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting")
 
         self.__getSession()
         #
@@ -1143,6 +1147,7 @@ class MessagingWebAppWorker(object):
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo.initializeDataStore() # THIS CALL MUST BE MADE HERE TO PARSE MODEL FILE AND FILTER
         fileLst = msgingIo.checkAvailFiles(depId)
         #
         rtrnDict['file_list'] = fileLst

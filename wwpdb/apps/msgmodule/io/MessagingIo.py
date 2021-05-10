@@ -315,6 +315,77 @@ class MessagingIo(object):
             logger.debug("Not a workflow - noop")
         #
 
+    def __getCatObj(self, p_ctgryNm):
+        # Not caching open state for MessagingIo as single use right now
+
+        if not os.access(self.__dbFilePath, os.R_OK):
+            logger.error("Persist file missing %s", self.__dbFilePath)
+            return None
+
+        persist = PdbxPersist(self.__verbose, self.__lfh)
+        myInd = persist.getIndex(dbFileName=self.__dbFilePath)
+        containerNameList = myInd['__containers__']
+        dbname = containerNameList[0][0]
+
+        if (self.__verbose):
+            self.__lfh.write(
+                "+%s.%s() successfully obtained datablock name as: %s, from %s\n" % (self.__class__.__name__,
+                                                                                     sys._getframe().f_code.co_name,
+                                                                                     dbname,
+                                                                                     self.__dbFilePath))
+        catObj = persist.fetchOneObject(self.__dbFilePath, dbname, p_ctgryNm)
+
+        if catObj is None:
+            if (self.__verbose):
+                logger.info("Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
+        else:
+            if (self.__verbose):
+                logger.info("Successfully found '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
+        return catObj
+
+    def __getFormatCompat(self):
+        """Returns True if _pdbx_database_status.pdb_format_compatible is not 'N'"""
+
+        ctgryNm = 'pdbx_database_status'
+        try:
+            if (self.__verbose):
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
+            #
+            catObj = self.__getCatObj(ctgryNm)
+            if catObj:
+                #
+                # Get column name index.
+                #
+                itDict = {}
+                itNameList = catObj.getItemNameList()
+                for idxIt, itName in enumerate(itNameList):
+                    itDict[str(itName).lower()] = idxIt
+                    #
+                idxCompat = itDict.get('_pdbx_database_status.pdb_format_compatible', None)
+
+                for row in catObj.getRowList():
+                    try:
+                        if idxCompat:
+                            compat = (str(row[idxCompat])).upper()
+                        else:
+                            compat = '?'
+
+                        logger.debug("Pdb Format Compat is %s", compat)
+                        if compat == "N":
+                            return False
+
+                        return True
+                        
+                    except:
+                        pass
+
+
+        except:
+            if (self.__verbose):
+                logger.error("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Error retrieving format compatiblilty")
+
+
     def getMsgColList(self, p_bCommHstryRqstd=False):
         ''' Retrieval of list of attributes (i.e. columns) for message data
         '''
@@ -685,10 +756,8 @@ class MessagingIo(object):
             :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         '''
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__,
-                                                     sys._getframe().f_code.co_name,
-                                                     time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.debug("--------------------------------------------")
+        logger.debug("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         rtrnList = []
 
@@ -725,7 +794,7 @@ class MessagingIo(object):
                 rtrnList = fileCheckCatalog.keys()
             #
         except:
-            traceback.print_exc(file=self.__lfh)
+            logger.exception("In getting available list")
         #
 
         # See if validation report is included - create a hybrid if so.
@@ -738,6 +807,12 @@ class MessagingIo(object):
 
         if valreport:
             rtrnList.append('val-report-batch')
+
+        if "model_pdb" in rtrnList:
+            # Ensure compatible before including
+            compat = self.__getFormatCompat()
+            if not compat:
+                rtrnList.remove("model_pdb")
 
         return rtrnList
 
