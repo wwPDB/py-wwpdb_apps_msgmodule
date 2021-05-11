@@ -168,6 +168,7 @@ from mmcif_utils.persist.PdbxPersist import PdbxPersist
 from mmcif_utils.persist.LockFile import LockFile
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
+from oslo_concurrency import lockutils
 #
 # Here for now - should be relocated.
 from wwpdb.apps.msgmodule.io.EmHeaderUtils import EmHeaderUtils
@@ -257,60 +258,70 @@ class MessagingIo(object):
 
     def initializeDataStore(self):
         """Internalize data files"""
+
         if (self.__isWorkflow()):
             logger.info("--------------------------------------------")
             logger.info("Starting at %s\n" %
                         time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-            #
-            if (not os.access(self.__dbFilePath, os.R_OK)):
-                logger.debug("DB File not present")
 
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                modelFilePath = msgDI.getFilePath(contentType='model', format='pdbx')
+            dirp = os.path.dirname(self.__dbFilePath)
 
-                # parse info from model file
-                if (modelFilePath is not None and os.access(modelFilePath, os.R_OK)):
-                    #
-                    containerList = []
-                    try:
-                        #########################################################################################################
-                        # parse model cif file and verify blockname
-                        #########################################################################################################
-                        pdbxReader = IoAdapterCore(self.__verbose, self.__lfh)
-                        containerList = pdbxReader.readFile(inputFilePath=modelFilePath,
-                                                            selectList=MessagingIo.ctgrsReqrdFrmModelFile)
+            @lockutils.synchronized("msgmoduledb-lock", external=True, lock_path=dirp)
+            def initdb():
+                if (not os.access(self.__dbFilePath, os.R_OK)):
+                    logger.debug("DB File not present %s", self.__dbFilePath)
 
-                        iCountNames = len(containerList)
-                        assert (iCountNames == 1), (
-                                "+%s.%s() -- expecting containerList to have single member but list had %s members\n" % (
-                            self.__class__.__name__,
-                            sys._getframe().f_code.co_name,
-                            iCountNames))
+                    msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                    modelFilePath = msgDI.getFilePath(contentType='model', format='pdbx')
 
-                        dataBlockName = containerList[0].getName().encode('utf-8')
-                        logger.debug("--------------------------------------------\n")
-                        logger.debug("identified datablock name %s in sample pdbx data file at: %s\n" % (
-                            dataBlockName, modelFilePath))
+                    # parse info from model file
+                    if (modelFilePath is not None and os.access(modelFilePath, os.R_OK)):
                         #
-                    #
-                    except:
-                        logger.exception("problem processing pdbx data file: %s" %
-                                         modelFilePath)
+                        containerList = []
+                        try:
+                            #########################################################################################################
+                            # parse model cif file and verify blockname
+                            #########################################################################################################
+                            pdbxReader = IoAdapterCore(self.__verbose, self.__lfh)
+                            containerList = pdbxReader.readFile(inputFilePath=modelFilePath,
+                                                                selectList=MessagingIo.ctgrsReqrdFrmModelFile)
 
-                    try:
-                        myPersist = PdbxPersist(self.__verbose, self.__lfh)
-                        myPersist.setContainerList(containerList)
-                        myPersist.store(self.__dbFilePath)
+                            iCountNames = len(containerList)
+                            assert (iCountNames == 1), (
+                                "+%s.%s() -- expecting containerList to have single member but list had %s members\n" % (
+                                    self.__class__.__name__,
+                                    sys._getframe().f_code.co_name,
+                                    iCountNames))
 
-                        logger.debug("shelved cif data to %s\n" % self.__dbFilePath)
+                            dataBlockName = containerList[0].getName().encode('utf-8')
+                            logger.debug("--------------------------------------------\n")
+                            logger.debug("identified datablock name %s in sample pdbx data file at: %s\n" % (
+                                dataBlockName, modelFilePath))
+                            #
+                            #
+                        except:
+                            logger.exception("problem processing pdbx data file: %s" %
+                                             modelFilePath)
 
-                    except:
-                        logger.exception("Failed to shelve cif data")
+                        try:
+                            myPersist = PdbxPersist(self.__verbose, self.__lfh)
+                            myPersist.setContainerList(containerList)
+                            myPersist.store(self.__dbFilePath)
 
+                            logger.debug("shelved cif data to %s\n" % self.__dbFilePath)
+
+                        except:
+                            logger.exception("Failed to shelve cif data")
+
+                    else:
+                        logger.debug("pdbx data file not found/accessible at: %s\n" % modelFilePath)
                 else:
-                    logger.debug("pdbx data file not found/accessible at: %s\n" % modelFilePath)
-            else:
-                logger.info("skipping creation of database file b/c already exists at: %s\n" % self.__dbFilePath)
+                    logger.info("skipping creation of database file b/c already exists at: %s\n" % self.__dbFilePath)
+            #### End of initdb definition - execute
+
+            initdb()
+
+        # Not a WF
         else:
             logger.debug("Not a workflow - noop")
         #
