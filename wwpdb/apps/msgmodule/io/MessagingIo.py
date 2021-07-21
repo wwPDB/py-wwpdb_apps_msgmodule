@@ -3860,6 +3860,9 @@ class MsgTmpltHlpr(object):
 
         du = DateUtil()
         ########### ACCESSION ID HANDLING ##############################################
+        # Groupdep and legacy do not have a list of requested id - supplement
+        if len(self.__rqstdAccessionIdsLst) == 0:
+            self.__rqstdAccessionIdsLst = ["PDB"]
         accessionIdList = self.__rqstdAccessionIdsLst[:]
         if "BMRB" in accessionIdList and "PDB" in accessionIdList:
             accessionIdList.remove("BMRB")
