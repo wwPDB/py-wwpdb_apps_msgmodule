@@ -48,10 +48,13 @@ __email__     = "rsala@rcsb.rutgers.edu"
 __license__   = "Creative Commons Attribution 3.0 Unported"
 __version__   = "V0.02"
 
-import os, sys, time
-from wwpdb.apps.msgmodule.io.MessagingIo                import MessagingIo
-from wwpdb.apps.msgmodule.depict.MessagingTemplates     import MessagingTemplates
-from wwpdb.utils.config.ConfigInfo                        import ConfigInfo
+import os
+import sys
+import time
+from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
+from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
+from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
 
 
 class MessagingDepict(object):
@@ -134,7 +137,15 @@ class MessagingDepict(object):
             self.__lfh.write("+%s.%s() sessionId  %s\n" % ( className, methodName, sessionId ) )      
             self.__lfh.flush()
         #
-        
+
+        # Determine if submitted
+
+        deposited = False
+        msgDI = MessagingDataImport(p_reqObj, verbose=self.__verbose, log=self.__lfh)
+        modelFilePath = msgDI.getFilePath(contentType='model', format='pdbx')
+        # parse info from model file
+        if (modelFilePath is not None and os.access(modelFilePath, os.R_OK)):
+            deposited = True
         
         annotator = "wwPDB annotator" if( annotator.lower() in ["dep","unknown"] ) else annotator
         
@@ -154,6 +165,7 @@ class MessagingDepict(object):
         myD['auto_launch_compose'] = autoLaunchCompose if( autoLaunchCompose is not None and len(autoLaunchCompose) > 1 and autoLaunchCompose.lower() == 'false') else 'true'
         myD['expmethod'] = p_reqObj.getValue("expmethod")
         myD['display_unlock'] = ""  if( allowUnlockDepUI and allowUnlockDepUI == "yes" ) else "hidden"
+        myD['display_rel_status'] = ""  if deposited else "hidden"
         #
         listKnownFileExtensions = list( set( fileFormatExtDict.values() ) )
         listKnownFileExtensions.sort()
