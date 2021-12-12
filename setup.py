@@ -4,7 +4,6 @@
 # Update:
 #
 import re
-import glob
 
 from setuptools import find_packages
 from setuptools import setup
@@ -46,10 +45,11 @@ setup(
     install_requires=['wwpdb.io', 'wwpdb.utils.config >= 0.22.2',
                       'wwpdb.utils.session', 'wwpdb.utils.wf >= 0.8', 'mmcif',
                       'mmcif.utils', 'wwpdb.utils.dp', 'wwpdb.utils.emdb ~= 0.17',
-                      'oslo.concurrency', 'wwpdb.apps.wf_engine'],
+                      'wwpdb.apps.wf_engine',
+                      'wwpdb.utils.nmr'],
     packages=find_packages(exclude=['wwpdb.apps.tests-msgmodule', 'mock-data']),
     # Enables Manifest to be used
-    #include_package_data = True,
+    # include_package_data = True,
     package_data={
         # If any package contains *.md or *.rst ...  files, include them:
         '': ['*.md', '*.rst', "*.txt", "*.cfg"],

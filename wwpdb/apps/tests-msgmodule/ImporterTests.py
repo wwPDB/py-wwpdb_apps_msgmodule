@@ -16,43 +16,40 @@ import platform
 import os
 import unittest
 
-#####################  setup DepUi test environment here from emdb translator############
+# Setp DepUI environment
 HERE = os.path.abspath(os.path.dirname(__file__))
 TOPDIR = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-TESTOUTPUT = os.path.join(HERE, 'test-output', platform.python_version())
+TESTOUTPUT = os.path.join(HERE, "test-output", platform.python_version())
 if not os.path.exists(TESTOUTPUT):
     os.makedirs(TESTOUTPUT)
-mockTopPath = os.path.join(TOPDIR, 'wwpdb', 'mock-data')
+mockTopPath = os.path.join(TOPDIR, "wwpdb", "mock-data")
 rwMockTopPath = os.path.join(TESTOUTPUT)
 
 # Must create config file before importing ConfigInfo
-from wwpdb.utils.testing.SiteConfigSetup  import SiteConfigSetup
-from wwpdb.utils.testing.CreateRWTree import CreateRWTree
+from wwpdb.utils.testing.SiteConfigSetup import SiteConfigSetup  # noqa: E402
+from wwpdb.utils.testing.CreateRWTree import CreateRWTree  # noqa: E402
+
 # Copy site-config and selected items
 crw = CreateRWTree(mockTopPath, TESTOUTPUT)
-crw.createtree(['site-config', 'depuiresources', 'emdresources'])
+crw.createtree(["site-config", "depuiresources", "emdresources"])
 # Use populate r/w site-config using top mock site-config
 SiteConfigSetup().setupEnvironment(rwMockTopPath, rwMockTopPath)
 
 # Setup DepUI specific directories
-from wwpdb.utils.config.ConfigInfo import ConfigInfo, getSiteId
-import os
-import os.path
+from wwpdb.utils.config.ConfigInfo import ConfigInfo  # noqa: E402
+import os  # noqa: E402
+import os.path  # noqa: E402
+
 cI = ConfigInfo()
-FILE_UPLOAD_TEMP_DIR = os.path.join(
-    cI.get("SITE_ARCHIVE_STORAGE_PATH"),
-    "deposit",
-    "temp_files")
+FILE_UPLOAD_TEMP_DIR = os.path.join(cI.get("SITE_ARCHIVE_STORAGE_PATH"), "deposit", "temp_files")
 if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
     os.makedirs(FILE_UPLOAD_TEMP_DIR)
 
-# Django envivonment setup
-#os.environ['DJANGO_SETTINGS_MODULE'] = "wwpdb.apps.deposit.settings"
-os.environ['IN_ANNOTATION'] = "no"
 # ##################################################
 
-from wwpdb.apps.msgmodule.webapp.MessagingWebApp  import MessagingWebApp
-from wwpdb.apps.msgmodule.util.AutoMessage  import AutoMessage
+from wwpdb.apps.msgmodule.webapp.MessagingWebApp import MessagingWebApp  # noqa: E402,F401
+from wwpdb.apps.msgmodule.util.AutoMessage import AutoMessage  # noqa: F401,E402
+
 
 class ImportTests(unittest.TestCase):
     def setUp(self):

@@ -25,27 +25,26 @@ from wwpdb.apps.msgmodule.webapp.MessagingWebApp import MessagingWebApp
 from wwpdb.utils.config.ConfigInfo import getSiteId
 
 # Create logger
-FORMAT = '[%(levelname)s]-%(module)s.%(funcName)s: %(message)s'
+FORMAT = "[%(levelname)s]-%(module)s.%(funcName)s: %(message)s"
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 #  - URL mapping and application specific classes are launched from MessagingWebApp()
 
-l2 = logging.getLogger('wwpdb.apps.msgmodule.io.MessagingDataImport')
+l2 = logging.getLogger("wwpdb.apps.msgmodule.io.MessagingDataImport")
 l2.setLevel(logging.INFO)
-l2 = logging.getLogger('wwpdb.apps.msgmodule.io.MessagingDataExport')
+l2 = logging.getLogger("wwpdb.apps.msgmodule.io.MessagingDataExport")
 l2.setLevel(logging.INFO)
 
 
 class MyRequestApp(object):
-    """  Handle server interaction using FCGI/WSGI and WebOb Request
-         and Response objects.
+    """Handle server interaction using FCGI/WSGI and WebOb Request
+    and Response objects.
     """
 
     def __init__(self, textString="doServiceRequest() - WebOb version", verbose=True, log=sys.stderr):
-        """
-        """
+        """ """
         self.__text = textString
         self.__verbose = verbose
         self.__lfh = log
@@ -64,7 +63,7 @@ class MyRequestApp(object):
             outL.append("Parameter List:\n")
             for name, value in request.params.items():
                 outL.append("Request parameter:    %s:  %r\n" % (name, value))
-        except:
+        except:  # noqa: E722
             traceback.print_exc(file=self.__lfh)
 
         outL.append("\n------------------------------------------------\n\n")
@@ -72,27 +71,26 @@ class MyRequestApp(object):
         return outL
 
     def __call__(self, environment, responseApplication):
-        """          WSGI callable entry point
-        """
+        """WSGI callable entry point"""
         myRequest = Request(environment)
         #
         myParameterDict = {}
         siteId = getSiteId()
         try:
-            if 'WWPDB_SITE_ID' in environment:
-                siteId = environment['WWPDB_SITE_ID']
+            if "WWPDB_SITE_ID" in environment:
+                siteId = environment["WWPDB_SITE_ID"]
                 self.__lfh.write("+MyRequestApp.__call__() - WWPDB_SITE_ID environ variable captured as %s\n" % siteId)
-            '''
+            """
             for name,value in environment.items():
                 self.__lfh.write("+MyRequestApp.__call__() - ENVIRON parameter:    %s:  %r\n" % (name,value))
-            '''
+            """
             for name, value in myRequest.params.items():
                 if name not in myParameterDict:
                     myParameterDict[name] = []
                 myParameterDict[name].append(value)
                 self.__lfh.write("+MyRequestApp.__call__() - REQUEST parameter:    %s:  %r\n" % (name, value))
-            myParameterDict['request_path'] = [myRequest.path.lower()]
-        except:
+            myParameterDict["request_path"] = [myRequest.path.lower()]
+        except:  # noqa: E722
             traceback.print_exc(file=self.__lfh)
             self.__lfh.write("+MyRequestApp.__call__() - contents of request data\n")
             self.__lfh.write("%s" % ("".join(self.__dumpEnv(request=myRequest))))
@@ -101,24 +99,23 @@ class MyRequestApp(object):
         #  At this point we have everything needed from the request !
         ###
         myResponse = Response()
-        myResponse.status = '200 OK'
-        myResponse.content_type = 'text/html'
+        myResponse.status = "200 OK"
+        myResponse.content_type = "text/html"
         ###
         #   Application specific functionality called here --
         #   Application receives path and parameter info only!
         ###
-        msgmodule = MessagingWebApp(parameterDict=myParameterDict, verbose=self.__verbose,
-                                    log=self.__lfh, siteId=siteId)
+        msgmodule = MessagingWebApp(parameterDict=myParameterDict, verbose=self.__verbose, log=self.__lfh, siteId=siteId)
         rspD = msgmodule.doOp()
-        myResponse.content_type = rspD['CONTENT_TYPE']
+        myResponse.content_type = rspD["CONTENT_TYPE"]
 
         if sys.version_info[0] > 2:
-            if isinstance(rspD['RETURN_STRING'], str):
-                myResponse.text = rspD['RETURN_STRING']
+            if isinstance(rspD["RETURN_STRING"], str):
+                myResponse.text = rspD["RETURN_STRING"]
             else:
-                myResponse.body = rspD['RETURN_STRING']
+                myResponse.body = rspD["RETURN_STRING"]
         else:
-            myResponse.body = rspD['RETURN_STRING']
+            myResponse.body = rspD["RETURN_STRING"]
 
         ####
         ###

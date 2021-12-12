@@ -25,9 +25,11 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from wwpdb.utils.emdb.cif_emdb_translator.cif_emdb_translator import CifEMDBTranslator
+
 #
 
 logger = logging.getLogger(__name__)
+
 
 class EmHeaderUtils(object):
     """
@@ -44,7 +46,7 @@ class EmHeaderUtils(object):
         self.__mappingFilePath = self.__cIA.get_emd_mapping_file_path()
 
     def __mkdir(self, path):
-        if (not os.path.isdir(path)):
+        if not os.path.isdir(path):
             os.makedirs(path, 0o755)
 
     def releaseHeader(self, filePath, emdbId):
@@ -52,15 +54,15 @@ class EmHeaderUtils(object):
         try:
             logger.info("starting for %s" % filePath)
             upId = str(emdbId).upper()
-            pth = os.path.join(self.__cI.get('SITE_ARCHIVE_STORAGE_PATH'), 'for_release', 'emd' ,upId, 'header')
+            pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId, "header")
             self.__mkdir(pth)
             lcId = str(emdbId).lower()
-            mod_lcId = lcId.replace('-', '_')
-            fp = os.path.join(pth, mod_lcId + '_v3.xml')
+            mod_lcId = lcId.replace("-", "_")
+            fp = os.path.join(pth, mod_lcId + "_v3.xml")
             logger.info("copied %s to %s" % (filePath, fp))
             shutil.copyfile(filePath, fp)
             ok = True
-        except:
+        except:  # noqa: E722
             logger.exception("failing for %s\n" % filePath)
 
         return ok
@@ -70,19 +72,19 @@ class EmHeaderUtils(object):
         try:
             logger.info("starting for %s" % filePath)
             upId = str(emdbId).upper()
-            pth = os.path.join(self.__cI.get('SITE_ARCHIVE_STORAGE_PATH'), 'for_release', 'emd', upId)
+            pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId)
             self.__mkdir(pth)
             lcId = str(emdbId).lower()
-            fp = os.path.join(pth, lcId + '.cif')
+            fp = os.path.join(pth, lcId + ".cif")
             logger.info("copied %s to %s" % (filePath, fp))
             shutil.copyfile(filePath, fp)
             ok = True
-        except:
+        except:  # noqa: E722
             logger.exception("failing for %s\n" % filePath)
 
         return ok
 
-    def transEmd(self, inpFilePath, outFilePath, mode='src-dst', tags=[]):
+    def transEmd(self, inpFilePath, outFilePath, mode="src-dst", tags=[]):
         ok = False
         try:
             im = InstanceMapper(verbose=True, log=sys.stderr)
@@ -90,12 +92,12 @@ class EmHeaderUtils(object):
             if tags != []:
                 im.setFilterTagList(tags)
             ok = im.translate(inpFilePath, outFilePath, mode=mode)
-        except:
+        except:  # noqa: E722
             logger.exception("failing for %s" % inpFilePath)
 
         return ok
 
-    def transHeader(self, inpFilePath, outFilePath, logFilePath, validateXml = True):
+    def transHeader(self, inpFilePath, outFilePath, logFilePath, validateXml=True):
         ok = False
         logging.info("Starting conversion for %s" % inpFilePath)
         #
@@ -113,10 +115,10 @@ class EmHeaderUtils(object):
                 ok = True
             else:
                 ok = False
-        except:
+        except:  # noqa: E722
             logger.exception("Map header translation failed for %s" % inpFilePath)
             se = traceback.format_exc()
-            fOut = open(logFilePath, 'w')
+            fOut = open(logFilePath, "w")
             fOut.write("Exception during XML production\n")
             fOut.write(se)
             fOut.close()

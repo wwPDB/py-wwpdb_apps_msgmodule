@@ -32,18 +32,18 @@ class DateUtilTests(unittest.TestCase):
 
     def testDates(self):
         """Tests date conversion"""
-        self._testsame('2018-10-01', '1 October 2018')
-        self._testsame('2018-10', '2018-10')
-        self._testsame('.', '[UNKNOWN]')
-        self._testsame('?', '[UNKNOWN]')
+        self._testsame("2018-10-01", "1 October 2018")
+        self._testsame("2018-10", "2018-10")
+        self._testsame(".", "[UNKNOWN]")
+        self._testsame("?", "[UNKNOWN]")
         # 2018 is not a leap year - no conversion
-        self._testsame('2018-02-29', '2018-02-29')
-        self._testsame('2016-02-29', '29 February 2016')
+        self._testsame("2018-02-29", "2018-02-29")
+        self._testsame("2016-02-29", "29 February 2016")
 
     def testDateTime(self):
         dt = datetime.date(2018, 10, 3)
         self._testsamedatetime(dt, "3 October 2018")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
