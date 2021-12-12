@@ -12,49 +12,37 @@ __email__ = "peisach@rcsb.rutgers.edu"
 __license__ = "Creative Commons Attribution 3.0 Unported"
 __version__ = "V0.01"
 
-import platform
-import os
+import sys
 import unittest
 
-# Setp DepUI environment
-HERE = os.path.abspath(os.path.dirname(__file__))
-TOPDIR = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-TESTOUTPUT = os.path.join(HERE, "test-output", platform.python_version())
-if not os.path.exists(TESTOUTPUT):
-    os.makedirs(TESTOUTPUT)
-mockTopPath = os.path.join(TOPDIR, "wwpdb", "mock-data")
-rwMockTopPath = os.path.join(TESTOUTPUT)
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 
-# Must create config file before importing ConfigInfo
-from wwpdb.utils.testing.SiteConfigSetup import SiteConfigSetup  # noqa: E402
-from wwpdb.utils.testing.CreateRWTree import CreateRWTree  # noqa: E402
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.apps.msgmodule.webapp.MessagingWebApp import MessagingWebApp  # noqa: E402,F401 pylint: disable=unused-import
+from wwpdb.apps.msgmodule.util.AutoMessage import AutoMessage  # noqa: F401,E402  pylint: disable=unused-import
 
-# Copy site-config and selected items
-crw = CreateRWTree(mockTopPath, TESTOUTPUT)
-crw.createtree(["site-config", "depuiresources", "emdresources"])
-# Use populate r/w site-config using top mock site-config
-SiteConfigSetup().setupEnvironment(rwMockTopPath, rwMockTopPath)
 
-# Setup DepUI specific directories
-from wwpdb.utils.config.ConfigInfo import ConfigInfo  # noqa: E402
-import os  # noqa: E402
-import os.path  # noqa: E402
+class MyConfigInfo(ConfigInfo):
+    """A class to bypass setting of refdata"""
 
-cI = ConfigInfo()
-FILE_UPLOAD_TEMP_DIR = os.path.join(cI.get("SITE_ARCHIVE_STORAGE_PATH"), "deposit", "temp_files")
-if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
-    os.makedirs(FILE_UPLOAD_TEMP_DIR)
+    def __init__(self, siteId=None, verbose=True, log=sys.stderr):
+        super(MyConfigInfo, self).__init__(siteId=siteId, verbose=verbose, log=log)
 
-# ##################################################
+    def get(self, keyWord, default=None):
+        if keyWord == "SITE_WEB_APPS_TOP_PATH":
+            return "foo"
 
-from wwpdb.apps.msgmodule.webapp.MessagingWebApp import MessagingWebApp  # noqa: E402,F401
-from wwpdb.apps.msgmodule.util.AutoMessage import AutoMessage  # noqa: F401,E402
+        return super(MyConfigInfo, self).get(keyWord, default)
 
 
 class ImportTests(unittest.TestCase):
-    def setUp(self):
-        pass
 
-    def testInstantiate(self):
+    @patch("wwpdb.apps.msgmodule.webapp.MessagingWebApp.ConfigInfo", side_effect=MyConfigInfo)
+    def testInstantiate(self, mock1):  # pylint:  disable=unused-argument
         """Tests simple instantiation"""
+        _am = AutoMessage()  # noqa: F841
+        _mwa = MessagingWebApp()  # noqa: F841
         pass
