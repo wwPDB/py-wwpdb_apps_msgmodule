@@ -1,0 +1,13 @@
+wwpdb.io
+wwpdb.utils.config >= 0.22.2
+wwpdb.utils.session
+wwpdb.utils.wf >= 0.8
+mmcif
+mmcif.utils
+wwpdb.utils.dp
+wwpdb.utils.emdb ~= 0.17
+wwpdb.apps.wf_engine
+wwpdb.utils.nmr
+
+# For testing python 2
+mock; python_version < '3'

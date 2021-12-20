@@ -266,7 +266,7 @@ class MessagingIo(object):
 
         if self.__isWorkflow():
             logger.info("--------------------------------------------")
-            logger.info("Starting at %s\n" % time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
 
             dirp = os.path.dirname(self.__dbFilePath)
 
@@ -290,34 +290,30 @@ class MessagingIo(object):
                             containerList = pdbxReader.readFile(inputFilePath=modelFilePath, selectList=MessagingIo.ctgrsReqrdFrmModelFile)
 
                             iCountNames = len(containerList)
-                            assert iCountNames == 1, "+%s.%s() -- expecting containerList to have single member but list had %s members\n" % (
-                                self.__class__.__name__,
-                                sys._getframe().f_code.co_name,
-                                iCountNames,
-                            )
+                            assert iCountNames == 1, " -- expecting containerList to have single member but list had %s members\n" % iCountNames
 
                             dataBlockName = containerList[0].getName().encode("utf-8")
                             logger.debug("--------------------------------------------\n")
-                            logger.debug("identified datablock name %s in sample pdbx data file at: %s\n" % (dataBlockName, modelFilePath))
+                            logger.debug("identified datablock name %s in sample pdbx data file at: %s", dataBlockName, modelFilePath)
                             #
                             #
-                        except:  # noqa: E722
-                            logger.exception("problem processing pdbx data file: %s" % modelFilePath)
+                        except Exception as _e:  # noqa: F841
+                            logger.exception("problem processing pdbx data file: %s", modelFilePath)
 
                         try:
                             myPersist = PdbxPersist(self.__verbose, self.__lfh)
                             myPersist.setContainerList(containerList)
                             myPersist.store(self.__dbFilePath)
 
-                            logger.debug("shelved cif data to %s\n" % self.__dbFilePath)
+                            logger.debug("shelved cif data to %s" , self.__dbFilePath)
 
-                        except:  # noqa: E722
+                        except:  # noqa: E722 pylint: disable=bare-except
                             logger.exception("Failed to shelve cif data")
 
                     else:
-                        logger.debug("pdbx data file not found/accessible at: %s\n" % modelFilePath)
+                        logger.debug("pdbx data file not found/accessible at: %s", modelFilePath)
                 else:
-                    logger.info("skipping creation of database file b/c already exists at: %s\n" % self.__dbFilePath)
+                    logger.info("skipping creation of database file b/c already exists at: %s", self.__dbFilePath)
 
             # #### End of initdb definition - execute
 
@@ -387,10 +383,10 @@ class MessagingIo(object):
 
                         return True
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
                 logger.error("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Error retrieving format compatiblilty")
@@ -421,7 +417,7 @@ class MessagingIo(object):
                 #
 
         #
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("getMsgColList failure")
 
         return bSuccess, rtrnList
@@ -524,7 +520,7 @@ class MessagingIo(object):
                     msgDict = record
 
         #
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting messages")
 
         return msgDict
@@ -725,7 +721,7 @@ class MessagingIo(object):
                         % (self.__class__.__name__, sys._getframe().f_code.co_name, p_iDisplayStart, p_iDisplayLength)
                     )
                     #
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting message row")
         #
         if p_bServerSide:
@@ -784,7 +780,7 @@ class MessagingIo(object):
             else:
                 rtrnList = fileCheckCatalog.keys()
             #
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting available list")
         #
 
@@ -855,7 +851,7 @@ class MessagingIo(object):
             #
             rtrnDict = self.__trnsfrmFileRefDictToLst(recordSetLst, p_msgIdFilter)
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting referenced files")
         #
         return rtrnDict
@@ -922,7 +918,7 @@ class MessagingIo(object):
                     rtrnList.append(row["message_id"])
                 #
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Getting nots list")
         #
         return rtrnList
@@ -982,9 +978,9 @@ class MessagingIo(object):
                     self.__lfh.write("+%s.%s() -- problem creating messaging output file at: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, outputFilePth))
             #
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-            with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as lf, FileSizeLogger(
+            with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
                 outputFilePth, verbose=self.__verbose, log=self.__lfh
-            ) as fsl:  # noqa: F841
+            ) as _fsl:  # noqa: F841
                 pid = os.getpid()
                 bGotContent = mIIo.read(
                     outputFilePth, "msgingmod" + str(pid)
@@ -1066,7 +1062,7 @@ class MessagingIo(object):
                             # send notification email to contact authors
                             if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
                                 self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                        except:  # noqa: E722
+                        except:  # noqa: E722 pylint: disable=bare-except
                             logger.exception("Warning: problem sending notification email.")
 
                     elif self.__isWorkflow() and p_msgObj.contentType == "notes" and p_msgObj.isNoteEmail:
@@ -1074,7 +1070,7 @@ class MessagingIo(object):
                             # send notification email to contact authors
                             if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
                                 self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                        except:  # noqa: E722
+                        except:  # noqa: E722  pylint: disable=bare-except
                             logger.exception("Warning: problem sending notification email.\n")
 
                     else:
@@ -1083,12 +1079,12 @@ class MessagingIo(object):
                             try:
                                 if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
                                     self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                            except:  # noqa: E722
+                            except:  # noqa: E722 pylint: disable=bare-except
                                 logger.exception("Warning: problem sending notification email.")
 
             else:  # failed sanity check
                 self.__lfh.write("Message data append failed\n")
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Message data append failed")
             bOk = False
 
@@ -1579,7 +1575,7 @@ class MessagingIo(object):
                     ) as _lf:  # noqa: F841
                         mIIo.write(self.__msgsToDpstrFilePath)
                     bOk = True
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Message read status data update failed")
 
         endTime = time.time()
@@ -1677,7 +1673,7 @@ class MessagingIo(object):
                 for idx, row in enumerate(recordSetLst):
                     self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In anyNotesExist")
         #
         return bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords
@@ -1762,7 +1758,7 @@ class MessagingIo(object):
                         mIIo.write(self.__msgsToDpstrFilePath)
                     bOk = True
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             self.__lfh.write("Update message tags failed\n")
             traceback.print_exc(file=self.__lfh)
 
@@ -1895,7 +1891,7 @@ class MessagingIo(object):
                                 return bReturnStatus
             #
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             self.__lfh.write("check global msg '" + p_statusToCheck + "' status failed\n")
             traceback.print_exc(file=self.__lfh)
 
@@ -1946,7 +1942,7 @@ class MessagingIo(object):
                             if row["message_id"] not in rtrnList:
                                 rtrnList.append(row["message_id"])
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             traceback.print_exc(file=self.__lfh)
         #
         return rtrnList
@@ -2154,7 +2150,7 @@ class MessagingIo(object):
                     milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat, auxFilePartNum)
                 else:
                     milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat)
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 bOk = False
                 failedMsgFileRefs.append(acronym)
                 return bOk
@@ -2259,7 +2255,7 @@ class MessagingIo(object):
                         logger.info("Symlink %s -> %s" % (depFilePthDict, annotMilestoneFilePth))
                         try:
                             os.symlink(annotMilestoneFilePth, depFilePthDict)
-                        except:  # noqa: E722
+                        except:  # noqa: E722 pylint: disable=bare-except
                             logger.exception("Failed to create symlink")
 
             else:
@@ -2315,7 +2311,7 @@ class MessagingIo(object):
                     dp.exp(pdbxReviewFilePath)
                     if not self.__debug:
                         dp.cleanup()
-                except:  # noqa: E722
+                except:  # noqa: E722 pylint: disable=bare-except
                     logger.exception("Exception in generating review copy")
 
                 if os.access(pdbxReviewFilePath, os.F_OK):
@@ -2403,7 +2399,7 @@ class MessagingIo(object):
                     dfa = DataFileAdapter(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                     ok = dfa.pdbx2nmrstar(chemShiftsFileLocalPthAbslt, nmrStarReviewFilePath, pdbId=p_depId)
 
-                except:  # noqa: E722
+                except:  # noqa: E722 pylint: disable=bare-except
                     traceback.print_exc(file=self.__lfh)
 
                 if ok and os.access(nmrStarReviewFilePath, os.F_OK):
@@ -2619,7 +2615,7 @@ class MessagingIo(object):
                 bOk = im.translate(p_srcFilePath, dpstModelEmdFilePth_Local, mode="src-dst")
                 self.__lfh.write("+%s %s return status %r \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bOk))
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 traceback.print_exc(file=sys.stdout)
                 bOk = False
                 return bOk
@@ -2662,7 +2658,7 @@ class MessagingIo(object):
 
                 self.__lfh.write("+%s %s return status %r \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bOk))
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 traceback.print_exc(file=sys.stdout)
                 bOk = False
                 return bOk
@@ -2796,7 +2792,7 @@ class MessagingIo(object):
                     if partNumber > maxAuxPartNum:
                         maxAuxPartNum = partNumber
             #
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Something failed in __getNextAuxFilePartNum")
 
         self.__lfh.write("\n+%s.%s() -- current maxAuxPartNum: '%s' \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, maxAuxPartNum))
@@ -2992,7 +2988,7 @@ class MessagingIo(object):
                         rtrnDict[msgId].append(fileRefDict)
                         shutil.copyfile(archiveFilePth, toLocalSessionFilePthAbslt)
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 self.__lfh.write(
                     "\n%s.%s ----- problem importing a file reference from archiveFilePth: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, archiveFilePth)
                 )
@@ -3042,7 +3038,7 @@ class MessagingIo(object):
                         value = rcrd[attrNm]
 
                     row.append(value if (value != "?") else "")
-                except:  # noqa: E722
+                except:  # noqa: E722 pylint: disable=bare-except
                     self.__lfh.write("\n%s.%s ----- current rcrd in dict type message list is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, rcrd))
                     traceback.print_exc(file=self.__lfh)
             rtrnLst.append(row)
@@ -3182,7 +3178,7 @@ class MessagingIo(object):
                                 for idx, row in enumerate(p_recordSetLst):
                                     self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
                             break
-                except:  # noqa: E722
+                except:  # noqa: E722 pylint: disable=bare-except
                     self.__lfh.write("\n+%s.%s() -- prevMsgId is [%s] and msgId is [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, prevMsgId, msgId))
                     self.__lfh.write("\n+%s.%s() -- p_indentDict is %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_indentDict))
                     traceback.print_exc(file=self.__lfh)
@@ -3254,7 +3250,7 @@ class MessagingIo(object):
                                 for idx, row in enumerate(p_recordSetLst):
                                     self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
                             break
-                except:  # noqa: E722
+                except:  # noqa: E722 pylint: disable=bare-except
                     self.__lfh.write("\n+%s.%s() -- prevMsgId is [%s] and msgId is [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, prevMsgId, msgId))
                     self.__lfh.write("\n+%s.%s() -- p_indentDict is %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_indentDict))
                     traceback.print_exc(file=self.__lfh)
@@ -3418,27 +3414,27 @@ class MsgTmpltHlpr(object):
         #
         self.__reqObj = reqObj
         #
-        self.__sObj = self.__reqObj.newSessionObj()
-        self.__sessionPath = self.__sObj.getPath()
-        self.__sessionRelativePath = self.__sObj.getRelativePath()
-        self.__sessionId = self.__sObj.getId()
+        # self.__sObj = self.__reqObj.newSessionObj()
+        # self.__sessionPath = self.__sObj.getPath()
+        # self.__sessionRelativePath = self.__sObj.getRelativePath()
+        # self.__sessionId = self.__sObj.getId()
         #
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         self.__cI = ConfigInfo(self.__siteId)
-        self.__contentTypeDict = self.__cI.get("CONTENT_TYPE_DICTIONARY")
+        # self.__contentTypeDict = self.__cI.get("CONTENT_TYPE_DICTIONARY")
         self.__fileFormatExtDict = self.__cI.get("FILE_FORMAT_EXTENSION_DICTIONARY")
         self.__annotatorUserNameDict = self.__cI.get("ANNOTATOR_USER_NAME_DICT")
         #
         self.__expMethodList = (self.__reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1) else []
         self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
-        self.__expMethodMapToAccessID = {
-            "X-RAY DIFFRACTION": "PDB ID %(pdb_id)s",
-            "ELECTRON MICROSCOPY": "EMDB ID %(emdb_id)s",
-            "ELECTRON CRYSTALLOGRAPHY": "EMDB ID %(emdb_id)s",
-            "SOLID-STATE NMR": "PDB ID %(pdb_id)s",
-            "SOLUTION NMR": "PDB ID %(pdb_id)s",
-            "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
-        }
+        # self.__expMethodMapToAccessID = {
+        #     "X-RAY DIFFRACTION": "PDB ID %(pdb_id)s",
+        #     "ELECTRON MICROSCOPY": "EMDB ID %(emdb_id)s",
+        #     "ELECTRON CRYSTALLOGRAPHY": "EMDB ID %(emdb_id)s",
+        #     "SOLID-STATE NMR": "PDB ID %(pdb_id)s",
+        #     "SOLUTION NMR": "PDB ID %(pdb_id)s",
+        #     "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
+        # }
 
         self.__idMapToString = {"PDB": "PDB ID %(pdb_id)s", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}
 
@@ -3452,7 +3448,6 @@ class MsgTmpltHlpr(object):
         self.__dbFilePath = dbFilePath
         self.__pdbxPersist = None
         self.__dataBlockName = None
-        self.__modelFilePath = None
         self.__messagingFilePath = None
         #
         self.__contactAuths = []
@@ -3508,7 +3503,7 @@ class MsgTmpltHlpr(object):
         #
         self.__defaultMsgTmpltType = "vldtn"
         #
-        self.__lastCommDate = None
+        # self.__lastCommDate = None
         self.__lastOutboundRprtDate = None
         self.__lastOutboundRprtDateEm = None
         self.__lastUnlockDate = None
@@ -3517,7 +3512,7 @@ class MsgTmpltHlpr(object):
         self.__emModelReleased = False
         self.__emMapPreviouslyReleased = False
         self.__emCoordPreviouslyReleased = False
-        self.__emMapAndModelJointRelease = False
+        # self.__emMapAndModelJointRelease = False
         #
         self.__releaseDate = None
         self.__thursPreRlsClause = None
@@ -3564,7 +3559,7 @@ class MsgTmpltHlpr(object):
             self.__annotatorFullName = "[TEST]"
             self.__closingSiteDetails = "[TEST]"
 
-            self.__lastCommDate = "01/01/1000"
+            # self.__lastCommDate = "01/01/1000"
             self.__lastOutboundRprtDate = "01/01/1000 (last outbound report date)"
             self.__lastOutboundRprtDateEm = "01/01/1000 (last EM outbound report date)"
 
@@ -3625,7 +3620,7 @@ class MsgTmpltHlpr(object):
                     if self.__verbose:
                         self.__lfh.write("+%s.%s() failed attempt to access: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath))
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
                     self.__lfh.write(
                         "+%s.%s() problem recovering data into PdbxPersist from db file at: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath)
@@ -4014,10 +4009,10 @@ class MsgTmpltHlpr(object):
                                     )
                                 emailAddrsSoFar.append(email)
                                 self.__contactAuths.append((email, role, lname))
-                        except:  # noqa: E722
+                        except:  # noqa: E722 pylint: disable=bare-except
                             traceback.print_exc(file=self.__lfh)
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
                     self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
                 traceback.print_exc(file=self.__lfh)
@@ -4086,10 +4081,10 @@ class MsgTmpltHlpr(object):
                         elif p_IdType == "EMDB":
                             self.__emEntryAuthrs.append(name)
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
                 self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
             traceback.print_exc(file=self.__lfh)
@@ -4127,13 +4122,13 @@ class MsgTmpltHlpr(object):
                             elif p_IdType == "EMDB":
                                 self.__emdbId = dbCode
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-            traceback.print_exc(file=self.__lfh)
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Problem recoving data from PdbxPersis for category: '%s'", ctgryNm)
             self.__lfh.flush()
 
     def __getEmEntryAdminMapping(self):
@@ -4143,9 +4138,7 @@ class MsgTmpltHlpr(object):
 
             try:
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm)
-                    )
+                    logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
                 #
                 catObj = self.__getCatObj(ctgryNm)
                 if catObj:
@@ -4165,13 +4158,13 @@ class MsgTmpltHlpr(object):
                             self.__emSameTitleAsPDB = (row[idxSameTitleAsPDB]).lower()
                             self.__emSameAuthorsAsPDB = (row[idxSameAuthorsAsPDB]).lower()
 
-                        except:  # noqa: E722
+                        except:  # noqa: E722 pylint: disable=bare-except
                             pass
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-                traceback.print_exc(file=self.__lfh)
+                    logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+                logger.tracebak("in __getEmEntryAdminMapping")
                 self.__lfh.flush()
 
         else:
@@ -4190,7 +4183,7 @@ class MsgTmpltHlpr(object):
 
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4211,10 +4204,10 @@ class MsgTmpltHlpr(object):
                         elif p_IdType == "EMDB":
                             self.__emTitle = row[idxTitle]
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Problem recovering data from PdbxPersist for category %s", ctgryNm)
             self.__lfh.flush()
 
@@ -4222,7 +4215,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "pdbx_database_status"
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4257,7 +4250,7 @@ class MsgTmpltHlpr(object):
                             self.__postRelStatus = str(row[idxPostRelStatus])
                         else:
                             self.__postRelStatus = "?"
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
                 du = DateUtil()
@@ -4295,9 +4288,9 @@ class MsgTmpltHlpr(object):
                 else:
                     self.__expireDate = "[NO DATE AVAIL]"
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Category name %s", ctgryNm)
             self.__lfh.flush()
 
@@ -4305,7 +4298,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "em_admin"
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4329,7 +4322,7 @@ class MsgTmpltHlpr(object):
                         self.__dpstnDateEmMap = str(row[idxDpstnDate])
                         self.__releaseDateEmMap = str(row[idxMapReleaseDate])
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
                 if self.__statusCodeEmMap is not None and len(self.__statusCodeEmMap) > 0:
@@ -4357,10 +4350,10 @@ class MsgTmpltHlpr(object):
                 else:
                     self.__expireDateEmMap = "[NO DATE AVAIL]"
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-            traceback.print_exc(file=self.__lfh)
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Exeption in gettign EM processing info")
             self.__lfh.flush()
 
     def __getAnnotatorDetails(self):
@@ -4402,7 +4395,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "citation_author"
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4426,15 +4419,15 @@ class MsgTmpltHlpr(object):
                         if citationId.lower() == "primary":
                             self.__citAuthors.append(name)
                             if self.__verbose:
-                                self.__lfh.write("\n%s.%s() -- citation_author.name found as: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, name))
+                                logger.info("citation_author.name found as: %s", name)
 
-                    except:  # noqa: E722
+                    except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-            traceback.print_exc(file=self.__lfh)
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("In recovering data")
             self.__lfh.flush()
 
         ############
@@ -4443,7 +4436,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "citation"
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4481,23 +4474,20 @@ class MsgTmpltHlpr(object):
                             self.__citPdbxDbIdPubMed = row[idxPdbxDbIdPubMed] if idxPdbxDbIdPubMed else ""
 
                             if self.__verbose:
-                                self.__lfh.write("\n%s.%s() -- citation.title found as: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__citTitle))
+                                logger.info(" -- citation.title found as: %s", self.__citTitle)
 
-                    except:  # noqa: E722
+                    except Exception as _e:  # noqa: F841
                         pass
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-            traceback.print_exc(file=self.__lfh)
-            self.__lfh.flush()
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("In data recovery")
 
     def __getRqstdAccessionIds(self):
 
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s.%s() at %s\n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         # accessionIdsLst = []
         ctgryNm = "pdbx_depui_entry_details"
@@ -4509,9 +4499,9 @@ class MsgTmpltHlpr(object):
                 iTotalRecords = len(fullRsltSet)
 
                 if self.__verbose and self.__debug:
-                    self.__lfh.write("+%s.%s() -- fullRsltSet obtained as: %r\n" % (className, methodName, fullRsltSet))
+                    logger.debuge("fullRsltSet obtained as: %r\n", fullRsltSet)
 
-                assert iTotalRecords == 1, "+%s.%s() -- expecting '%s' category to contain a single record but had %s records\n" % (className, methodName, ctgryNm, iTotalRecords)
+                assert iTotalRecords == 1, "expecting '%s' category to contain a single record but had %s records" % (ctgryNm, iTotalRecords)
                 #
                 #
                 # Get column name index.
@@ -4527,15 +4517,11 @@ class MsgTmpltHlpr(object):
                 for row in ctgryObj.getRowList():
                     try:
                         if self.__verbose and self.__debug:
-                            self.__lfh.write(
-                                "+%s.%s() -- found 'requested_accession_types' field at index: %s with value: %s\n"
-                                % (className, methodName, idxRqstdIdTypes, (fullRsltSet[0])[idxRqstdIdTypes])
-                            )
+                            logger.debug("found 'requested_accession_types' field at index: %s with value: %s",
+                                         idxRqstdIdTypes, (fullRsltSet[0])[idxRqstdIdTypes])
 
                         self.__rqstdAccessionIdsLst = (row[idxRqstdIdTypes]).split(",")
-                        self.__lfh.write(
-                            "+%s.%s() self.__rqstdAccessionIdsLst being assigned as: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__rqstdAccessionIdsLst)
-                        )
+                        logger.info("self.__rqstdAccessionIdsLst being assigned as: %r", self.__rqstdAccessionIdsLst)
 
                         if self.__emDeposition:
                             if "PDB" in self.__rqstdAccessionIdsLst:
@@ -4548,10 +4534,10 @@ class MsgTmpltHlpr(object):
                                 self.__emMapOnly = True
                             if self.__emHaveModel and not self.__emHaveMap:
                                 self.__emModelOnly = True
-                    except:  # noqa: E722
+                    except Exception as _e:  # noqa: F841
                         pass
 
-        except:  # noqa: E722
+        except Exception as _e:  # noqa: F841
             logger.exception("Getting requested accessions")
 
     def __getDefaultMsgTmpltType(self):
@@ -4599,7 +4585,7 @@ class MsgTmpltHlpr(object):
                     self.__defaultMsgTmpltType = "maponly-authstatus-em"
 
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- default message template is: %s\n\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__defaultMsgTmpltType))
+            logger.info("-- default message template is: %s\n", self.__defaultMsgTmpltType)
 
     def __getLastCommDate(self):
         # Retrieves last message sent date as well as last unlocked message
@@ -4612,10 +4598,7 @@ class MsgTmpltHlpr(object):
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
                 if self.__verbose:
-                    self.__lfh.write(
-                        "\n%s.%s() -- Unable to find 'pdbx_deposition_message_info' category in file: %s\n"
-                        % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__messagingFilePath)
-                    )
+                    logger.info(" -- Unable to find 'pdbx_deposition_message_info' category in file: %s", self.__messagingFilePath)
             else:
                 #
                 # Get column name index.
@@ -4637,22 +4620,20 @@ class MsgTmpltHlpr(object):
 
                         if ordinalId > maxOrdId:
                             maxOrdId = ordinalId
-                            self.__lastCommDate = str(row[idxLastCommDate])
+                            # self.__lastCommDate = str(row[idxLastCommDate])
 
                         msgsubj = row[idxMsgSubj]
                         if msgsubj == "System Unlocked":
                             if ordinalId > maxUnlockOrdId:
                                 maxUnlockOrdId = ordinalId
                                 self.__lastUnlockDate = str(row[idxLastCommDate]).split(" ")[0]
-                    except Exception as e:  # noqa: F841
+                    except Exception as _e:  # noqa: F841
                         pass
 
         else:
             if self.__verbose:
-                self.__lfh.write(
-                    "\n%s.%s() -- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s\n"
-                    % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__messagingFilePath)
-                )
+                logger.info("-- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s",
+                            self.__messagingFilePath)
 
     def __getLastOutboundRprtDate(self, p_IdType="PDB"):
         """Returns a string of last timestamp"""
@@ -4673,7 +4654,7 @@ class MsgTmpltHlpr(object):
             lastModfdTime = du.datetime_to_display(date.fromtimestamp(os.path.getmtime(archiveFilePth)))
             lastOutboundRprtDate = lastModfdTime
             if self.__verbose:
-                self.__lfh.write("\n%s.%s() -- 'lastOutboundRprtDate was found to be [%s].\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, lastOutboundRprtDate))
+                logger.info("lastOutboundRprtDate was found to be [%s]", lastOutboundRprtDate)
         else:
             lastOutboundRprtDate = "[NO DATE AVAIL]"
 
@@ -4702,21 +4683,15 @@ class MsgTmpltHlpr(object):
                     if relDateEmMap < relDateEmCoord:
                         self.__emMapPreviouslyReleased = True
                         if self.__verbose:
-                            self.__lfh.write(
-                                "\n%s.%s() -- 'Map found to be previously released on: %s.\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, relDateEmMap)
-                            )
+                            logger.info("Map found to be previously released on: %s.", relDateEmMap)
                     elif relDateEmCoord < relDateEmMap:
                         self.__emCoordPreviouslyReleased = True
                         if self.__verbose:
-                            self.__lfh.write(
-                                "\n%s.%s() -- 'Coordinates found to be previously released on: %s.\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, relDateEmCoord)
-                            )
+                            logger.info("Coordinates found to be previously released on: %s.", relDateEmCoord)
                     elif relDateEmMap == relDateEmCoord:
-                        self.__emMapAndModelJointRelease = True
+                        # self.__emMapAndModelJointRelease = True
                         if self.__verbose:
-                            self.__lfh.write(
-                                "\n%s.%s() -- 'Joint release of map and coordinates on: %s.\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, relDateEmCoord)
-                            )
+                            logger.info("Joint release of map and coordinates on: %s.", relDateEmCoord)
 
     def __getReleaseDateInfo(self):
 
@@ -4738,8 +4713,8 @@ class MsgTmpltHlpr(object):
         du = DateUtil()
         self.__releaseDate = du.datetime_to_display(dateRef)
 
-        """also need to determine date threshold of acceptable change request from depositor, which is Thursday (morning, before 11am) of week prior to Wednesday release
-        """
+        # #### also need to determine date threshold of acceptable change request from depositor, which is Thursday (morning, before 11am) of week prior to Wednesday release
+
         notherDateRef = date.today()  # to determine which day of the week today is (as opposed to numerical date)
         now = datetime.now()  # to determine what the current time is
 
@@ -4805,7 +4780,7 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             if re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None:
                 return True
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- following email address found to be invalid: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, email))
+            logger.info("following email address found to be invalid: %s\n", email)
         return False
 
 
@@ -4828,7 +4803,7 @@ class FileSizeLogger(object):
 
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, value, tb):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
             self.__lfh.write("+%s -- filesize for %s after call: %s bytes.\n" % (self.__class__.__name__, self.__filePath, filesize))

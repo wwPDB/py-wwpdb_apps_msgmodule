@@ -45,4 +45,3 @@ class ImportTests(unittest.TestCase):
         """Tests simple instantiation"""
         _am = AutoMessage()  # noqa: F841
         _mwa = MessagingWebApp()  # noqa: F841
-        pass

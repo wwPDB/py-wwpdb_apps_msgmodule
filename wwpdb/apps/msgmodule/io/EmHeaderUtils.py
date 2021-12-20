@@ -17,13 +17,13 @@ __license__ = "Creative Commons Attribution 3.0 Unported"
 __version__ = "V0.07"
 
 import sys
-import os.path
+# import os.path
 import traceback
 import logging
-import shutil
-from wwpdb.utils.config.ConfigInfo import ConfigInfo
-from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
-from mmcif_utils.trans.InstanceMapper import InstanceMapper
+# import shutil
+# from wwpdb.utils.config.ConfigInfo import ConfigInfo
+# from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
+# from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from wwpdb.utils.emdb.cif_emdb_translator.cif_emdb_translator import CifEMDBTranslator
 
 #
@@ -38,68 +38,71 @@ class EmHeaderUtils(object):
     """
 
     def __init__(self, siteId, verbose=False, log=sys.stderr):
+        pass
+        # self.__lfh = log
+        # self.__siteId = siteId
+        # self.__cI = ConfigInfo(self.__siteId)
+        # self.__cIA = ConfigInfoAppEm(self.__siteId)
+        # self.__mappingFilePath = self.__cIA.get_emd_mapping_file_path()
 
-        self.__lfh = log
-        self.__siteId = siteId
-        self.__cI = ConfigInfo(self.__siteId)
-        self.__cIA = ConfigInfoAppEm(self.__siteId)
-        self.__mappingFilePath = self.__cIA.get_emd_mapping_file_path()
+    # def __mkdir(self, path):
+    #     if not os.path.isdir(path):
+    #         os.makedirs(path, 0o755)
 
-    def __mkdir(self, path):
-        if not os.path.isdir(path):
-            os.makedirs(path, 0o755)
+    # def releaseHeader(self, filePath, emdbId):
+    #     ok = False
+    #     try:
+    #         logger.info("starting for %s", filePath)
+    #         upId = str(emdbId).upper()
+    #         pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId, "header")
+    #         self.__mkdir(pth)
+    #         lcId = str(emdbId).lower()
+    #         mod_lcId = lcId.replace("-", "_")
+    #         fp = os.path.join(pth, mod_lcId + "_v3.xml")
+    #         logger.info("copied %s to %s", filePath, fp)
+    #         shutil.copyfile(filePath, fp)
+    #         ok = True
+    #     except:  # noqa: E722
+    #         logger.exception("failing for %s", filePath)
 
-    def releaseHeader(self, filePath, emdbId):
-        ok = False
-        try:
-            logger.info("starting for %s" % filePath)
-            upId = str(emdbId).upper()
-            pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId, "header")
-            self.__mkdir(pth)
-            lcId = str(emdbId).lower()
-            mod_lcId = lcId.replace("-", "_")
-            fp = os.path.join(pth, mod_lcId + "_v3.xml")
-            logger.info("copied %s to %s" % (filePath, fp))
-            shutil.copyfile(filePath, fp)
-            ok = True
-        except:  # noqa: E722
-            logger.exception("failing for %s\n" % filePath)
+    #     return ok
 
-        return ok
+    # def releaseHeaderPdbx(self, filePath, emdbId):
+    #     ok = False
+    #     try:
+    #         logger.info("starting for %s", filePath)
+    #         upId = str(emdbId).upper()
+    #         pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId)
+    #         self.__mkdir(pth)
+    #         lcId = str(emdbId).lower()
+    #         fp = os.path.join(pth, lcId + ".cif")
+    #         logger.info("copied %s to %s", filePath, fp)
+    #         shutil.copyfile(filePath, fp)
+    #         ok = True
+    #     except:  # noqa: E722
+    #         logger.exception("failing for %s", filePath)
 
-    def releaseHeaderPdbx(self, filePath, emdbId):
-        ok = False
-        try:
-            logger.info("starting for %s" % filePath)
-            upId = str(emdbId).upper()
-            pth = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "for_release", "emd", upId)
-            self.__mkdir(pth)
-            lcId = str(emdbId).lower()
-            fp = os.path.join(pth, lcId + ".cif")
-            logger.info("copied %s to %s" % (filePath, fp))
-            shutil.copyfile(filePath, fp)
-            ok = True
-        except:  # noqa: E722
-            logger.exception("failing for %s\n" % filePath)
+    #     return ok
 
-        return ok
+    # def transEmd(self, inpFilePath, outFilePath, mode="src-dst", tags=None):
+    #     if tags is None:
+    #         tags = []
 
-    def transEmd(self, inpFilePath, outFilePath, mode="src-dst", tags=[]):
-        ok = False
-        try:
-            im = InstanceMapper(verbose=True, log=sys.stderr)
-            im.setMappingFilePath(self.__mappingFilePath)
-            if tags != []:
-                im.setFilterTagList(tags)
-            ok = im.translate(inpFilePath, outFilePath, mode=mode)
-        except:  # noqa: E722
-            logger.exception("failing for %s" % inpFilePath)
+    #     ok = False
+    #     try:
+    #         im = InstanceMapper(verbose=True, log=sys.stderr)
+    #         im.setMappingFilePath(self.__mappingFilePath)
+    #         if tags != []:
+    #             im.setFilterTagList(tags)
+    #         ok = im.translate(inpFilePath, outFilePath, mode=mode)
+    #     except:  # noqa: E722
+    #         logger.exception("failing for %s", inpFilePath)
 
-        return ok
+    #     return ok
 
     def transHeader(self, inpFilePath, outFilePath, logFilePath, validateXml=True):
         ok = False
-        logging.info("Starting conversion for %s" % inpFilePath)
+        logging.info("Starting conversion for %s", inpFilePath)
         #
         try:
             translator = CifEMDBTranslator()
@@ -116,7 +119,7 @@ class EmHeaderUtils(object):
             else:
                 ok = False
         except:  # noqa: E722
-            logger.exception("Map header translation failed for %s" % inpFilePath)
+            logger.exception("Map header translation failed for %s", inpFilePath)
             se = traceback.format_exc()
             fOut = open(logFilePath, "w")
             fOut.write("Exception during XML production\n")

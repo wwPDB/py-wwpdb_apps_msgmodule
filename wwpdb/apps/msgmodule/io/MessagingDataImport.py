@@ -48,10 +48,10 @@ class MessagingDataImport(object):
 
     """
 
-    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
         self.__reqObj = reqObj
-        self.__lfh = log
+        # self.__lfh = log
         #
         self.__sessionObj = None
         #
@@ -64,16 +64,16 @@ class MessagingDataImport(object):
 
         try:
             self.__sessionObj = self.__reqObj.getSessionObj()
-            self.__sessionPath = self.__sessionObj.getPath()
+            # self.__sessionPath = self.__sessionObj.getPath()
             self.__identifier = str(self.__reqObj.getValue("identifier")).upper()
             self.__instance = str(self.__reqObj.getValue("instance")).upper()
             self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
             self.__fileSource = "archive"  # fixing value to "archive" for now
-            """
-            self.__fileSource  = str(self.__reqObj.getValue("filesource")).lower()
-            if self.__fileSource not in ['archive','wf-archive','wf-instance','wf_archive','wf_instance']:
-                self.__fileSource = 'archive'
-            """
+            # """
+            # self.__fileSource  = str(self.__reqObj.getValue("filesource")).lower()
+            # if self.__fileSource not in ['archive','wf-archive','wf-instance','wf_archive','wf_instance']:
+            #     self.__fileSource = 'archive'
+            # """
             #
             # Added by ZF
             #
@@ -83,31 +83,31 @@ class MessagingDataImport(object):
                 self.__fileSource = "autogroup"
             #
             if self.__verbose:
-                logger.debug("file source %s\n" % self.__fileSource)
-                logger.debug("identifier  %s\n" % self.__identifier)
-                logger.debug("instance    %s\n" % self.__instance)
-        except:  # noqa: E722
-            logger.exception("sessionId %s failed\n" % self.__sessionObj.getId())
+                logger.debug("file source %s", self.__fileSource)
+                logger.debug("identifier  %s", self.__identifier)
+                logger.debug("instance    %s", self.__instance)
+        except:  # noqa: E722  pylint: disable=bare-except
+            logger.exception("sessionId %s failed", self.__sessionObj.getId())
 
-    def getFilePath(self, contentType, format):
+    def getFilePath(self, contentType, format):  # pylint: disable=redefined-builtin
         createAsNeeded = True if (contentType in ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]) else False
-        return self.__getWfFilePath(contentType=contentType, format=format, fileSource=self.__fileSource, version="latest", createAsNeeded=createAsNeeded)
+        return self.__getWfFilePath(contentType=contentType, fmt=format, fileSource=self.__fileSource, version="latest", createAsNeeded=createAsNeeded)
 
     # ########################--Milestone File Handling--########################################################
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=redefined-builtin
         pathDict = {}
-        pathDict["dpstPth"] = self.__getWfFilePath(contentType=contentType, format=format, fileSource="deposit", version=version)
+        pathDict["dpstPth"] = self.__getWfFilePath(contentType=contentType, fmt=format, fileSource="deposit", version=version)
         pathDict["annotPth"] = self.__getWfFilePath(
-            contentType=contentType, format=format, fileSource=self.__fileSource, version=version, createAsNeeded=False, partitionNum=partitionNum
+            contentType=contentType, fmt=format, fileSource=self.__fileSource, version=version, createAsNeeded=False, partitionNum=partitionNum
         )
         return pathDict
 
     ###########################################################################################################
 
-    def __getWfFilePath(self, contentType, format="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):
+    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):
         try:
-            fPath = self.__getWfFilePathRef(contentType=contentType, format=format, fileSource=fileSource, version=version, partitionNum=partitionNum)
-            logger.debug("checking %s path %s\n" % (contentType, fPath))
+            fPath = self.__getWfFilePathRef(contentType=contentType, fmt=fmt, fileSource=fileSource, version=version, partitionNum=partitionNum)
+            logger.debug("checking %s path %s", contentType, fPath)
             if fPath:
                 if os.access(fPath, os.R_OK):
                     return fPath
@@ -119,20 +119,20 @@ class MessagingDataImport(object):
                                 f.close()
                                 return fPath
                         except IOError:
-                            logger.exception("Unable to create '%s' file for id [%s]\n" % (contentType, self.__identifier))
+                            logger.exception("Unable to create '%s' file for id [%s]", contentType, self.__identifier)
                     else:
                         return None
             else:
                 return None
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Failed to getWfFilePath")
             return None
 
-    def __getWfFilePathRef(self, contentType, format="pdbx", fileSource="archive", version="latest", partitionNum=None):
+    def __getWfFilePathRef(self, contentType, fmt="pdbx", fileSource="archive", version="latest", partitionNum=None):
         """Return the path to the latest version of the contentType"""
 
         dfRef = DataFileReference(siteId=self.__siteId)
-        logger.debug("site id is %s\n" % dfRef.getSitePrefix())
+        logger.debug("site id is %s", dfRef.getSitePrefix())
 
         dfRef.setDepositionDataSetId(self.__identifier)
         if fileSource in ["archive", "wf-archive", "wf_archive"]:
@@ -143,7 +143,7 @@ class MessagingDataImport(object):
             dfRef.setWorkflowInstanceId(self.__instance)
             dfRef.setStorageType("wf-instance")
         else:
-            logger.error("Bad file source for %s id %s wf id %s\n" % (contentType, self.__identifier, self.__instance))
+            logger.error("Bad file source for %s id %s wf id %s", contentType, self.__identifier, self.__instance)
         #
         # Added by ZF
         #
@@ -151,7 +151,7 @@ class MessagingDataImport(object):
             dfRef.setDepositionDataSetId(self.__groupId)
             dfRef.setStorageType("autogroup")
         #
-        dfRef.setContentTypeAndFormat(contentType, format)
+        dfRef.setContentTypeAndFormat(contentType, fmt)
         dfRef.setVersionId(version)
         #
         if partitionNum:
@@ -162,10 +162,10 @@ class MessagingDataImport(object):
             dP = dfRef.getDirPathReference()
             fP = dfRef.getFilePathReference()
             if self.__verbose:
-                logger.debug("file directory path: %s\n" % dP)
-                logger.debug("file           path: %s\n" % fP)
+                logger.debug("file directory path: %s", dP)
+                logger.debug("file           path: %s", fP)
         else:
-            logger.debug("bad reference for %s id %s wf id %s\n" % (contentType, self.__identifier, self.__instance))
+            logger.debug("bad reference for %s id %s wf id %s", contentType, self.__identifier, self.__instance)
 
         #
         return fP

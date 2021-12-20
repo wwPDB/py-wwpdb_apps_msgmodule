@@ -32,7 +32,7 @@ class AutoMessage(object):
             self.__siteId = siteId
         else:
             self.__siteId = getSiteId()
-        logger.debug("Site id is %s" % self.__siteId)
+        logger.debug("Site id is %s", self.__siteId)
         self.__cI = ConfigInfo(self.__siteId)
         self.__verbose = verbose
         self.__log = log
@@ -83,7 +83,7 @@ class AutoMessage(object):
                 if cobj and cobj.hasAttribute("method"):
                     for row in range(cobj.getRowCount()):
                         ret.append(cobj.getValue("method", row))
-        except:  # noqa: E722
+        except Exception as _e:  # noqa: F841
             logger.exception("Failed to parse model file")
 
         return ret

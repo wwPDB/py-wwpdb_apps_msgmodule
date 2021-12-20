@@ -56,6 +56,10 @@ from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class MessagingDepict(object):
     """Base class for HTML depictions contain definitions of common constructs."""
@@ -70,7 +74,6 @@ class MessagingDepict(object):
         self.__verbose = verbose
         self.__lfh = log
         self.__debug = False
-        self.__debugLvl2 = False
         #
         self.absltSessionPath = None
         self.absltEdtrSessionPath = None
@@ -125,15 +128,12 @@ class MessagingDepict(object):
         # bEmDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            className = self.__class__.__name__
-            methodName = sys._getframe().f_code.co_name
-            self.__lfh.write("Starting %s %s at %s\n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
-            self.__lfh.write("+%s.%s() identifier   %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() instance     %s\n" % (className, methodName, wfInstId))
-            self.__lfh.write("+%s.%s() file source  %s\n" % (className, methodName, fileSource))
-            self.__lfh.write("+%s.%s() sessionId  %s\n" % (className, methodName, sessionId))
-            self.__lfh.flush()
+            logger.info("--------------------------------------------")
+            logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info("identifier   %s", depId)
+            logger.info("instance     %s", wfInstId)
+            logger.info("file source  %s", fileSource)
+            logger.info("sessionId    %s", sessionId)
         #
 
         # Determine if submitted
@@ -212,15 +212,13 @@ class MessagingDepict(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         oL = []
         #
         strParamDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logging.info("-- Starting.")
         #
         depId = str(p_reqObj.getValue("identifier"))
         tmpltPath = p_reqObj.getValue("TemplatePath")
@@ -236,7 +234,7 @@ class MessagingDepict(object):
                 strParamDict["identifier"] = depId
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info("\n -- dep_id is:%s", depId)
         #
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO SUPPORT ALL DOWNSTREAM PROCESSING IN NEED OF DATA PARSED FROM THE COORDINATE FILE
@@ -300,14 +298,11 @@ class MessagingDepict(object):
         # cI = ConfigInfo(siteId)
         #
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            className = self.__class__.__name__
-            methodName = sys._getframe().f_code.co_name
-            self.__lfh.write("Starting %s %s at %s\n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
-            self.__lfh.write("+%s.%s() identifier   %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() file source  %s\n" % (className, methodName, fileSource))
-            self.__lfh.write("+%s.%s() sessionId  %s\n" % (className, methodName, sessionId))
-            self.__lfh.flush()
+            logger.info("--------------------------------------------")
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info("identifier   %s", depId)
+            logger.info("file source  %s", fileSource)
+            logger.info("sessionId    %s", sessionId)
         #
 
         ############################################################################
@@ -367,15 +362,12 @@ class MessagingDepict(object):
         #    depId = self.__formatDepositionDataId(depId, p_bIsWorkflow)
         #
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            className = self.__class__.__name__
-            methodName = sys._getframe().f_code.co_name
-            self.__lfh.write("Starting %s %s at %s\n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
-            self.__lfh.write("+%s.%s() identifier   %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() instance     %s\n" % (className, methodName, wfInstId))
-            self.__lfh.write("+%s.%s() file source  %s\n" % (className, methodName, fileSource))
-            self.__lfh.write("+%s.%s() sessionId  %s\n" % (className, methodName, sessionId))
-            self.__lfh.flush()
+            logger.info("--------------------------------------------")
+            logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info("identifier   %s", depId)
+            logger.info("instance     %s", wfInstId)
+            logger.info("file source  %s", fileSource)
+            logger.info("sessionId    %s", sessionId)
         #
 
         annotator = "wwPDB annotator" if annotator.lower() == "dep" else annotator
@@ -443,8 +435,8 @@ class MessagingDepict(object):
         myD["session_url_prefix"] = self.rltvEdtrSessionPath
         myD.update(p_msgDict)
 
-        self.__lfh.write("+%s.%s() p_msgDict is:  %r\n" % (className, methodName, p_msgDict))
-        self.__lfh.write("+%s.%s() myD is:  %r\n" % (className, methodName, myD))
+        logger.info("p_msgDict is:  %r", p_msgDict)
+        logger.info("myD is:  %r", myD)
 
         tmpltFile = "display_msg_tmplt.html"
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
@@ -452,7 +444,7 @@ class MessagingDepict(object):
         return oL
 
     # ####### BEGIN -- Specific to DataTable Implementation ##################
-    "NOTE: consider encapsulating DataTable functionality as separate class"
+    # NOTE: consider encapsulating DataTable functionality as separate class
 
     def getJsonDataTable(self, p_msgRcrdList, p_msgColList, p_iDisplayStart=0):
         """Generate contents of json object expected by DataTables for populating display
@@ -590,16 +582,14 @@ class MessagingDepict(object):
         :Returns:
             ``rtrnLst``: list of records for display on screen as complies with DataTables requirements for "aaData" object
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            self.__lfh.write("Starting %s.%s() at %s\n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+            logger.info("--------------------------------------------")
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         rtrnLst = []
 
         for indx, row in enumerate(p_recordList):
             if self.__verbose and self.__debug:
-                self.__lfh.write("+%s.%s() -- row[%s] is: %s\n" % (className, methodName, indx, row))
+                logger.debug(" -- row[%s] is: %s", indx, row)
             #
             newRecordJsonObj = {}
             #
@@ -654,10 +644,13 @@ class MessagingDepict(object):
             # else we are in the standalone dev environment
             return False
 
-    def processTemplate(self, tmpltPth, fn, parameterDict={}):
+    def processTemplate(self, tmpltPth, fn, parameterDict=None):
         """Read the input HTML template data file and perform the key/value substitutions in the
         input parameter dictionary.
         """
+        if parameterDict is None:
+            parameterDict = {}
+
         fPath = os.path.join(tmpltPth, fn)
         ifh = open(fPath, "r")
         sIn = ifh.read()
@@ -674,9 +667,9 @@ class MessagingDepict(object):
         else:
             return ""
 
-    def __formatDepositionDataId(self, p_depid, p_bIsWorkflow):
-        if p_bIsWorkflow or (p_depid.upper() == "TMP_ID"):
-            depId = p_depid.upper()
-        else:
-            depId = p_depid.lower()
-        return depId
+    # def __formatDepositionDataId(self, p_depid, p_bIsWorkflow):
+    #     if p_bIsWorkflow or (p_depid.upper() == "TMP_ID"):
+    #         depId = p_depid.upper()
+    #     else:
+    #         depId = p_depid.lower()
+    #     return depId

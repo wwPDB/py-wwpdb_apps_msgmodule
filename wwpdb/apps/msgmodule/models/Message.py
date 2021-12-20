@@ -18,8 +18,11 @@ __license__ = "Creative Commons Attribution 3.0 Unported"
 __version__ = "V0.001"
 
 import sys
+import logging
 
 from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
+
+logger = logging.getLogger(__name__)
 
 
 class Message(object):
@@ -101,7 +104,7 @@ class Message(object):
 
             return rtrnMsg
 
-    def __init__(self, p_msgDict, p_fileRefLst=[], p_verbose=True, p_log=sys.stderr):
+    def __init__(self, p_msgDict, p_fileRefLst=None, p_verbose=True, p_log=sys.stderr):
         """__init__
 
         :Params:
@@ -114,6 +117,8 @@ class Message(object):
             na
 
         """
+        if p_fileRefLst is None:
+            p_fileRefLst = []
         self._verbose = p_verbose
         self._lfh = p_log
         #
@@ -364,7 +369,7 @@ class Message(object):
         msgDI = MessagingDataImport(p_reqObj, verbose=self._verbose, log=self._lfh)
 
         returnFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx") if self._isWorkflow(p_reqObj) else Message.defaultMsgsToDpstrFilePath
-        self._lfh.write("+%s.%s() -- messages-to-depositor path is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, returnFilePath))
+        logger.info("messages-to-depositor path is: %s", returnFilePath)
 
         return returnFilePath
 
@@ -405,7 +410,9 @@ class AutoMessage(Message):
 
     """
 
-    def __init__(self, p_msgDict, p_fileRefLst=[], p_verbose=True, p_log=sys.stderr):
+    def __init__(self, p_msgDict, p_fileRefLst=None, p_verbose=True, p_log=sys.stderr):
+        if p_fileRefLst is None:
+            p_fileRefLst = []
         Message.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsAutoMsg = True
@@ -415,7 +422,9 @@ class AutoMessage(Message):
 class ReminderMessage(Message):
     """Subclass to represent release date "reminder" messages that require different handling (e.g. for HPUB entries). These are invoked via URL request."""
 
-    def __init__(self, p_msgDict, p_fileRefLst=[], p_verbose=True, p_log=sys.stderr):
+    def __init__(self, p_msgDict, p_fileRefLst=None, p_verbose=True, p_log=sys.stderr):
+        if p_fileRefLst is None:
+            p_fileRefLst = []
         Message.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsReminderMsg = True
@@ -441,7 +450,7 @@ class Note(Message):
         msgDI = MessagingDataImport(p_reqObj, verbose=self._verbose, log=self._lfh)
 
         returnFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx") if self._isWorkflow(p_reqObj) else Message.defaultNotesFilePath
-        self._lfh.write("+%s.%s() -- notes-from-annotator path is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, returnFilePath))
+        logger.info("-- notes-from-annotator path is: %s", returnFilePath)
 
         return returnFilePath
 
@@ -457,7 +466,11 @@ class AutoNote(Note):
     Support for optional email sending of message as well
     """
 
-    def __init__(self, p_msgDict, p_fileRefLst=[], p_verbose=True, p_log=sys.stderr, p_email=True):
+    def __init__(self, p_msgDict, p_fileRefLst=None, p_verbose=True, p_log=sys.stderr, p_email=True):
+
+        if p_fileRefLst is None:
+            p_fileRefLst = []
+
         Note.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsAutoMsg = True
