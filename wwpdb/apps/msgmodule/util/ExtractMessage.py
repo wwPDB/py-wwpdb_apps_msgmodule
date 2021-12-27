@@ -56,7 +56,7 @@ class ExtractMessage(object):
             c0 = myContainerList[0]
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
             else:
                 #
@@ -86,7 +86,7 @@ class ExtractMessage(object):
                         logger.error("Error processing %s %s", depid, str(e))
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             return None
 
         return ret
@@ -116,7 +116,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_file_reference category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_file_reference category", depid)
                 return (None, None)
 
             # Get list of msgids of validtion report
@@ -153,7 +153,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return (None, None)
 
             #
@@ -195,7 +195,7 @@ class ExtractMessage(object):
             ret = lastvalid
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             ret = None
 
         logger.info("Returning (%s, %s)", ret, major)
@@ -243,7 +243,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
 
             #
@@ -278,7 +278,7 @@ class ExtractMessage(object):
             ret = lastsent
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             ret = None
 
         logger.info("Returning %s", ret)

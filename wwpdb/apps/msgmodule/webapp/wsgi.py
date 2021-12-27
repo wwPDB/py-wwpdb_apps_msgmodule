@@ -63,7 +63,7 @@ class MyRequestApp(object):
             outL.append("Parameter List:\n")
             for name, value in request.params.items():
                 outL.append("Request parameter:    %s:  %r\n" % (name, value))
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             traceback.print_exc(file=self.__lfh)
 
         outL.append("\n------------------------------------------------\n\n")
@@ -80,17 +80,17 @@ class MyRequestApp(object):
             if "WWPDB_SITE_ID" in environment:
                 siteId = environment["WWPDB_SITE_ID"]
                 self.__lfh.write("+MyRequestApp.__call__() - WWPDB_SITE_ID environ variable captured as %s\n" % siteId)
-            """
-            for name,value in environment.items():
-                self.__lfh.write("+MyRequestApp.__call__() - ENVIRON parameter:    %s:  %r\n" % (name,value))
-            """
+            # """
+            # for name,value in environment.items():
+            #     self.__lfh.write("+MyRequestApp.__call__() - ENVIRON parameter:    %s:  %r\n" % (name,value))
+            # """
             for name, value in myRequest.params.items():
                 if name not in myParameterDict:
                     myParameterDict[name] = []
                 myParameterDict[name].append(value)
                 self.__lfh.write("+MyRequestApp.__call__() - REQUEST parameter:    %s:  %r\n" % (name, value))
             myParameterDict["request_path"] = [myRequest.path.lower()]
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             traceback.print_exc(file=self.__lfh)
             self.__lfh.write("+MyRequestApp.__call__() - contents of request data\n")
             self.__lfh.write("%s" % ("".join(self.__dumpEnv(request=myRequest))))

@@ -134,7 +134,6 @@ import smtplib
 import sys
 import textwrap
 import time
-import traceback
 
 try:
     from html import unescape
@@ -229,7 +228,7 @@ class MessagingIo(object):
         self.__sObj = self.__reqObj.newSessionObj()
         self.__sessionPath = self.__sObj.getPath()
         self.__sessionRelativePath = self.__sObj.getRelativePath()
-        self.__sessionId = self.__sObj.getId()
+        # self.__sessionId = self.__sObj.getId()
         #
         self.__expMethodList = (self.__reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1) else []
         self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
@@ -250,7 +249,7 @@ class MessagingIo(object):
         self.__retrySeconds = 0.2
 
         # BELOW SETTINGS ARE DEFAULTS THAT KICK IN FOR TESTING PURPOSES
-        self.__testMsgFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/testMessageFile.cif"
+        # self.__testMsgFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/testMessageFile.cif"
         self.__msgsToDpstrFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/messages-to-depositor.cif"
         self.__msgsFrmDpstrFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/messages-from-depositor.cif"
         self.__notesFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/notes-from-annotator.cif"
@@ -337,9 +336,8 @@ class MessagingIo(object):
         dbname = containerNameList[0][0]
 
         if self.__verbose:
-            self.__lfh.write(
-                "+%s.%s() successfully obtained datablock name as: %s, from %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, dbname, self.__dbFilePath)
-            )
+            logger.info(
+                "successfully obtained datablock name as: %s, from %s", dbname, self.__dbFilePath)
         catObj = persist.fetchOneObject(self.__dbFilePath, dbname, p_ctgryNm)
 
         if catObj is None:
@@ -393,8 +391,8 @@ class MessagingIo(object):
 
     def getMsgColList(self, p_bCommHstryRqstd=False):
         """Retrieval of list of attributes (i.e. columns) for message data"""
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------\n")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         rtrnList = []
         bSuccess = False
 
@@ -413,7 +411,7 @@ class MessagingIo(object):
                 bSuccess = True
                 #
                 if self.__verbose:
-                    self.__lfh.write("+%s.%s() -- Column list for message info returned as:\n %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, rtrnList))
+                    logger.info("Column list for message info returned as: %s", rtrnList)
                 #
 
         #
@@ -422,7 +420,7 @@ class MessagingIo(object):
 
         return bSuccess, rtrnList
 
-    def getMsg(self, p_msgId, p_depId):
+    def getMsg(self, p_msgId, p_depId):  # pylint: disable=unused-argument
         """Get data for a single message
 
         :Helpers:
@@ -436,20 +434,20 @@ class MessagingIo(object):
             dictionary representing a given message and its attributes
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------\n")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         contentType = self.__reqObj.getValue("content_type")
-        self.__lfh.write("+%s.%s() -- contentType is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, contentType))
+        logger.info("contentType is: %s", contentType)
         bCommHstryRqstd = True if (contentType == "commhstry") else False
         msgDict = {}
         # bSuccess = False
         recordSetLst = []
-        """
-         {'context_value': 'validation', 'sender': 'annotator', 'context_type': 'report', 'timestamp': '2013-08-15 09:18:15',
-          'ordinal_id': '7', 'message_subject': 'RE: Arginine residue clarification', 'message_id': '7164e940-9f6c-43e6-9ea8-b78226c75e1f',
-          'deposition_data_set_id': 'D_000000', 'message_text': 'Will look into this.', 'send_status': 'N',
-          'message_type': 'text', 'parent_message_id': 'ff9f8dfd-4a69-43ab-815e-617ce866e0d0'}
-        """
+        # """
+        #  {'context_value': 'validation', 'sender': 'annotator', 'context_type': 'report', 'timestamp': '2013-08-15 09:18:15',
+        #   'ordinal_id': '7', 'message_subject': 'RE: Arginine residue clarification', 'message_id': '7164e940-9f6c-43e6-9ea8-b78226c75e1f',
+        #   'deposition_data_set_id': 'D_000000', 'message_text': 'Will look into this.', 'send_status': 'N',
+        #   'message_type': 'text', 'parent_message_id': 'ff9f8dfd-4a69-43ab-815e-617ce866e0d0'}
+        # """
 
         try:
             if self.__isWorkflow():
@@ -463,8 +461,8 @@ class MessagingIo(object):
 
             # obtain data from relevant datafiles based on contentType requested
             if contentType == "msgs" or bCommHstryRqstd:
-                self.__lfh.write("+%s.%s() -- self.__msgsFrmDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
                 if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                     pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -483,7 +481,7 @@ class MessagingIo(object):
                         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
             if contentType == "notes" or bCommHstryRqstd:
-                self.__lfh.write("+%s.%s() -- self.__notesFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notesFilePath))
+                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
                 if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
                     pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -526,7 +524,8 @@ class MessagingIo(object):
         return msgDict
 
     def getMsgRowList(
-        self, p_depDataSetId, p_sSendStatus="Y", p_bServerSide=False, p_iDisplayStart=None, p_iDisplayLength=None, p_sSrchFltr=None, p_colSearchDict=None, p_bThreadedRslts=False
+        self, p_depDataSetId, p_sSendStatus="Y", p_bServerSide=False, p_iDisplayStart=None, p_iDisplayLength=None, p_sSrchFltr=None,  # pylint: disable=unused-argument
+            p_colSearchDict=None, p_bThreadedRslts=False  # pylint: disable=unused-argument
     ):
         """Retrieval of messages for a given deposition dataset ID
 
@@ -543,11 +542,11 @@ class MessagingIo(object):
 
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------")
+        logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         contentType = str(self.__reqObj.getValue("content_type"))
-        self.__lfh.write("+%s.%s() -- contentType is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, contentType))
+        logger.info("contentType is: %s", contentType)
         #
         rtrnDict = {}
         rtrnList = fullRsltSet = []
@@ -569,8 +568,8 @@ class MessagingIo(object):
 
             # obtain data from relevant datafiles based on contentType requested
             if contentType == "msgs" or bCommHstryRqstd:
-                self.__lfh.write("+%s.%s() -- self.__msgsFrmDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
                 if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                     pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -604,7 +603,7 @@ class MessagingIo(object):
                     rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = 0
 
             if contentType == "notes" or bCommHstryRqstd:
-                self.__lfh.write("+%s.%s() -- self.__notesFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notesFilePath))
+                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
                 if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
                     pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -632,28 +631,28 @@ class MessagingIo(object):
             if bCommHstryRqstd:
                 if self.__verbose and self.__debug and self.__debugLvl2:
                     for idx, row in enumerate(origCommsLst):
-                        self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                        logger.debug("-- row[%s]: %r", idx, row)
                 self.__augmentWithOrigCommData(recordSetLst, origCommsLst)
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    self.__lfh.write("\n+%s.%s() before processing for threading -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                    logger.debug("before processing for threading -- row[%s]: %r", idx, row)
             #
             if p_bThreadedRslts:
                 self.__doThreadedHandling(recordSetLst, rtrnDict)
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    self.__lfh.write("\n+%s.%s() after processing for threading -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                    logger.debug("after processing for threading -- row[%s]: %r", idx, row)
             #
             fullRsltSet = self.__trnsfrmMsgDictToLst(recordSetLst, bCommHstryRqstd)
             #
-            """
-            if( self.__verbose and self.__debug ):
-                for idx,row in enumerate(fullRsltSet):
-                    self.__lfh.write("+%s.%s() Dictionary type message list now transformed to list data type -- rowidx# %s: %r\n"
-                             % (self.__class__.__name__, sys._getframe().f_code.co_name,idx,row ))
-            """
+            # """
+            # if( self.__verbose and self.__debug ):
+            #     for idx,row in enumerate(fullRsltSet):
+            #         logger.info("+%s.%s() Dictionary type message list now transformed to list data type -- rowidx# %s: %r\n"
+            #                  % (self.__class__.__name__, sys._getframe().f_code.co_name,idx,row ))
+            # """
             #
             if p_bServerSide:
                 columnList = (self.getMsgColList(bCommHstryRqstd))[1]
@@ -662,7 +661,7 @@ class MessagingIo(object):
 
                 if p_sSrchFltr and len(p_sSrchFltr) > 1:
                     if self.__debug:
-                        self.__lfh.write("+%s.%s() p_sSrchFltr is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_sSrchFltr))
+                        logger.debug("p_sSrchFltr is: %r", p_sSrchFltr)
 
                     filteredRsltSet = self.__filterRsltSet(fullRsltSet, p_sGlobalSrchFilter=p_sSrchFltr)
                     iTotalDisplayRecords = len(filteredRsltSet)
@@ -698,10 +697,9 @@ class MessagingIo(object):
                         colIndx = columnList.index(colName)
                         #
                         if self.__verbose:
-                            self.__lfh.write(
-                                "+%s.%s() -- colIndx for %s is %s as derived from columnList is %r\n"
-                                % (self.__class__.__name__, sys._getframe().f_code.co_name, colName, colIndx, columnList)
-                            )
+                            logger.info(
+                                "colIndx for %s is %s as derived from columnList is %r",
+                                colName, colIndx, columnList)
                         #
                         ordL.append(colIndx)
                         if sortOrder == "desc":
@@ -710,16 +708,12 @@ class MessagingIo(object):
                 if len(ordL) > 0:
                     if self.__verbose and self.__debug and self.__debugLvl2:
                         for idx, row in enumerate(rtrnList):
-                            self.__lfh.write(
-                                "+%s.%s() rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row)
-                            )
+                            logger.debug(
+                                "+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r", idx, row)
                     rtrnList = self.__orderBy(rtrnList, ordL, descL)
 
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() -- p_iDisplayStart is %s and p_iDisplayLength is %s\n"
-                        % (self.__class__.__name__, sys._getframe().f_code.co_name, p_iDisplayStart, p_iDisplayLength)
-                    )
+                    logger.info("p_iDisplayStart is %s and p_iDisplayLength is %s", p_iDisplayStart, p_iDisplayLength)
                     #
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting message row")
@@ -736,7 +730,7 @@ class MessagingIo(object):
             rtrnDict["RECORD_LIST"] = fullRsltSet
             return rtrnDict
 
-    def checkAvailFiles(self, p_depDataSetId):
+    def checkAvailFiles(self, p_depDataSetId):  # pylint: disable=unused-argument
         """Retrieve list of deposition files that have been produced thus far for dataset
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
@@ -803,14 +797,14 @@ class MessagingIo(object):
 
         return rtrnList
 
-    def getFilesRfrncd(self, p_depDataSetId, p_msgIdFilter=None):
+    def getFilesRfrncd(self, p_depDataSetId, p_msgIdFilter=None):  # pylint: disable=unused-argument
         """Retrieve list of files referenced by any messages for this dataset ID
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         recordSetLst = []
         rtrnDict = {}
@@ -820,14 +814,14 @@ class MessagingIo(object):
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsFrmDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as fsl:
+                ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
                     pid = os.getpid()
                     ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
                 if ok:
@@ -837,9 +831,9 @@ class MessagingIo(object):
                 mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as lf, FileSizeLogger(  # noqa: F841
+                ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-                ) as fsl:  # noqa: F841
+                ) as _fsl:  # noqa: F841
                     pid = os.getpid()
                     ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
                 if ok:
@@ -847,7 +841,7 @@ class MessagingIo(object):
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                    logger.info("row[%s]: %r", idx, row)
             #
             rtrnDict = self.__trnsfrmFileRefDictToLst(recordSetLst, p_msgIdFilter)
 
@@ -856,36 +850,36 @@ class MessagingIo(object):
         #
         return rtrnDict
 
-    def getMsgReadList(self, p_depDataSetId):
+    def getMsgReadList(self, p_depDataSetId):  # pylint: disable=unused-argument
         """For a given deposition dataset ID, retrieve list of messages already read
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         return self.__getMsgsByStatus("read_status", "Y")
 
-    def getMsgNoActionReqdList(self, p_depDataSetId):
+    def getMsgNoActionReqdList(self, p_depDataSetId):  # pylint: disable=unused-argument
         """For a given deposition dataset ID retrieve list of messages for which action is required
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------\n")
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         return self.__getMsgsByStatus("action_reqd", "N")
 
-    def getMsgForReleaseList(self, p_depDataSetId):
+    def getMsgForReleaseList(self, p_depDataSetId):  # pylint: disable=unused-argument
         """For a given deposition dataset ID retrieve list of messages for which action is required
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         """
-        self.__lfh.write("--------------------------------------------\n")
-        self.__lfh.write("Starting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("--------------------------------------------\n")
+        logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         return self.__getMsgsByStatus("for_release", "Y")
 
@@ -898,15 +892,15 @@ class MessagingIo(object):
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__notesFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notesFilePath))
+                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
             if os.access(self.__notesFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__notesFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as lf, FileSizeLogger(  # noqa: F841
+                ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__notesFilePath, verbose=self.__verbose, log=self.__lfh
-                ) as fsl:  # noqa: F841
+                ) as _fsl:  # noqa: F841
                     pid = os.getpid()
                     ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid))
                 if ok:
@@ -914,12 +908,12 @@ class MessagingIo(object):
                 #
                 for row in recordSetLst:
                     if self.__verbose and self.__debug:
-                        self.__lfh.write("\n+%s.%s() -- row: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, row))
+                        logger.info("-- row: %r", row)
                     rtrnList.append(row["message_id"])
                 #
 
         except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("Getting nots list")
+            logger.exception("Getting notes list")
         #
         return rtrnList
 
@@ -936,7 +930,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        self.__lfh.write("\nStarting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         bPdbxMdlFlUpdtd = False
@@ -946,16 +940,16 @@ class MessagingIo(object):
         #
         try:
             if self.__verbose and self.__debug:
-                self.__lfh.write("+%s.%s() -- p_msgObj.isLive is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_msgObj.isLive))
+                logger.info("p_msgObj.isLive is: %r", p_msgObj.isLive)
             if p_msgObj.isLive:  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
                 mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
                 mI.set(p_msgObj.getMsgDict())
                 if self.__verbose and self.__debug:
-                    self.__lfh.write("+%s.%s() -- p_msgObj.getMsgDict() is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_msgObj.getMsgDict()))
+                    logger.info("p_msgObj.getMsgDict() is: %r", p_msgObj.getMsgDict())
             #
             outputFilePth = p_msgObj.getOutputFileTarget(self.__reqObj)  # determine which datafile needs to be updated
             if self.__verbose and self.__debug:
-                self.__lfh.write("+%s.%s() -- outputFilePth is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, outputFilePth))
+                logger.info("outputFilePth is: %s", outputFilePth)
             #
             if p_msgObj.contentType == "msgs" and self.__isWorkflow():
                 # in workflow environment we need to know path of messaging data file in deposit storage area
@@ -963,19 +957,18 @@ class MessagingIo(object):
                 msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 depUiMsgsToDpstrFilePath = msgDE.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 if self.__verbose:
-                    self.__lfh.write("+%s.%s() -- depUiMsgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depUiMsgsToDpstrFilePath))
+                    logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
 
             if not os.access(outputFilePth, os.F_OK):
-                self.__lfh.write(
-                    "+%s.%s() -- messaging output file not found at: %s, so instantiating a copy.\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, outputFilePth)
-                )
+                logger.info(
+                    "messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
                 try:
                     # file may not exist b/c it is the first time that an
                     # annotator is sending a message in which case we create a new file
                     f = open(outputFilePth, "w")
                     f.close()
                 except IOError:
-                    self.__lfh.write("+%s.%s() -- problem creating messaging output file at: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, outputFilePth))
+                    logger.error("problem creating messaging output file at: %s", outputFilePth)
             #
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
             with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
@@ -994,10 +987,10 @@ class MessagingIo(object):
                     mIIo.appendMessage(mI.get())
                     p_msgObj.messageId = mI.getMessageId()
                     if self.__verbose and self.__debug:
-                        self.__lfh.write("+%s.%s() -- mI.get() is now: %s \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, mI.get()))
-                        self.__lfh.write("+%s.%s() -- mI.getMessageId() is now: %s \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, mI.getMessageId()))
-                        self.__lfh.write("+%s.%s() -- p_msgObj.messageId is now: %s \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_msgObj.messageId))
-                        self.__lfh.write("+%s.%s() -- p_msgObj.isReminderMsg is now: %s \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_msgObj.isReminderMsg))
+                        logger.info("mI.get() is now: %s", mI.get())
+                        logger.info("mI.getMessageId() is now: %s", mI.getMessageId())
+                        logger.info("p_msgObj.messageId is now: %s", p_msgObj.messageId)
+                        logger.info("p_msgObj.isReminderMsg is now: %s", p_msgObj.isReminderMsg)
                 elif p_msgObj.isDraft:
                     # if this is a draft we are updating the already existing draft copy of the message which we find by matching message id
 
@@ -1046,7 +1039,7 @@ class MessagingIo(object):
 
                 self._updateSnapshotHistory(outputFilePth)
 
-                with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as lf:  # noqa: F841
+                with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf:  # noqa: F841
                     bOk = mIIo.write(outputFilePth)
 
                 # Write message to depositor message file and send email
@@ -1071,7 +1064,7 @@ class MessagingIo(object):
                             if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
                                 self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
                         except:  # noqa: E722  pylint: disable=bare-except
-                            logger.exception("Warning: problem sending notification email.\n")
+                            logger.exception("Warning: problem sending notification email.")
 
                     else:
                         # execution here is for DEV TESTING purposes
@@ -1083,16 +1076,14 @@ class MessagingIo(object):
                                 logger.exception("Warning: problem sending notification email.")
 
             else:  # failed sanity check
-                self.__lfh.write("Message data append failed\n")
+                logger.info("Message data append failed\n")
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Message data append failed")
             bOk = False
 
         endTime = time.time()
-        self.__lfh.write(
-            "\nCompleted %s %s at %s (%d seconds)\n"
-            % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        )
+        logger.info(
+            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk, bPdbxMdlFlUpdtd, failedFileRefs
 
@@ -1119,16 +1110,16 @@ class MessagingIo(object):
                 try:
                     shutil.copyfile(outputFilePth + srcVrsn, outputFilePth + dstVrsn)
                 except IOError:
-                    logger.error("Problem making backup of preupdate messaging file at: %s" % outputFilePth + srcVrsn)
+                    logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth + srcVrsn)
 
         if os.access(outputFilePth, os.F_OK):
             try:
                 shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
             except IOError:
-                logger.error("Problem making backup of preupdate messaging file at: %s" % outputFilePth)
+                logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
 
         else:
-            logger.error("WARNING could NOT access messages-to-depositor file at: %s" % outputFilePth)
+            logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
 
         if self.__verbose:
             logger.info("COMPLETED")
@@ -1148,10 +1139,10 @@ class MessagingIo(object):
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         if contentType == "msgs":
             returnFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx") if self.__isWorkflow() else self.__msgsToDpstrFilePath
-            self.__lfh.write("+%s.%s() -- messages-to-depositor path is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, returnFilePath))
+            logger.info("messages-to-depositor path is: %s", returnFilePath)
         elif contentType == "notes":
             returnFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx") if self.__isWorkflow() else self.__notesFilePath
-            self.__lfh.write("+%s.%s() -- notes-from-annotator path is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, returnFilePath))
+            logger.info("notes-from-annotator path is: %s", returnFilePath)
 
         return returnFilePath
 
@@ -1173,10 +1164,9 @@ class MessagingIo(object):
         bReturnVal = True
 
         if highWatermark is not None and len(highWatermark) > 0:  # only if we have a valid high water mark can we peform the sanity check
-            self.__lfh.write(
-                "+%s.%s() -- highWatermark of [%s] provided for contentType '%s' so using this for sanity check.\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, highWatermark, contentType)
-            )
+            logger.info(
+                "highWatermark of [%s] provided for contentType '%s' so using this for sanity check.",
+                highWatermark, contentType)
             try:
                 if bGotContent:
                     nextOrdinalID = mIIo.nextMessageOrdinal()
@@ -1184,18 +1174,21 @@ class MessagingIo(object):
                 else:
                     currentNumRows = 0
 
-                assert int(currentNumRows) >= int(highWatermark), "+%s.%s() --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n" % (
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name,
+                assert int(currentNumRows) >= int(highWatermark), "MessagingIo._sanityCheck --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n" % (
                     outputFilePth,
                     currentNumRows,
                     highWatermark,
                 )
             except AssertionError:
                 bReturnVal = False
+                logger.error("CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!",
+                             outputFilePth,
+                             currentNumRows,
+                             highWatermark,
+                             )
                 logger.exception("_sanityCheck code failed")
         else:
-            self.__lfh.write("+%s.%s() -- highWatermark not provided so skipping sanity check.\n" % (self.__class__.__name__, sys._getframe().f_code.co_name))
+            logger.info("highWatermark not provided so skipping sanity check")
             # highWatermark currently not provided in cases where automatic system messaging is invoked (e.g. release notification messages, archiving)
 
         return bReturnVal
@@ -1211,9 +1204,8 @@ class MessagingIo(object):
 
         """
         #
-        self.__lfh.write(
-            "+%s.%s() -- 'message_type' is '%s' so creating PdbxMessageOrigCommRef\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_msgObj.messageType)
-        )
+        logger.info(
+            "'message_type' is '%s' so creating PdbxMessageOrigCommRef", p_msgObj.messageType)
 
         origSender = self.__reqObj.getValue("orig_sender")
         origRecipient = self.__reqObj.getValue("orig_recipient")
@@ -1255,14 +1247,11 @@ class MessagingIo(object):
 
         """
         #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() --STARTING\n" % (className, methodName))
-            self.__lfh.write("+%s.%s() -- p_isEmdbEntry is:%s\n" % (className, methodName, p_isEmdbEntry))
-            self.__lfh.write("+%s.%s() -- p_depIdList is:%r\n" % (className, methodName, p_depIdList))
-            self.__lfh.write("+%s.%s() -- p_tmpltType is:%s\n" % (className, methodName, p_tmpltType))
+            logger.info("STARTING")
+            logger.info(" p_isEmdbEntry is:%s", p_isEmdbEntry)
+            logger.info(" p_depIdList is:%r", p_depIdList)
+            logger.info(" p_tmpltType is:%s", p_tmpltType)
 
         self.__reqObj.setValue("content_type", "msgs")  # as opposed to "notes"
         self.__reqObj.setValue("filesource", "archive")
@@ -1372,9 +1361,9 @@ class MessagingIo(object):
                 fileRefList = []
 
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (className, methodName, depId))
-                self.__lfh.write("+%s.%s() -- msg is: %r\n" % (className, methodName, msg))
-                self.__lfh.write("+%s.%s() -- fileRefList is: %r\n" % (className, methodName, fileRefList))
+                logger.info("dep_id is:%s", depId)
+                logger.info("msg is: %r", msg)
+                logger.info("fileRefList is: %r", fileRefList)
 
             if templateDict["em_entry"] == "true":
                 self.__reqObj.setValue("em_entry", "true")
@@ -1391,10 +1380,10 @@ class MessagingIo(object):
                     self.__reqObj.setValue("em_map_and_model", "true")
 
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- templateDict['em_entry'] is: %r\n" % (className, methodName, templateDict["em_entry"]))
-                self.__lfh.write("+%s.%s() -- templateDict['maponly'] is: %r\n" % (className, methodName, templateDict["maponly"]))
-                self.__lfh.write("+%s.%s() -- templateDict['mapandmodel'] is: %r\n" % (className, methodName, templateDict["mapandmodel"]))
-                self.__lfh.write("+%s.%s() -- fileRefList is now: %r\n" % (className, methodName, fileRefList))
+                logger.info("templateDict['em_entry'] is: %r", templateDict["em_entry"])
+                logger.info("templateDict['maponly'] is: %r", templateDict["maponly"])
+                logger.info("templateDict['mapandmodel'] is: %r", templateDict["mapandmodel"])
+                logger.info("fileRefList is now: %r", fileRefList)
             #
             rtrnDict[depId] = {}
             #
@@ -1414,15 +1403,13 @@ class MessagingIo(object):
                 rtrnDict[depId]["append_msg"] = sMsg
             #
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- pdbx_model_updated is: %s\n" % (className, methodName, rtrnDict[depId]["pdbx_model_updated"]))
+                logger.info("pdbx_model_updated is: %s", rtrnDict[depId]["pdbx_model_updated"])
         #
         return rtrnDict
 
     def getMsgTmpltDataItems(self, p_returnDict):
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting")
 
         msgTmpltHelper = MsgTmpltHlpr(self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh)
         msgTmpltHelper.populateTmpltDict(p_returnDict)
@@ -1463,13 +1450,13 @@ class MessagingIo(object):
         message_list = []
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
-        self.__lfh.write("+%s.%s() -- self.__msgsFromDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
+        logger.info("self.__msgsFromDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
         mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
         with LockFile(
             self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-        ) as lf, FileSizeLogger(  # noqa: F841
+        ) as _lf, FileSizeLogger(  # noqa: F841
             self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-        ) as fsl:  # noqa: F841
+        ) as _fsl:  # noqa: F841
             pid = os.getpid()
             ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
             if ok:
@@ -1479,7 +1466,7 @@ class MessagingIo(object):
 
     def get_message_subject_from_depositor(self, message_id):
         message_list = self.get_message_list_from_depositor()
-        self.__lfh.write("Depositor message list\n")
+        logger.info("Depositor message list")
         for row in message_list:
             if row.get("message_id") == message_id:
                 return row.get("message_subject")
@@ -1487,9 +1474,9 @@ class MessagingIo(object):
 
     def is_release_request(self, message_id):
         subject = self.get_message_subject_from_depositor(message_id=message_id)
-        self.__lfh.write("Message {} subject is: {}\n".format(message_id, subject))
+        logger.info("Message %s subject is: %s", message_id, subject)
         if subject in self.__release_message_subjects:
-            self.__lfh.write("Message is a release request\n")
+            logger.info("Message is a release request\n")
             return True
         return False
 
@@ -1505,7 +1492,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        self.__lfh.write("\nStarting %s.%s() at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         #
@@ -1515,12 +1502,12 @@ class MessagingIo(object):
             msgId = mS.getMessageId()
             #
             if self.__verbose:
-                self.__lfh.write("\n---%s.%s() request to mark msg read for msgID: [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, msgId))
+                logger.info("request to mark msg read for msgID: [%s]", msgId)
             #
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             #
             if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
@@ -1534,9 +1521,9 @@ class MessagingIo(object):
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
             with LockFile(
                 self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-            ) as lf, FileSizeLogger(
+            ) as _lf, FileSizeLogger(
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-            ) as fsl:  # noqa: F841
+            ) as _fsl:  # noqa: F841
                 pid = os.getpid()
                 ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
             if ok:
@@ -1554,13 +1541,13 @@ class MessagingIo(object):
 
                 mIIo.newBlock("messages")
                 if not msgAlreadySeen:
-                    self.__lfh.write("new message: {}\n".format(msgId))
+                    logger.info("new message: %s", msgId)
                     if self.is_release_request(message_id=msgId):
                         mS.setReadyForRelStatus("Y")
                     mIIo.appendMsgReadStatus(mS.get())
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as lf:  # noqa: F841
+                ) as _lf:  # noqa: F841
                     mIIo.write(self.__msgsToDpstrFilePath)
 
                 bOk = ok
@@ -1579,10 +1566,8 @@ class MessagingIo(object):
             logger.exception("Message read status data update failed")
 
         endTime = time.time()
-        self.__lfh.write(
-            "\nCompleted %s.%s() at %s (%d seconds)\n"
-            % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        )
+        logger.info(
+            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -1592,7 +1577,7 @@ class MessagingIo(object):
             boolean indicating whether all messages from depositor were read or not
 
         """
-        self.__lfh.write("\nStarting %s.%s() at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         # are all messages read?
         bAllMsgsRead = self.__globalMessageStatusCheck(p_statusToCheck="read_status", p_flagForFalseReturn="N")
 
@@ -1604,7 +1589,7 @@ class MessagingIo(object):
             boolean indicating whether all messages from depositor had all required actions fulfilled or not
 
         """
-        self.__lfh.write("\nStarting %s.%s() at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         # are all messages "actioned"?
         bAllMsgsActioned = self.__globalMessageStatusCheck(p_statusToCheck="action_reqd", p_flagForFalseReturn="Y")
 
@@ -1616,7 +1601,7 @@ class MessagingIo(object):
             boolean indicating whether any messages have been flagged to indicate that the entry is ready for release
 
         """
-        self.__lfh.write("\nStarting %s.%s()\n" % (self.__class__.__name__, sys._getframe().f_code.co_name))
+        logger.info("Starting")
         # asking, no flags exist that indicate "for release"?
         bNoFlagsForRelease = self.__globalMessageStatusCheck(p_statusToCheck="for_release", p_flagForFalseReturn="Y")
         # NOTE: in order to make semantic sense, we need to return the boolean opposite of the above return value
@@ -1628,7 +1613,7 @@ class MessagingIo(object):
             boolean indicating whether any notes exist for this dep ID
 
         """
-        self.__lfh.write("\nStarting %s.%s()\n" % (self.__class__.__name__, sys._getframe().f_code.co_name))
+        logger.info("Starting")
         # asking, no flags exist that indicate "for release"?
         bAnyNotesIncldngArchvdMsgs = False
         bAnnotNotes = False
@@ -1640,7 +1625,7 @@ class MessagingIo(object):
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__notesFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notesFilePath))
+                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
             if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
                 pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -1666,12 +1651,12 @@ class MessagingIo(object):
                             bAnnotNotes = True
                             bBmrbNotes = True
 
-                    self.__lfh.write("\n+%s.%s() -- returning bAnnotNotes as: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bAnnotNotes))
-                    self.__lfh.write("\n+%s.%s() -- returning bBmrbNotes as: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bBmrbNotes))
+                    logger.info("-- returning bAnnotNotes as: %s", bAnnotNotes)
+                    logger.info("-- returning bBmrbNotes as: %s", bBmrbNotes)
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                    logger.info("-- row[%s]: %r", idx, row)
 
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In anyNotesExist")
@@ -1690,7 +1675,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        self.__lfh.write("\nStarting %s.%s() at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         #
@@ -1700,12 +1685,12 @@ class MessagingIo(object):
             msgId = mS.getMessageId()
             #
             if self.__verbose:
-                self.__lfh.write("\n---%s.%s() request to tag msg with user classification(s) for msgID: [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, msgId))
+                logger.info("--- request to tag msg with user classification(s) for msgID: [%s]", msgId)
             #
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
             #
             if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
                 try:
@@ -1759,14 +1744,12 @@ class MessagingIo(object):
                     bOk = True
 
         except:  # noqa: E722 pylint: disable=bare-except
-            self.__lfh.write("Update message tags failed\n")
-            traceback.print_exc(file=self.__lfh)
+            logger.info("Update message tags failed")
+            logger.exception("Update message tags failure")
 
         endTime = time.time()
-        self.__lfh.write(
-            "\nCompleted %s.%s() at %s (%d seconds)\n"
-            % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        )
+        logger.info(
+            "Completed at %s (%d seconds)\n", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -1784,8 +1767,8 @@ class MessagingIo(object):
 
     def __globalMessageStatusCheck(self, p_statusToCheck, p_flagForFalseReturn):
         startTime = time.time()
-        self.__lfh.write("\nStarting %s.%s() at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
-        self.__lfh.write("\n%s.%s() -- checking global status for: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_statusToCheck))
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+        logger.info("checking global status for: '%s'", p_statusToCheck)
 
         bReturnStatus = True
         msgsFrmDpstrLst = []
@@ -1800,8 +1783,8 @@ class MessagingIo(object):
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsFrmDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsFrmDpstrFilePath))
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                 fileSizeBytes = self.__getFileSizeBytes(self.__msgsFrmDpstrFilePath)
@@ -1837,10 +1820,8 @@ class MessagingIo(object):
                         msgFound = True
                         if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                             bReturnStatus = False
-                            self.__lfh.write(
-                                "+%s.%s() -- found flag of '%s' for status '%s' so returning False\n"
-                                % (self.__class__.__name__, sys._getframe().f_code.co_name, p_flagForFalseReturn, p_statusToCheck)
-                            )
+                            logger.info(
+                                "-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                             return bReturnStatus
 
                 if msgFound is False and p_statusToCheck != "for_release":
@@ -1860,10 +1841,8 @@ class MessagingIo(object):
                             if row["message_id"] == msgStatus["message_id"]:
                                 if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                                     bReturnStatus = False
-                                    self.__lfh.write(
-                                        "+%s.%s() -- found flag of '%s' for status '%s' so returning False\n"
-                                        % (self.__class__.__name__, sys._getframe().f_code.co_name, p_flagForFalseReturn, p_statusToCheck)
-                                    )
+                                    logger.info(
+                                        "-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                                     return bReturnStatus
 
                     for msg in msgsFrmDpstrLst:
@@ -1892,14 +1871,12 @@ class MessagingIo(object):
             #
 
         except:  # noqa: E722 pylint: disable=bare-except
-            self.__lfh.write("check global msg '" + p_statusToCheck + "' status failed\n")
-            traceback.print_exc(file=self.__lfh)
+            logger.info("check global msg '%s' status failed", p_statusToCheck)
+            logger.exception("Failure in check global msg")
 
         endTime = time.time()
-        self.__lfh.write(
-            "\nCompleted %s.%s() at %s (%d seconds)\n"
-            % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        )
+        logger.info(
+            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bReturnStatus
 
@@ -1912,7 +1889,7 @@ class MessagingIo(object):
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("-- self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 fileSizeBytes = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
@@ -1930,7 +1907,7 @@ class MessagingIo(object):
                     #
                     for row in recordSetLst:
                         if self.__verbose and self.__debug:
-                            self.__lfh.write("\n+%s.%s() -- row: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, row))
+                            logger.info(" -- row: %r", row)
                         if row[p_statusToCheck] == p_flagForInclusion:
                             rtrnList.append(row["message_id"])
                     #
@@ -1943,18 +1920,18 @@ class MessagingIo(object):
                                 rtrnList.append(row["message_id"])
 
         except:  # noqa: E722 pylint: disable=bare-except
-            traceback.print_exc(file=self.__lfh)
+            logger.exception("getMsgsByStatus")
         #
         return rtrnList
 
-    def __isNotCifNull(self, p_value):
-        if p_value == "." or p_value == "?":
-            return False
-        else:
-            return True
+    # def __isNotCifNull(self, p_value):
+    #     if p_value == "." or p_value == "?":
+    #         return False
+    #     else:
+    #         return True
 
-    def __isCifNull(self, p_value):
-        return not self.__isNotCifNull(p_value)
+    # def __isCifNull(self, p_value):
+    #     return not self.__isNotCifNull(p_value)
 
     def __augmentWithOrigCommData(self, p_recordSetLst, p_origCommsLst):
         for record in p_recordSetLst:
@@ -2006,8 +1983,8 @@ class MessagingIo(object):
         workingFileRefsList = list(p_msgObj.fileReferences)
         depositionId = p_msgObj.depositionId
 
-        logger.info("-- p_msgObj.fileReferences is: %r \n" % (p_msgObj.fileReferences))
-        logger.info("-- workingFileRefsList is: %r \n" % workingFileRefsList)
+        logger.info("-- p_msgObj.fileReferences is: %r", p_msgObj.fileReferences)
+        logger.info("-- workingFileRefsList is: %r", workingFileRefsList)
 
         msgFileRefs = []
         failedMsgFileRefs = []
@@ -2033,7 +2010,7 @@ class MessagingIo(object):
         if self.__verbose and sIsEmEntry == "true":
             sType = "Map Only" if sIsEmMapOnly == "true" else "Map and Model"
 
-            logger.info("-- Processing an EM deposition of type: %s\n" % sType)
+            logger.info("-- Processing an EM deposition of type: %s", sType)
 
         # If em-volume requested - send model file as well... Should this be for map only?
         if "em-volume" in workingFileRefsList and "model" not in workingFileRefsList:
@@ -2108,7 +2085,7 @@ class MessagingIo(object):
                     bOk = False
                     failedMsgFileRefs.append(acronym)
                     if self.__verbose:
-                        logger.error("-- problem with accessing fPath: %s" % fPath)
+                        logger.error("-- problem with accessing fPath: %s", fPath)
 
             else:  # not workflow, i.e. standalone testing, so just simulate behavior
                 annotVersionNum = 1
@@ -2130,7 +2107,7 @@ class MessagingIo(object):
     def __createAnnotateMilestone(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, auxFilePartNum, msgFileRefs, failedMsgFileRefs):
         """Creates the --annotete milestones and will symlink to deposit non-milestone files for the V3.0 DepUI to make available"""
 
-        logger.debug("Starting %s %s" % (contentType, contentFormat))
+        logger.debug("Starting %s %s", contentType, contentFormat)
 
         bOk = True
         bEmdCnvrtRqrd = self.__emDeposition and acronym == "model"  # i.e. need to convert model file into "emd" dialect for storage on deposition side
@@ -2161,7 +2138,7 @@ class MessagingIo(object):
         else:
             milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat)
         #
-        logger.debug("milestonFilePthDict %s" % milestoneFilePthDict)
+        logger.debug("milestonFilePthDict %s", milestoneFilePthDict)
 
         # next version
         annotMilestoneFilePth = milestoneFilePthDict["annotPth"]
@@ -2175,7 +2152,7 @@ class MessagingIo(object):
 
             if self.__skipCopyIfSame:
                 if self.__sameFile(fPath, curAnnotMilestoneFilePth):
-                    logger.debug("Existing milestone good -- using %s %s" % (fPath, curAnnotMilestoneFilePth))
+                    logger.debug("Existing milestone good -- using %s %s", fPath, curAnnotMilestoneFilePth)
                     annotMilestoneFilePth = curAnnotMilestoneFilePth
                     dpstMilestoneFilePth = curDpstMilestoneFilePth
                 else:
@@ -2194,12 +2171,12 @@ class MessagingIo(object):
                     annotPartitionNum = (annotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                 if self.__verbose and self.__debug:
-                    self.__lfh.write("+%s.%s() -- annotMilestoneFilePth is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, annotMilestoneFilePth))
+                    logger.info("-- annotMilestoneFilePth is: %s", annotMilestoneFilePth)
                 ####################################################
                 # create counterpart copy in deposition storage area
                 if dpstMilestoneFilePth is not None:
                     if self.__verbose and self.__debug:
-                        logger.debug("'bEmdCnvrtRqrd' is: %s" % bEmdCnvrtRqrd)
+                        logger.debug("'bEmdCnvrtRqrd' is: %s", bEmdCnvrtRqrd)
 
                     if bEmdCnvrtRqrd and self.__copyMilestoneDeposit:
                         # generate "emd" dialect version of model file for storage/use on deposition side
@@ -2207,10 +2184,8 @@ class MessagingIo(object):
                         bSuccess = self.__genAnnotMilestoneEmdVrsn(p_depId, fPath, dpstMilestoneFilePth)
                         if not bSuccess:
                             if self.__verbose:
-                                self.__lfh.write(
-                                    "+%s.%s() -- WARNING: problem creating 'emd' version of model file at: %s\n"
-                                    % (self.__class__.__name__, sys._getframe().f_code.co_name, dpstMilestoneFilePth)
-                                )
+                                logger.info(
+                                    "WARNING: problem creating 'emd' version of model file at: %s", dpstMilestoneFilePth)
                         #
                         mlstnFilePthDict = msgDE.getMileStoneFilePaths("em-volume-header-annotate", "xml")
                         dpstEmHeaderMilestoneFilePth = mlstnFilePthDict["dpstPth"]
@@ -2222,11 +2197,8 @@ class MessagingIo(object):
 
                         if not bSuccess2:
                             if self.__verbose:
-                                self.__lfh.write(
-                                    "+%s.%s() -- WARNING: problem creating xml header version of model file at: %s\n"
-                                    % (self.__class__.__name__, sys._getframe().f_code.co_name, dpstEmHeaderMilestoneFilePth)
-                                )
-
+                                logger.info(
+                                    "+-- WARNING: problem creating xml header version of model file at: %s", dpstEmHeaderMilestoneFilePth)
                         #
                         if (not bSuccess) or (not bSuccess2):
                             bOk = False
@@ -2235,7 +2207,7 @@ class MessagingIo(object):
                         # else just propagate identifical copy to deposition side if requested
                         if self.__copyMilestoneDeposit:
                             shutil.copyfile(fPath, dpstMilestoneFilePth)
-                            logger.debug("Milestone copied to deposit %s" % dpstMilestoneFilePth)
+                            logger.debug("Milestone copied to deposit %s", dpstMilestoneFilePth)
 
                     if (self.__copyMilestoneDeposit and os.access(dpstMilestoneFilePth, os.R_OK)) or (not self.__copyMilestoneDeposit):
                         msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, mileStoneCntntTyp, contentFormat, annotPartitionNum, annotVersionNum, upldFileName))
@@ -2243,16 +2215,16 @@ class MessagingIo(object):
                     else:
                         bOk = False
                         failedMsgFileRefs.append(mileStoneCntntTyp)
-                        logger.error("problem with accessing dpstMilestoneFilePth if copy to deposit enabled: %s" % dpstMilestoneFilePth)
+                        logger.error("problem with accessing dpstMilestoneFilePth if copy to deposit enabled: %s", dpstMilestoneFilePth)
 
                 # ################################### Done copy to deposit directory
                 if self.__symlinkDepositAnnotate:
                     # Create symlink from contenttype in deposit to archive -annotate milestone for V3.0 of DepUI
                     # Only do this for non aux-file and non-model
                     if acronym not in ["model", "aux-file", "model_pdb"]:
-                        logger.debug("About to symlink to deposit acronym: %s contentType: %s" % (acronym, contentType))
+                        logger.debug("About to symlink to deposit acronym: %s contentType: %s", acronym, contentType)
                         depFilePthDict = msgDE.getFilePathExt(contentType=contentType, format=contentFormat, fileSource="deposit", version="next")
-                        logger.info("Symlink %s -> %s" % (depFilePthDict, annotMilestoneFilePth))
+                        logger.info("Symlink %s -> %s", depFilePthDict, annotMilestoneFilePth)
                         try:
                             os.symlink(annotMilestoneFilePth, depFilePthDict)
                         except:  # noqa: E722 pylint: disable=bare-except
@@ -2262,13 +2234,12 @@ class MessagingIo(object):
                 bOk = False
                 failedMsgFileRefs.append(mileStoneCntntTyp)
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() -- problem with accessing annotMilestoneFilePth: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, annotMilestoneFilePth)
-                    )
+                    logger.info(
+                        "-- problem with accessing annotMilestoneFilePth: %s", annotMilestoneFilePth)
 
         return bOk
 
-    def __createModelReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):
+    def __createModelReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with model file then make additional copy of model file in which
         # internal view items are stripped out--this serves as "-review" version of the file
@@ -2287,12 +2258,12 @@ class MessagingIo(object):
         reviewDpstMilestoneFilePth = reviewFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
         reviewDpstCurMilestoneFilePth = reviewFilePthDict["curDpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
 
-        logger.debug("reviewAnnotMilestoneFilePth: %s" % reviewAnnotMilestoneFilePth)
+        logger.debug("reviewAnnotMilestoneFilePth: %s", reviewAnnotMilestoneFilePth)
         if reviewAnnotMilestoneFilePth is not None:
 
             sourceMdlFileName = os.path.basename(fPath)
             modelFileLocalPthAbslt = os.path.join(self.__sessionPath, sourceMdlFileName)
-            logger.debug("Copy %s to %s" % (fPath, modelFileLocalPthAbslt))
+            logger.debug("Copy %s to %s", fPath, modelFileLocalPthAbslt)
             shutil.copyfile(fPath, modelFileLocalPthAbslt)
 
             if os.access(modelFileLocalPthAbslt, os.R_OK):
@@ -2318,7 +2289,7 @@ class MessagingIo(object):
 
                     if self.__skipCopyIfSame:
                         if self.__sameFile(pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth):
-                            logger.debug("Existing milestone good -- using %s %s" % (pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth))
+                            logger.debug("Existing milestone good -- using %s %s", pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth)
                             reviewAnnotMilestoneFilePth = reviewAnnotCurMilestoneFilePth
                             reviewDpstMilestoneFilePth = reviewDpstCurMilestoneFilePth
                         else:
@@ -2330,7 +2301,7 @@ class MessagingIo(object):
                     annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                     if self.__verbose and self.__debug:
-                        logger.debug("reviewAnnotMilestoneFilePth is: %s" % reviewAnnotMilestoneFilePth)
+                        logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
                     if reviewDpstMilestoneFilePth is not None:
                         if self.__copyMilestoneDeposit:
@@ -2339,18 +2310,18 @@ class MessagingIo(object):
 
                                 if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                                     if self.__verbose and self.__debug:
-                                        logger.debug("reviewDpstMilestoneFilePth is: %s" % reviewDpstMilestoneFilePth)
+                                        logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
                                     msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
                                 else:
                                     bOk = False
                                     failedMsgFileRefs.append(reviewCntntTyp)
-                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % reviewDpstMilestoneFilePth)
+                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
 
                             else:
                                 bOk = False
                                 failedMsgFileRefs.append(reviewCntntTyp)
-                                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % reviewAnnotMilestoneFilePth)
+                                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
                         else:
                             # For not copying to deposit, register attachment
                             msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
@@ -2359,13 +2330,13 @@ class MessagingIo(object):
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
                     if self.__verbose:
-                        logger.error("problem with accessing session copy of 'review' milestone model file at: %s" % pdbxReviewFilePath)
+                        logger.error("problem with accessing session copy of 'review' milestone model file at: %s", pdbxReviewFilePath)
 
-        logger.debug("FINISHED %s" % bOk)
+        logger.debug("FINISHED %s", bOk)
 
         return bOk
 
-    def __createChemShiftsReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):
+    def __createChemShiftsReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with cs file then make additional copy of cs file in which
         # internal view items are stripped out--this serves as "-review" version of the file
@@ -2400,12 +2371,12 @@ class MessagingIo(object):
                     ok = dfa.pdbx2nmrstar(chemShiftsFileLocalPthAbslt, nmrStarReviewFilePath, pdbId=p_depId)
 
                 except:  # noqa: E722 pylint: disable=bare-except
-                    traceback.print_exc(file=self.__lfh)
+                    logger.exception("In pdbx2nmrstar")
 
                 if ok and os.access(nmrStarReviewFilePath, os.F_OK):
                     if self.__skipCopyIfSame:
                         if self.__sameFile(nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth):
-                            logger.debug("Existing milestone good -- using %s %s" % (nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth))
+                            logger.debug("Existing milestone good -- using %s %s", nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth)
                             reviewAnnotMilestoneFilePth = reviewAnnotCurMilestoneFilePth
                             reviewDpstMilestoneFilePth = reviewDpstCurMilestoneFilePth
                         else:
@@ -2417,7 +2388,7 @@ class MessagingIo(object):
                     annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                     if self.__verbose and self.__debug:
-                        logger.debug("reviewAnnotMilestoneFilePth is: %s" % reviewAnnotMilestoneFilePth)
+                        logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
                     if reviewDpstMilestoneFilePth is not None:
 
@@ -2427,14 +2398,14 @@ class MessagingIo(object):
 
                                 if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                                     if self.__verbose and self.__debug:
-                                        logger.debug("reviewDpstMilestoneFilePth is: %s" % reviewDpstMilestoneFilePth)
+                                        logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
                                     msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                                 else:
                                     bOk = False
                                     failedMsgFileRefs.append(reviewCntntTyp)
-                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % reviewDpstMilestoneFilePth)
+                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
                             else:
                                 # For not copying to deposit, register attachment
                                 msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
@@ -2442,26 +2413,25 @@ class MessagingIo(object):
                         else:
                             bOk = False
                             failedMsgFileRefs.append(reviewCntntTyp)
-                            logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % reviewAnnotMilestoneFilePth)
+                            logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
 
                 else:
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
                     if self.__verbose:
-                        self.__lfh.write(
-                            "+%s.%s() -- problem with accessing session copy of 'review' milestone model file at: %s\n"
-                            % (self.__class__.__name__, sys._getframe().f_code.co_name, nmrStarReviewFilePath)
-                        )
+                        logger.info(
+                            "-- problem with accessing session copy of 'review' milestone model file at: %s",
+                            nmrStarReviewFilePath)
 
         return bOk
 
-    def __createNmrDataStarReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):
+    def __createNmrDataStarReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with nmr-data file then make additional copy of cs file in which
         # internal view items are stripped out--this serves as "-review" version of the file
         # Also generate NEF file.
         ##################################################################################
-        self.__lfh.write("+%s.%s() -- Starting fPath=%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, fPath))
+        logger.info("-- Starting fPath=%s", fPath)
 
         bOk = True
         #
@@ -2486,13 +2456,13 @@ class MessagingIo(object):
             dp.exp(reviewAnnotMilestoneFilePth)
             dp.cleanup()
 
-            self.__lfh.write("+%s.%s() -- generated %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, reviewAnnotMilestoneFilePth))
+            logger.info("-- generated %s", reviewAnnotMilestoneFilePth)
 
             annotVersionNum = reviewAnnotMilestoneFilePth.rsplit(".V")[1]
             annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
             if self.__verbose and self.__debug:
-                logger.debug("reviewAnnotMilestoneFilePth is: %s" % reviewAnnotMilestoneFilePth)
+                logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
             if reviewDpstMilestoneFilePth is not None:
 
@@ -2502,14 +2472,14 @@ class MessagingIo(object):
 
                         if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                             if self.__verbose and self.__debug:
-                                logger.debug("reviewDpstMilestoneFilePth is: %s" % reviewDpstMilestoneFilePth)
+                                logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
                             msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                         else:
                             bOk = False
                             failedMsgFileRefs.append(reviewCntntTyp)
-                            logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % reviewDpstMilestoneFilePth)
+                            logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
                     else:
                         # For not copying to deposit, register attachment
                         msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
@@ -2517,15 +2487,14 @@ class MessagingIo(object):
                 else:
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
-                    logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % reviewAnnotMilestoneFilePth)
+                    logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
 
             else:
                 bOk = False
                 failedMsgFileRefs.append(reviewCntntTyp)
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() -- problem with depositor milestone path for copyng %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, reviewAnnotMilestoneFilePth)
-                    )
+                    logger.info(
+                        "-- problem with depositor milestone path for copyng %s", reviewAnnotMilestoneFilePth)
 
         if os.access(reviewAnnotMilestoneFilePth, os.R_OK) and bOk is True:
 
@@ -2568,21 +2537,21 @@ class MessagingIo(object):
 
                     if os.access(nefReviewDpstMilestoneFilePth, os.R_OK):
                         if self.__verbose and self.__debug:
-                            logger.debug("nefReviewDpstMilestoneFilePth is: %s" % nefReviewDpstMilestoneFilePth)
+                            logger.debug("nefReviewDpstMilestoneFilePth is: %s", nefReviewDpstMilestoneFilePth)
 
                             msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                     else:
                         bOk = False
                         failedMsgFileRefs.append(reviewCntntTyp)
-                        logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s" % nefReviewDpstMilestoneFilePth)
+                        logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", nefReviewDpstMilestoneFilePth)
                 else:
                     # For not copying to deposit, register attachment
                     msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
             else:
                 bOk = False
                 failedMsgFileRefs.append(reviewCntntTyp)
-                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s" % nefReviewAnnotMilestoneFilePth)
+                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", nefReviewAnnotMilestoneFilePth)
 
         return bOk
 
@@ -2600,12 +2569,12 @@ class MessagingIo(object):
         dpstModelEmdFilePth_Local = os.path.join(self.__sessionPath, p_depId + "_model-emd_P1.cif")  # filename here is arbitrary just for temporary session processing purposes
 
         if self.__verbose and self.__debug:
-            logger.debug("dpstModelEmdFilePth_Local is: %s" % dpstModelEmdFilePth_Local)
+            logger.debug("dpstModelEmdFilePth_Local is: %s", dpstModelEmdFilePth_Local)
 
         if p_srcFilePath and p_dstFilePath:
 
             startTime = time.time()
-            logger.debug("Starting at %s" % time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.debug("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
             try:
                 #
                 im = InstanceMapper(verbose=self.__verbose, log=self.__lfh)
@@ -2613,17 +2582,17 @@ class MessagingIo(object):
                 # bOk = im.translate(p_srcFilePath, dpstModelEmFilePth_Local, mode="dst-src")
                 # bOk = im.translate(dpstModelEmFilePth_Local, dpstModelEmdFilePth_Local, mode="src-dst")
                 bOk = im.translate(p_srcFilePath, dpstModelEmdFilePth_Local, mode="src-dst")
-                self.__lfh.write("+%s %s return status %r \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bOk))
+                logger.info("return status %r", bOk)
 
             except:  # noqa: E722 pylint: disable=bare-except
-                traceback.print_exc(file=sys.stdout)
+                logger.exception("em->emd translation")
                 bOk = False
                 return bOk
 
             endTime = time.time()
-            logger.debug("Completed at %s (%.2f seconds)\n" % (time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime))
+            logger.debug("Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
 
-            logger.debug("About to copy file %s %s %s" % (bOk, dpstModelEmdFilePth_Local, p_dstFilePath))
+            logger.debug("About to copy file %s %s %s", bOk, dpstModelEmdFilePth_Local, p_dstFilePath)
             if bOk and os.access(dpstModelEmdFilePth_Local, os.R_OK):
                 shutil.copyfile(dpstModelEmdFilePth_Local, p_dstFilePath)
 
@@ -2645,29 +2614,27 @@ class MessagingIo(object):
         emHeaderUtilLocalLogPath = os.path.join(self.__sessionPath, p_depId + "_emHeaderUtil.log")
 
         if self.__verbose and self.__debug:
-            self.__lfh.write("+%s.%s() -- dpstModelEmHdrFilePth_Local is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, dpstModelEmHdrFilePth_Local))
+            logger.info("-- dpstModelEmHdrFilePth_Local is: %s", dpstModelEmHdrFilePth_Local)
 
         if p_srcFilePath and p_dstFilePath:
 
             startTime = time.time()
-            self.__lfh.write("\nStarting %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
             try:
                 #
                 emHeaderUtil = EmHeaderUtils(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 bOk = emHeaderUtil.transHeader(p_srcFilePath, dpstModelEmHdrFilePth_Local, emHeaderUtilLocalLogPath)
 
-                self.__lfh.write("+%s %s return status %r \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, bOk))
+                logger.info("return status %r", bOk)
 
             except:  # noqa: E722 pylint: disable=bare-except
-                traceback.print_exc(file=sys.stdout)
+                logger.exception("In making em header")
                 bOk = False
                 return bOk
 
             endTime = time.time()
-            self.__lfh.write(
-                "\nCompleted %s %s at %s (%.2f seconds)\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-            )
+            logger.info(
+                "Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
 
             if bOk and os.access(dpstModelEmHdrFilePth_Local, os.R_OK):
                 shutil.copyfile(dpstModelEmHdrFilePth_Local, p_dstFilePath)
@@ -2765,7 +2732,7 @@ class MessagingIo(object):
             if self.__isWorkflow():
                 msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                self.__lfh.write("+%s.%s() -- self.__msgsToDpstrFilePath is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__msgsToDpstrFilePath))
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
@@ -2782,7 +2749,7 @@ class MessagingIo(object):
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                    logger.info("-- row[%s]: %r", idx, row)
             #
             for rcrd in recordSetLst:
                 contentType = rcrd["content_type"]
@@ -2795,8 +2762,8 @@ class MessagingIo(object):
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Something failed in __getNextAuxFilePartNum")
 
-        self.__lfh.write("\n+%s.%s() -- current maxAuxPartNum: '%s' \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, maxAuxPartNum))
-        self.__lfh.write("\n+%s.%s() -- next available AuxPartNum: '%s' \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, (maxAuxPartNum + 1)))
+        logger.info("-- current maxAuxPartNum: '%s'", maxAuxPartNum)
+        logger.info("-- next available AuxPartNum: '%s'", (maxAuxPartNum + 1))
 
         return maxAuxPartNum + 1
 
@@ -2815,13 +2782,11 @@ class MessagingIo(object):
         archiveNotifEmails = self.__cI.get("SITE_ARCHIVE_NOTIF_EMAILS")
         #
         if self.__verbose:
-            self.__lfh.write(
-                "\n%s.%s() -- hostname for Annotator Comm UI currently running on this server is '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, commHostName)
-            )
-            self.__lfh.write(
-                "\n%s.%s() -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__siteId, depEmailUrl)
-            )
+            logger.info(
+                "-- hostname for Annotator Comm UI currently running on this server is '%s'", commHostName)
+            logger.info(
+                " -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'",
+                self.__siteId, depEmailUrl)
             #
         msgStrDict = {}
         #
@@ -2834,14 +2799,14 @@ class MessagingIo(object):
             contactAuthors.append(("rsala@rcsb.rutgers.edu", "tester", "Sala"))
 
         if self.__verbose and self.__debug:
-            self.__lfh.write("\n%s.%s() -- contactAuthors list is now: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, contactAuthors))
+            logger.info("-- contactAuthors list is now: %r", contactAuthors)
         pdbId = tmpltDict["pdb_id"]
         entryTitle = tmpltDict["title"]
         entryAuthors = tmpltDict["entry_authors_list"]
         #
         separator = ""
         greetRecipientList = ""
-        for index, (emailAddrs, role, lname) in enumerate(contactAuthors):
+        for index, (emailAddrs, _role, lname) in enumerate(contactAuthors):
             if index > 0:
                 separator = ", "
             recipientLst.append(emailAddrs)
@@ -2916,21 +2881,20 @@ class MessagingIo(object):
                 smtpObj.sendmail(senderEmail, "rsala@rcsb.rutgers.edu", message)
             #
             if self.__verbose:
-                self.__lfh.write("\n%s.%s() -- Successfully generated email from %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, senderEmail))
-                self.__lfh.write("\n%s.%s() -- email message was %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, message))
+                logger.info("-- Successfully generated email from %s", senderEmail)
+                logger.info("-- email message was %r\n", message)
                 if archiveNotifEmails is not None and archiveNotifEmails == "yes":
-                    self.__lfh.write(
-                        "\n%s.%s() -- email message was also archived to %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__notifEmailArchAddress)
-                    )
+                    logger.info(
+                        "-- email message was also archived to %s", self.__notifEmailArchAddress)
         except smtplib.SMTPException:
-            traceback.print_exc(file=self.__lfh)
+            logger.exception("In sending email")
             if self.__verbose:
-                self.__lfh.write("\n%s.%s() -- Failed to generate email from %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, senderEmail))
+                logger.info("-- Failed to generate email from %s", senderEmail)
         #
 
     def __genParentMsgDict(self, p_rowList):
         parentDict = {}
-        for iRow, row in enumerate(p_rowList):
+        for _iRow, row in enumerate(p_rowList):
             msgId = row["message_id"]
             parentMsgId = row["parent_message_id"]
             parentDict[msgId] = parentMsgId
@@ -2948,7 +2912,7 @@ class MessagingIo(object):
         #
         msgFlRfrnc = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
         attribList = msgFlRfrnc.get().keys()
-        self.__lfh.write("\n%s.%s ----- Message File Reference attrib list is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, attribList))
+        logger.info("\n ----- Message File Reference attrib list is: %r", attribList)
         #
 
         for rcrd in p_recordSetLst:
@@ -2989,10 +2953,9 @@ class MessagingIo(object):
                         shutil.copyfile(archiveFilePth, toLocalSessionFilePthAbslt)
 
             except:  # noqa: E722 pylint: disable=bare-except
-                self.__lfh.write(
-                    "\n%s.%s ----- problem importing a file reference from archiveFilePth: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, archiveFilePth)
-                )
-                traceback.print_exc(file=self.__lfh)
+                logger.info(
+                    " ----- problem importing a file reference from archiveFilePth: %s", archiveFilePth)
+                logger.exception("file reference import")
         #
         return rtrnDict
 
@@ -3006,7 +2969,7 @@ class MessagingIo(object):
         rtrnLst = []
         #
         attribList = (self.getMsgColList(p_bCommHstryRqstd))[1]
-        self.__lfh.write("\n%s.%s ----- Message attrib list is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, attribList))
+        logger.info("----- Message attrib list is: %r", attribList)
         #
 
         for rcrd in p_recordSetLst:
@@ -3016,8 +2979,8 @@ class MessagingIo(object):
             for attrNm in attribList:
                 try:
                     if attrNm in ["timestamp", "orig_timestamp"]:
-                        """we have to convert from the timestamp in gmtime
-                        to one in localtime for display in the user interface"""
+                        # we have to convert from the timestamp in gmtime
+                        # to one in localtime for display in the user interface
 
                         value = self.__convertToLocalTimeZone(rcrd[attrNm])
 
@@ -3039,8 +3002,8 @@ class MessagingIo(object):
 
                     row.append(value if (value != "?") else "")
                 except:  # noqa: E722 pylint: disable=bare-except
-                    self.__lfh.write("\n%s.%s ----- current rcrd in dict type message list is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, rcrd))
-                    traceback.print_exc(file=self.__lfh)
+                    logger.info("----- current rcrd in dict type message list is: %r", rcrd)
+                    logger.exception("Internal failure")
             rtrnLst.append(row)
 
         #
@@ -3085,10 +3048,9 @@ class MessagingIo(object):
             localDateTimeStr = localDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            self.__lfh.write(
-                "\n%s.%s ----- argument received, '%s', was not in expected datetime format so using data as is.\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, p_timeStamp)
-            )
+            logger.info(
+                " ----- argument received, '%s', was not in expected datetime format so using data as is.",
+                p_timeStamp)
             # traceback.print_exc(file=self.__lfh)
             return p_timeStamp
 
@@ -3110,10 +3072,9 @@ class MessagingIo(object):
             gmtDateTimeStr = gmtDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            self.__lfh.write(
-                "\n%s.%s ----- argument received, '%s', was not in expected datetime format\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_timeStamp)
-            )
-            traceback.print_exc(file=self.__lfh)
+            logger.info(
+                "----- argument received, '%s', was not in expected datetime format", p_timeStamp)
+            logger.exception("Failure in datetime format %s", p_timeStamp)
             return p_timeStamp
 
         return gmtDateTimeStr
@@ -3124,7 +3085,7 @@ class MessagingIo(object):
         parentDict = self.__genParentMsgDict(p_recordSetLst)
 
         # need to establish dictionary of "indent level" for threaded display
-        for rowIdx, row in enumerate(p_recordSetLst):
+        for _rowIdx, row in enumerate(p_recordSetLst):
             msgId = row["message_id"]
             #
             indentLevel = self.__getNestLevel(msgId, parentDict)
@@ -3167,21 +3128,20 @@ class MessagingIo(object):
                             # if we're inside this if block, previous sibling is actually more recent than current record and so we must reorder for proper chronological display
 
                             if self.__verbose and self.__debug and False:
-                                self.__lfh.write(
-                                    "\n\n+%s.%s() rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s] \n"
-                                    % (self.__class__.__name__, sys._getframe().f_code.co_name, rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
-                                )
-                                self.__lfh.write("\n\n+%s.%s() new index is [%s] \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, prevRecrdIdx))
+                                logger.info(
+                                    "rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
+                                    rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                logger.info("new index is [%s]", prevRecrdIdx)
                             p_recordSetLst.insert(prevRecrdIdx, p_recordSetLst.pop(rowIdx))
                             correctionRqd = True
                             if self.__verbose and self.__debug and False:
-                                for idx, row in enumerate(p_recordSetLst):
-                                    self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                                for idx, rowval in enumerate(p_recordSetLst):
+                                    logger.info("-- row[%s]: %r", idx, rowval)
                             break
                 except:  # noqa: E722 pylint: disable=bare-except
-                    self.__lfh.write("\n+%s.%s() -- prevMsgId is [%s] and msgId is [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, prevMsgId, msgId))
-                    self.__lfh.write("\n+%s.%s() -- p_indentDict is %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_indentDict))
-                    traceback.print_exc(file=self.__lfh)
+                    logger.info("-- prevMsgId is [%s] and msgId is [%s]", prevMsgId, msgId)
+                    logger.info("-- p_indentDict is %r", p_indentDict)
+                    logger.exception("__siblingMsgProcessing")
 
         if correctionRqd:
             return self.__siblingMsgProcessing(p_recordSetLst, p_indentDict)
@@ -3193,16 +3153,16 @@ class MessagingIo(object):
         correctionRqd = False
 
         if self.__verbose and self.__debug:
-            self.__lfh.write("\n\n+%s.%s() p_bFinalPass is %s \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_bFinalPass))
+            logger.info("\n\n+p_bFinalPass is %s", p_bFinalPass)
 
         # reconcile indent level with correct chronological order if necessary
         for rowIdx, row in enumerate(p_recordSetLst):
             msgId = row["message_id"]
             parentId = row["parent_message_id"]
 
-            """if there is a parent msg, need to check that row just before this row is the parent msg, and if not we need to reorder the list
-               so that each child does come directly after its parent row or after its direct sibling predecessor for display purposes
-            """
+            # if there is a parent msg, need to check that row just before this row is the parent msg, and if not we need to reorder the list
+            # so that each child does come directly after its parent row or after its direct sibling predecessor for display purposes
+            #
             if len(parentId) > 0 and parentId != msgId:
                 prevRecrdIdx = rowIdx - 1
                 prevMsgId = (p_recordSetLst[prevRecrdIdx])["message_id"]
@@ -3220,40 +3180,38 @@ class MessagingIo(object):
                                 insertIdx = self.__findIdxOfInsertion(msgId, parentId, p_recordSetLst)
                                 #
                                 if self.__verbose and self.__debug:
-                                    self.__lfh.write(
-                                        "\n\n+%s.%s() rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s] \n"
-                                        % (self.__class__.__name__, sys._getframe().f_code.co_name, rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
-                                    )
-                                    self.__lfh.write("\n\n+%s.%s() new index is [%s] \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, insertIdx))
-                                    self.__lfh.write("\n\n+%s.%s() p_bFinalPass is [%s] \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_bFinalPass))
+                                    logger.info(
+                                        "\n rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
+                                        rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                    logger.info("new index is [%s]", insertIdx)
+                                    logger.info("p_bFinalPass is [%s]", p_bFinalPass)
                                 #
                                 p_recordSetLst.insert(insertIdx, p_recordSetLst.pop(rowIdx))
                                 correctionRqd = True
                                 if self.__verbose and self.__debug and self.__debugLvl2:
-                                    for idx, row in enumerate(p_recordSetLst):
-                                        self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                                    for idx, rowval in enumerate(p_recordSetLst):
+                                        logger.debug("row[%s]: %r", idx, row)
                                 break
 
                         else:
                             insertIdx = self.__findIdxOfInsertion(msgId, parentId, p_recordSetLst)
                             #
                             if self.__verbose and self.__debug:
-                                self.__lfh.write(
-                                    "\n\n+%s.%s() rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s] \n"
-                                    % (self.__class__.__name__, sys._getframe().f_code.co_name, rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
-                                )
-                                self.__lfh.write("\n\n+%s.%s() new index is [%s] \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, insertIdx))
+                                logger.debug(
+                                    "\n\nrowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
+                                    rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                logger.debug("\n\n+ new index is [%s]", insertIdx)
                             #
                             p_recordSetLst.insert(insertIdx, p_recordSetLst.pop(rowIdx))
                             correctionRqd = True
                             if self.__verbose and self.__debug and self.__debugLvl2:
-                                for idx, row in enumerate(p_recordSetLst):
-                                    self.__lfh.write("\n+%s.%s() -- row[%s]: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, idx, row))
+                                for idx, rowval in enumerate(p_recordSetLst):
+                                    logger.debug("--row[%s]: %r", idx, rowval)
                             break
                 except:  # noqa: E722 pylint: disable=bare-except
-                    self.__lfh.write("\n+%s.%s() -- prevMsgId is [%s] and msgId is [%s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, prevMsgId, msgId))
-                    self.__lfh.write("\n+%s.%s() -- p_indentDict is %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_indentDict))
-                    traceback.print_exc(file=self.__lfh)
+                    logger.info("prevMsgId is [%s] and msgId is [%s]", prevMsgId, msgId)
+                    logger.info("p_indentDict is %r", p_indentDict)
+                    logger.exception("__parentChildProcessing")
 
         if correctionRqd:
             return self.__parentChildProcessing(p_recordSetLst, p_indentDict, p_bFinalPass)
@@ -3279,7 +3237,7 @@ class MessagingIo(object):
                 rtrnVal = rowIdx
         return rtrnVal
 
-    def __findIdxOfInsertion(self, msgId, parentId, recordSetLst):
+    def __findIdxOfInsertion(self, msgId, parentId, recordSetLst):  # pylint: disable=unused-argument
         """called when it is necessary to move a message entry to a different position in the list of message records.
         for given message ID, return index indicating new position in record list
 
@@ -3298,19 +3256,24 @@ class MessagingIo(object):
 
         return newIdx
 
-    def __orderBy(self, sortlist, orderby=[], desc=[]):
+    def __orderBy(self, sortlist, orderby=None, desc=None):
         """orderBy(sortlist, orderby, desc) >> List
 
         @sortlist: list to be sorted
         @orderby: list of field indexes
         @desc: list of field indexes that are to be sorted descending"""
+        if orderby is None:
+            orderby = []
+        if desc is None:
+            desc = []
 
         if len(sortlist) > 0:
             dType = type(sortlist[0])  # list or dict
 
             for colIndx in reversed(orderby):
                 if dType is dict:
-                    sortlist.sort(key=lambda dictEntry: (dictEntry.items())[0][1][colIndx], reverse=(colIndx in desc))
+                    # XXXXX This code is wrong - but we are not using dict - to fix - would need to use functools.partial
+                    sortlist.sort(key=lambda dictEntry: (dictEntry.items())[0][1][colIndx], reverse=(colIndx in desc))  # pylint: disable=cell-var-from-loop
 
                 elif dType is list:
                     sortlist.sort(key=operator.itemgetter(colIndx), reverse=(colIndx in desc))
@@ -3319,18 +3282,18 @@ class MessagingIo(object):
 
     def __getNestLevel(self, msgId, pD):
         """Traverse the parent tree to the root counting the number of steps."""
-        id = msgId
+        mid = msgId
         ind = 0
-        while self.__hasParent(id, pD):
+        while self.__hasParent(mid, pD):
             ind += 1
-            id = pD[id]
+            mid = pD[mid]
         return ind
 
-    def __hasParent(self, id, pD):
+    def __hasParent(self, mid, pD):
         """id --> parentId?"""
-        if id not in pD:
+        if mid not in pD:
             return False
-        elif pD[id] == id:
+        elif pD[mid] == mid:
             return False
         else:
             return True
@@ -3347,7 +3310,7 @@ class MessagingIo(object):
 
         if p_sGlobalSrchFilter:
             if self.__verbose and self.__debug:
-                self.__lfh.write("+%s.%s() -- performing global search for string '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_sGlobalSrchFilter))
+                logger.debug("-- performing global search for string '%s'", p_sGlobalSrchFilter)
             for trueRowIdx, rcrd in enumerate(p_rsltSetList):
                 for field in rcrd:
                     if p_sGlobalSrchFilter.lower() in str(field).lower():
@@ -3361,14 +3324,11 @@ class MessagingIo(object):
 
         elif p_dictColSrchFilter:
             if self.__verbose and self.__debug:
-                self.__lfh.write(
-                    "+%s.%s() -- performing column-specific searches with search dictionary: %r \n"
-                    % (self.__class__.__name__, sys._getframe().f_code.co_name, p_dictColSrchFilter.items())
-                )
+                logger.debug(
+                    "-- performing column-specific searches with search dictionary: %r", p_dictColSrchFilter.items())
             if self.__verbose and self.__debug and self.__debugLvl2:
-                self.__lfh.write(
-                    "+%s.%s() -- performing column-specific searches against recordset: %r \n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_rsltSetList)
-                )
+                logger.debug(
+                    "-- performing column-specific searches against recordset: %r", p_rsltSetList)
             #
             bAllCriteriaMet = False
             for trueRowIdx, rcrd in enumerate(p_rsltSetList):
@@ -3442,7 +3402,7 @@ class MsgTmpltHlpr(object):
 
         if self.__verbose and self.__debug:
             for value in self.__expMethodList:
-                self.__lfh.write("+%s.%s() value found in self.__expMethodList: %s \n" % (self.__class__.__name__, sys().f_code.co_name, value))
+                logger.info("value found in self.__expMethodList: %s", value)
         #
         self.__depId = self.__reqObj.getValue("identifier")
         self.__dbFilePath = dbFilePath
@@ -3618,39 +3578,34 @@ class MsgTmpltHlpr(object):
 
                 else:
                     if self.__verbose:
-                        self.__lfh.write("+%s.%s() failed attempt to access: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath))
+                        logger.info("failed attempt to access: %s", self.__dbFilePath)
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() problem recovering data into PdbxPersist from db file at: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath)
-                    )
-                traceback.print_exc(file=self.__lfh)
-                self.__lfh.flush()
+                    logger.info(
+                        "problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
+                logger.exception("Problem recovering date from PdbxPersist")
 
     def __getAccessionIdString(self, idList):
         sAccessionIdsString = ""
         sAnd = ""
         #
         if self.__emDeposition:
-            map = self.__idMapToString_EM
+            mapping = self.__idMapToString_EM
         else:
-            map = self.__idMapToString
+            mapping = self.__idMapToString
         #
         for nIndex, sId in enumerate(idList):
             if nIndex > 0:
                 sAnd = " and "
-            sIDstring = map[sId]
+            sIDstring = mapping[sId]
             sAccessionIdsString += sAnd + sIDstring
             if self.__debug:
-                self.__lfh.write("+%s.%s() index %s, sId: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, nIndex, sId))
+                logger.info("+index %s, sId: '%s'", nIndex, sId)
 
         return sAccessionIdsString
 
     def populateTmpltDict(self, p_returnDict):
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-
         du = DateUtil()
         #  ####### ACCESSION ID HANDLING ##############################################
         # Groupdep and legacy do not have a list of requested id - supplement
@@ -3810,11 +3765,11 @@ class MsgTmpltHlpr(object):
 
             if self.__emMapAndModelEntry:
 
-                self.__lfh.write("+%s.%s() self.__emMapAndModelEntry is:  %s\n" % (className, methodName, self.__emMapAndModelEntry))
-                self.__lfh.write("+%s.%s() self.__emMapReleased is:  %s\n" % (className, methodName, self.__emMapReleased))
-                self.__lfh.write("+%s.%s() self.__emModelReleased is:  %s\n" % (className, methodName, self.__emModelReleased))
-                self.__lfh.write("+%s.%s() self.__emMapPreviouslyReleased is:  %s\n" % (className, methodName, self.__emMapPreviouslyReleased))
-                self.__lfh.write("+%s.%s() self.__emCoordPreviouslyReleased is:  %s\n" % (className, methodName, self.__emCoordPreviouslyReleased))
+                logger.info("self.__emMapAndModelEntry is:  %s", self.__emMapAndModelEntry)
+                logger.info("self.__emMapReleased is:  %s", self.__emMapReleased)
+                logger.info("self.__emModelReleased is:  %s", self.__emModelReleased)
+                logger.info("self.__emMapPreviouslyReleased is:  %s", self.__emMapPreviouslyReleased)
+                logger.info("self.__emCoordPreviouslyReleased is:  %s", self.__emCoordPreviouslyReleased)
                 if self.__emMapReleased and self.__emModelReleased:
                     if self.__emMapPreviouslyReleased:
                         emReleasedIdList = ["PDB"]
@@ -3828,7 +3783,7 @@ class MsgTmpltHlpr(object):
             else:
                 p_returnDict["accession_ids_em_rel"] = p_returnDict["accession_ids"]
 
-            self.__lfh.write("+%s.%s() p_returnDict['accession_ids_em_rel'] finalized as:  %s\n" % (className, methodName, p_returnDict["accession_ids_em_rel"]))
+            logger.info("p_returnDict['accession_ids_em_rel'] finalized as:  %s", p_returnDict["accession_ids_em_rel"])
 
             emReleasedNumber = "multi" if (len(emReleasedIdList) > 1) else "single"
             #
@@ -3872,10 +3827,10 @@ class MsgTmpltHlpr(object):
         )
 
         if self.__debugLvl2:
-            self.__lfh.write("+%s.%s() title is:  %s\n" % (className, methodName, p_returnDict["title"]))
+            logger.debug("title is:  %s", p_returnDict["title"])
             if self.__emDeposition:
-                self.__lfh.write("+%s.%s() em_title is:  %s\n" % (className, methodName, p_returnDict["em_title"]))
-            self.__lfh.write("+%s.%s() titleLength:  %s\n" % (className, methodName, titleLength))
+                logger.debug("em_title is:  %s", p_returnDict["em_title"])
+            logger.debug("titleLength:  %s", titleLength)
 
         primaryTitle = p_returnDict["em_title"] if (self.__emDeposition) else p_returnDict["title"]
 
@@ -3886,14 +3841,14 @@ class MsgTmpltHlpr(object):
             targetLength = 85
             for num in range(targetLength, targetLength - 20, -1):
                 if self.__debugLvl2:
-                    self.__lfh.write("+%s.%s() testing targetLength of:  %s\n" % (className, methodName, num))
+                    logger.debug("testing targetLength of:  %s" , num)
                 if len(textwrap.wrap(primaryTitle, num)[-1]) > 10:  # EM: using reference to primaryTitle instead of p_returnDict['title']
                     targetLength = num
                     if self.__debugLvl2:
-                        self.__lfh.write("+%s.%s() found targetLength of:  %s\n" % (className, methodName, targetLength))
+                        logger.debug("found targetLength of:  %s", targetLength)
                     break
             if self.__debugLvl2:
-                self.__lfh.write("+%s.%s() using targetLength of:  %s\n" % (methodName, methodName, targetLength))
+                logger.debug("using targetLength of:  %s", targetLength)
             p_returnDict["title"] = textwrap.fill(p_returnDict["title"], targetLength)
             if self.__emDeposition:
                 p_returnDict["em_title"] = textwrap.fill(p_returnDict["em_title"], targetLength)  # EM: added this
@@ -3908,7 +3863,7 @@ class MsgTmpltHlpr(object):
                 )
 
         p_returnDict["horiz_line"] = ""
-        for n in range(horizLineLngth):
+        for _n in range(horizLineLngth):
             p_returnDict["horiz_line"] += "="
 
         #########################
@@ -3937,10 +3892,8 @@ class MsgTmpltHlpr(object):
         containerNameList = myInd["__containers__"]
         self.__dataBlockName = containerNameList[0][0]
         if self.__verbose:
-            self.__lfh.write(
-                "+%s.%s() successfully obtained datablock name as: %s, from %s\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dataBlockName, self.__dbFilePath)
-            )
+            logger.info("successfully obtained datablock name as: %s, from %s",
+                        self.__dataBlockName, self.__dbFilePath)
 
     def __isNotCifNull(self, p_value):
         if p_value in [".", "?"]:
@@ -3956,14 +3909,10 @@ class MsgTmpltHlpr(object):
 
         if catObj is None:
             if self.__verbose:
-                self.__lfh.write(
-                    "\n%s.%s() -- Unable to find '%s' category in db file: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_ctgryNm, self.__dbFilePath)
-                )
+                logger.info("-- Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         else:
             if self.__verbose:
-                self.__lfh.write(
-                    "\n%s.%s() -- Successfully found '%s' category in db file: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, p_ctgryNm, self.__dbFilePath)
-                )
+                logger.info("-- Successfully found '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         return catObj
 
     def __getContactAuthors(self):
@@ -3980,9 +3929,7 @@ class MsgTmpltHlpr(object):
             ctgryNm = "pdbx_contact_author"
             try:
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm)
-                    )
+                    logger.info("-- Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
                 #
                 catObj = self.__getCatObj(ctgryNm)
                 if catObj:
@@ -4003,20 +3950,17 @@ class MsgTmpltHlpr(object):
                             lname = row[idLname]
                             if self.__validateEmail(email) is True and email not in emailAddrsSoFar:
                                 if self.__verbose and self.__debug:
-                                    self.__lfh.write(
-                                        "\n%s.%s() -- [%s, %s, %s] being appended to self.__contactAuths. \n"
-                                        % (self.__class__.__name__, sys._getframe().f_code.co_name, email, role, lname)
-                                    )
+                                    logger.debug("-- [%s, %s, %s] being appended to self.__contactAuths.",
+                                                 email, role, lname)
                                 emailAddrsSoFar.append(email)
                                 self.__contactAuths.append((email, role, lname))
                         except:  # noqa: E722 pylint: disable=bare-except
-                            traceback.print_exc(file=self.__lfh)
+                            logger.exception("In contact auths")
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-                traceback.print_exc(file=self.__lfh)
-                self.__lfh.flush()
+                    logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+                logger.exception("Recovering data from PdbxPersist for category: '%s'", ctgryNm)
 
         # 2014-10-30, decision was made to always include validated brain page email on notification emails
         ss = dbAPI(self.__depId, verbose=True)
@@ -4035,15 +3979,13 @@ class MsgTmpltHlpr(object):
 
         if len(brainPageContactList) > 0:
             for email, role, lastName in brainPageContactList:
-                self.__lfh.write(
-                    "\n%s.%s() -- found contact author from brainpage --> [%s, %s, %s]\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, email, role, lastName)
-                )
+                logger.info(
+                    "-- found contact author from brainpage --> [%s, %s, %s]", email, role, lastName)
                 if email not in emailAddrsSoFar:
                     if self.__verbose and self.__debug:
-                        self.__lfh.write(
-                            "\n%s.%s() -- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths. \n"
-                            % (self.__class__.__name__, sys._getframe().f_code.co_name, email, role, lastName)
-                        )
+                        logger.info(
+                            "-- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths.",
+                            email, role, lastName)
                     self.__contactAuths.append([email, role, lastName])
 
     def __getEntryAuthors(self, p_IdType="PDB"):
@@ -4057,7 +3999,7 @@ class MsgTmpltHlpr(object):
 
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("-- Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4075,7 +4017,7 @@ class MsgTmpltHlpr(object):
                     try:
                         name = row[idxFullName]
                         if self.__verbose:
-                            self.__lfh.write("\n%s.%s() -- %s.%s found as: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm, itemNm, name))
+                            logger.info("-- %s found as: %s", itemNm, name)
                         if p_IdType == "PDB":
                             self.__entryAuthrs.append(name)
                         elif p_IdType == "EMDB":
@@ -4086,9 +4028,8 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("+%s.%s() problem recovering data from PdbxPersist for category: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, ctgryNm))
-            traceback.print_exc(file=self.__lfh)
-            self.__lfh.flush()
+                logger.info(("problem recovering data from PdbxPersist for category: '%s'", ctgryNm))
+            logger.exception("Recoveringo data for category '%s'", ctgryNm)
 
     def __getId(self, p_IdType):
 
@@ -4096,7 +4037,7 @@ class MsgTmpltHlpr(object):
 
         try:
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- Category name sought from [%s] is: '%s'\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__dbFilePath, ctgryNm))
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -4129,7 +4070,6 @@ class MsgTmpltHlpr(object):
             if self.__verbose:
                 logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Problem recoving data from PdbxPersis for category: '%s'", ctgryNm)
-            self.__lfh.flush()
 
     def __getEmEntryAdminMapping(self):
 
@@ -4164,8 +4104,7 @@ class MsgTmpltHlpr(object):
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
                     logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
-                logger.tracebak("in __getEmEntryAdminMapping")
-                self.__lfh.flush()
+                logger.exception("in __getEmEntryAdminMapping")
 
         else:
             if self.__emMapOnly:
@@ -4209,7 +4148,6 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("Problem recovering data from PdbxPersist for category %s", ctgryNm)
-            self.__lfh.flush()
 
     def __getProcessingStatusInfo(self):
         ctgryNm = "pdbx_database_status"
@@ -4292,7 +4230,6 @@ class MsgTmpltHlpr(object):
             if self.__verbose:
                 logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Category name %s", ctgryNm)
-            self.__lfh.flush()
 
     def __getProcessingStatusInfoEM(self):
         ctgryNm = "em_admin"
@@ -4354,7 +4291,6 @@ class MsgTmpltHlpr(object):
             if self.__verbose:
                 logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Exeption in gettign EM processing info")
-            self.__lfh.flush()
 
     def __getAnnotatorDetails(self):
 
@@ -4428,7 +4364,6 @@ class MsgTmpltHlpr(object):
             if self.__verbose:
                 logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("In recovering data")
-            self.__lfh.flush()
 
         ############
         # citation #
@@ -4787,11 +4722,11 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
 class FileSizeLogger(object):
     """Simple class to support trace logging for file size before and after a given action"""
 
-    def __init__(self, filePath, verbose=False, log=sys.stderr):
+    def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         """Prepare the file size logger. Specify the file to report on"""
         self.__filePath = filePath
         #
-        self.__lfh = log
+        # self.__lfh = log
         self.__verbose = verbose
         self.__debug = True
         #
@@ -4799,11 +4734,11 @@ class FileSizeLogger(object):
     def __enter__(self):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
-            self.__lfh.write("+%s -- filesize for %s before call: %s bytes.\n" % (self.__class__.__name__, self.__filePath, filesize))
+            logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
 
         return self
 
     def __exit__(self, exc_type, value, tb):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
-            self.__lfh.write("+%s -- filesize for %s after call: %s bytes.\n" % (self.__class__.__name__, self.__filePath, filesize))
+            logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)

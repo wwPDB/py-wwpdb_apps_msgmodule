@@ -118,7 +118,7 @@ class EmHeaderUtils(object):
                 ok = True
             else:
                 ok = False
-        except:  # noqa: E722
+        except:  # noqa: E722  pylint: disable=bare-except
             logger.exception("Map header translation failed for %s", inpFilePath)
             se = traceback.format_exc()
             fOut = open(logFilePath, "w")

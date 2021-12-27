@@ -93,7 +93,7 @@ logger = logging.getLogger(__name__)
 class MessagingWebApp(object):
     """Handle request and response object processing for the wwPDB messaging tool application."""
 
-    def __init__(self, parameterDict={}, verbose=False, log=sys.stderr, siteId="WWPDB_DEV"):
+    def __init__(self, parameterDict=None, verbose=False, log=sys.stderr, siteId="WWPDB_DEV"):
         """
         Create an instance of `MessagingWebApp` to manage an messaging web request.
 
@@ -103,6 +103,8 @@ class MessagingWebApp(object):
          :param `log`:      stream for logging.
 
         """
+        if parameterDict is None:
+            parameterDict = {}
         self.__verbose = verbose
         self.__lfh = log
         self.__debug = False
@@ -119,9 +121,9 @@ class MessagingWebApp(object):
             self.__myParameterDict = {}
 
         if self.__verbose:
-            self.__lfh.write("+MessagingWebApp.__init() - REQUEST STARTING ------------------------------------\n")
-            self.__lfh.write("+MessagingWebApp.__init() - dumping input parameter dictionary \n")
-            self.__lfh.write("%s" % ("".join(self.__dumpRequest())))
+            logger.info("+MessagingWebApp.__init() - REQUEST STARTING ------------------------------------")
+            logger.info("+MessagingWebApp.__init() - dumping input parameter dictionary")
+            logger.info("%s", "".join(self.__dumpRequest()))
 
         self.__reqObj = InputRequest(self.__myParameterDict, verbose=self.__verbose, log=self.__lfh)
         #
@@ -134,11 +136,10 @@ class MessagingWebApp(object):
         self.__reqObj.setDefaultReturnFormat(return_format="html")
         #
         if self.__verbose:
-            self.__lfh.write("-----------------------------------------------------\n")
-            self.__lfh.write("+MessagingWebApp.__init() Leaving _init with request contents\n")
-            self.__reqObj.printIt(ofh=self.__lfh)
-            self.__lfh.write("---------------MessagingWebApp - done -------------------------------\n")
-            self.__lfh.flush()
+            logger.info("-----------------------------------------------------")
+            logger.info("+MessagingWebApp.__init() Leaving _init with request contents")
+            logger.info("%s", str(self.__reqObj))
+            logger.info("---------------MessagingWebApp - done -------------------------------")
 
     def doOp(self):
         """Execute request and package results in response dictionary.
@@ -152,12 +153,12 @@ class MessagingWebApp(object):
         rC = stw.doOp()
         if self.__debug:
             rqp = self.__reqObj.getRequestPath()
-            self.__lfh.write("+MessagingWebApp.doOp() operation %s\n" % rqp)
-            self.__lfh.write("+MessagingWebApp.doOp() return format %s\n" % self.__reqObj.getReturnFormat())
+            logger.debug("+MessagingWebApp.doOp() operation %s", rqp)
+            logger.debug("+MessagingWebApp.doOp() return format %s", self.__reqObj.getReturnFormat())
             if rC is not None:
-                self.__lfh.write("%s" % ("".join(rC.dump())))
+                logger.debug("%s", "".join(rC.dump()))
             else:
-                self.__lfh.write("+MessagingWebApp.doOp() return object is empty\n")
+                logger.debug("+MessagingWebApp.doOp() return object is empty")
 
         #
         # Package return according to the request return_format -
@@ -201,9 +202,9 @@ class MessagingWebAppWorker(object):
         self.__sObj = None
         self.__sessionId = None
         self.__sessionPath = None
-        self.__rltvSessionPath = None
+        # self.__rltvSessionPath = None
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
-        self.__cI = ConfigInfo(self.__siteId)
+        # self.__cI = ConfigInfo(self.__siteId)
         #
         # Added by ZF
         #
@@ -218,8 +219,8 @@ class MessagingWebAppWorker(object):
             "/service/messaging/tag_msg": "_tagMsg",
             "/service/messaging/submit_msg": "_submitMsg",
             "/service/messaging/update_draft_state": "_updateDraftState",
-            "/service/messaging/delete_row": "_deleteRowOp",
-            "/service/messaging/test_see_json": "_getDataTblDataRawJsonOp",
+            # "/service/messaging/delete_row": "_deleteRowOp",  # Not implemented on client or server properly
+            # "/service/messaging/test_see_json": "_getDataTblDataRawJsonOp",  # Disable for now
             "/service/messaging/exit_not_finished": "_exit_notFinished",
             "/service/messaging/exit_finished": "_exit_finished",
             "/service/messaging/get_msg": "_getMsg",
@@ -254,24 +255,24 @@ class MessagingWebAppWorker(object):
         """
         return self.__doOpException()
 
-    def __doOpNoException(self):
-        """Map operation to path and invoke operation.  No exception handling is performed.
+    # def __doOpNoException(self):
+    #     """Map operation to path and invoke operation.  No exception handling is performed.
 
-        :Returns:
+    #     :Returns:
 
-        Operation output is packaged in a ResponseContent() object.
-        """
-        #
-        reqPath = self.__reqObj.getRequestPath()
-        if reqPath not in self.__appPathD:
-            # bail out if operation is unknown -
-            rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-            rC.setError(errMsg="Unknown operation")
-            return rC
-        else:
-            mth = getattr(self, self.__appPathD[reqPath], None)
-            rC = mth()
-        return rC
+    #     Operation output is packaged in a ResponseContent() object.
+    #     """
+    #     #
+    #     reqPath = self.__reqObj.getRequestPath()
+    #     if reqPath not in self.__appPathD:
+    #         # bail out if operation is unknown -
+    #         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+    #         rC.setError(errMsg="Unknown operation")
+    #         return rC
+    #     else:
+    #         mth = getattr(self, self.__appPathD[reqPath], None)
+    #         rC = mth()
+    #     return rC
 
     def __doOpException(self):
         """Map operation to path and invoke operation.  Exceptions are caught within this method.
@@ -291,7 +292,7 @@ class MessagingWebAppWorker(object):
                 mth = getattr(self, self.__appPathD[reqPath], None)
                 rC = mth()
             return rC
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In processing doOpException")
             rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
             rC.setError(errMsg="Operation failure")
@@ -319,7 +320,7 @@ class MessagingWebAppWorker(object):
             This container page is then populated with content via AJAX calls.
         """
         if self.__verbose:
-            self.__lfh.write("+MessagingWebAppWorker._launchOp() Starting now\n")
+            logger.info("+MessagingWebAppWorker._launchOp() Starting now")
         # determine if currently operating in Workflow Managed environment
         bIsWorkflow = self.__isWorkflow()
         #
@@ -332,7 +333,7 @@ class MessagingWebAppWorker(object):
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         if self.__verbose:
-            self.__lfh.write("+MessagingWebAppWorker._launchOp() workflow flag is %r\n" % bIsWorkflow)
+            logger.info("+MessagingWebAppWorker._launchOp() workflow flag is %r", bIsWorkflow)
 
         if bIsWorkflow:
             # Update WF status database --
@@ -348,7 +349,7 @@ class MessagingWebAppWorker(object):
                 pass
         #
         if self.__verbose:
-            self.__lfh.write("+MessagingWebAppWorker._launchOp() Call MessagingDepict with workflow %r\n" % bIsWorkflow)
+            logger.info("+MessagingWebAppWorker._launchOp() Call MessagingDepict with workflow %r", bIsWorkflow)
         #
         msgngDpct = MessagingDepict(self.__verbose, self.__lfh)
         msgngDpct.setSessionPaths(self.__reqObj)
@@ -359,20 +360,18 @@ class MessagingWebAppWorker(object):
 
     def _verifyDepositionId(self):
 
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         rtrnDict = {}
         #
         depId = str(self.__reqObj.getValue("identifier")).upper()
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info(" -- Starting.")
 
         self.__getSession()
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is: %s\n" % (className, methodName, depId))
+            logger.info("-- dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -381,9 +380,9 @@ class MessagingWebAppWorker(object):
         archivePth = pI.getArchivePath(depId)
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- archivePth is: %s\n" % (className, methodName, archivePth))
+            logger.info(" -- archivePth is: %s", archivePth)
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- os.access(archivePth,os.F_OK) is: %s\n" % (className, methodName, os.access(archivePth, os.F_OK)))
+            logger.info(" -- os.access(archivePth,os.F_OK) is: %s", os.access(archivePth, os.F_OK))
         #
         rtrnDict["found"] = "y" if (os.access(archivePth, os.F_OK)) else "n"
 
@@ -402,11 +401,9 @@ class MessagingWebAppWorker(object):
             The output consists of a HTML starter container page for quicker return to the client.
             This container page is then populated with content via AJAX calls.
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() Starting now\n" % (className, methodName))
+            logger.info("Starting now")
         self.__getSession()
         #
         self.__reqObj.setDefaultReturnFormat(return_format="html")
@@ -437,20 +434,18 @@ class MessagingWebAppWorker(object):
                 'dtbl_config_dict' --> multi-layered dictionary of display/validation settings to be used
                                  for configuring the behavior of the DataTable
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         rtrnDict = {}
         dtblConfigDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("-- Starting.")
 
         self.__getSession()
 
         depId = self.__reqObj.getValue("identifier")
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info(" -- dep_id is:%s", depId)
         #
         sendStatus = self.__reqObj.getValue("send_status")
         #
@@ -520,13 +515,13 @@ class MessagingWebAppWorker(object):
         rsltSetDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info(" -- dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
-        bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
+        _bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
         #
         # if( sUseServerSide == 'true' ):
         # DataTables related query string params:
@@ -547,7 +542,7 @@ class MessagingWebAppWorker(object):
         # handling for single global search term
         sSearch = self.__reqObj.getRawValue("sSearch")
         sSearch = self.__encodeForSearching(sSearch)
-        self.__lfh.write("+%s.%s() -- sSearch is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, sSearch))
+        logger.info("-- sSearch is: %r", sSearch)
 
         # ############# in below block we are accommodating any requests for column-specific search filtering ###################################
         numColumns = len(msgColList)
@@ -562,7 +557,7 @@ class MessagingWebAppWorker(object):
                 if srchString and len(srchString) > 1:
                     colSearchDict[n] = self.__encodeForSearching(srchString)
                     if self.__verbose and self.__debug:
-                        self.__lfh.write("+%s.%s() -- search term for field[%s] is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, n, colSearchDict[n]))
+                        logger.debug(" -- search term for field[%s] is: %s", n, colSearchDict[n])
         ################################################################################################################################
         rsltSetDict = msgingIo.getMsgRowList(
             p_depDataSetId=depId,
@@ -575,12 +570,12 @@ class MessagingWebAppWorker(object):
             p_bThreadedRslts=bUseThreadedRsltSet,
         )
         msgRecordList = rsltSetDict["RECORD_LIST"]
-        """
-        else: # 2014-09-10, RPS: non-serverside processing is only being used in _getDataTblConfigDtls() -- consider removing?
-            rsltSetDict = msgingIo.getMsgRowList( p_depDataSetId=depId, p_sSendStatus=sendStatus, p_bServerSide=False,  p_bThreadedRslts=bUseThreadedRsltSet )
-            msgRecordList = rsltSetDict['RECORD_LIST']
-            iDisplayStart = 0 #always getting full resultset when not using server=side processing so setting iDisplayStart explicitly to 0
-        """
+        # """
+        # else: # 2014-09-10, RPS: non-serverside processing is only being used in _getDataTblConfigDtls() -- consider removing?
+        #     rsltSetDict = msgingIo.getMsgRowList( p_depDataSetId=depId, p_sSendStatus=sendStatus, p_bServerSide=False,  p_bThreadedRslts=bUseThreadedRsltSet )
+        #     msgRecordList = rsltSetDict['RECORD_LIST']
+        #     iDisplayStart = 0 #always getting full resultset when not using server=side processing so setting iDisplayStart explicitly to 0
+        # """
         #
         msgngDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
         dataTblDict = msgngDpct.getJsonDataTable(msgRecordList, msgColList, iDisplayStart)
@@ -597,7 +592,7 @@ class MessagingWebAppWorker(object):
         """for DEV -- return payload input to DataTables to be displayed on webpage as JSON object for inspection"""
 
         if self.__verbose:
-            self.__lfh.write("+MessagingWebAppWorker._getDataTblDataRawJsonOp() starting\n")
+            logger.info("+MessagingWebAppWorker._getDataTblDataRawJsonOp() starting\n")
 
         self.__getSession()
         # iDisplayStart = int( self.__reqObj.getValue("iDisplayStart") )
@@ -608,14 +603,14 @@ class MessagingWebAppWorker(object):
         depId = self.__reqObj.getValue("identifier")
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info("-- dep_id is:%s", depId)
         #
         self.__reqObj.setDefaultReturnFormat(return_format="html")
 
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
 
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
-        bOk, msgColList = msgingIo.getMsgColList(p_sSchemaType="INDEX")
+        _bOk, msgColList = msgingIo.getMsgColList()
         msgRecordList, iTotalRecords, iTotalDisplayRecords = msgingIo.getMsgRowList(depId, True, 0, 20, "")
         #
         msgngDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
@@ -636,13 +631,11 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         rtrnDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info(" -- Starting.")
             #
         self.__getSession()
         #
@@ -675,8 +668,6 @@ class MessagingWebAppWorker(object):
         :Returns: JSON returned to the browser containing relevant name/value pairs for various conditions
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         rtrnDict = {}
         bAllMsgsRead = False
@@ -684,14 +675,14 @@ class MessagingWebAppWorker(object):
         bAnyFlagsForRelease = False
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting")
 
         self.__getSession()
         #
         depId = str(self.__reqObj.getValue("identifier"))
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info("dep_id is:%s", depId)
         #
         activateNotesFlagging = self._getNotesFlaggingStatus()
         #
@@ -703,7 +694,7 @@ class MessagingWebAppWorker(object):
         bAnyFlagsForRelease = self.__checkAnyReleaseFlags()
         bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords = self.__checkAnyNotesExist()
 
-        # self.__lfh.write("+%s.%s() -- bAnyNotesIncldngArchvdMsgs is '%s' -- bAnnotNotes is '%s' -- iNumNotesRecords is '%s' for DEPID %s \n" % (className, methodName,bAnyNotesIncldngArchvdMsgs,bAnnotNotes,iNumNotesRecords,depId))  # noqa: E501
+        # logger.info(("+%s.%s() -- bAnyNotesIncldngArchvdMsgs is '%s' -- bAnnotNotes is '%s' -- iNumNotesRecords is '%s' for DEPID %s \n" % (className, methodName,bAnyNotesIncldngArchvdMsgs,bAnnotNotes,iNumNotesRecords,depId))  # noqa: E501
 
         if bAllMsgsRead is True:
             rtrnDict["all_msgs_read"] = "true"
@@ -761,7 +752,7 @@ class MessagingWebAppWorker(object):
         #
         bSuccess = self._updateWfNotifyStatus(depId, aggregateFlag)
         if self.__verbose and bSuccess:
-            self.__lfh.write("+%s.%s() -- NOTIFY status updated to '%s' for DEPID %s \n" % (className, methodName, aggregateFlag, depId))
+            logger.info("-- NOTIFY status updated to '%s' for DEPID %s", aggregateFlag, depId)
 
         rC.addDictionaryItems(rtrnDict)
 
@@ -777,18 +768,16 @@ class MessagingWebAppWorker(object):
         :Returns: value of current flagging status
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info(" -- Starting.")
             #
         activateNotesFlagging = "true"  # default
         depId = str(self.__reqObj.getValue("identifier"))
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- depId is: %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() -- notes subtype: %s\n" % (className, methodName, subtype))
+            logger.info("-- depId is: %s", depId)
+            logger.info("+-- notes subtype: %s", subtype)
         #
         notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(subtype=subtype)
         #
@@ -798,12 +787,10 @@ class MessagingWebAppWorker(object):
                 lines = fp.readlines()
                 fp.close()
                 activateNotesFlagging = lines[0][:-1]
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write(
-                        "\n%s.%s() -- problem reading notesFlaggingStatusFilePathAbs at:%s\n"
-                        % (self.__class__.__name__, sys._getframe().f_code.co_name, notesFlaggingStatusFilePathAbs)
-                    )
+                    logger.info(" -- problem reading notesFlaggingStatusFilePathAbs at:%s",
+                                notesFlaggingStatusFilePathAbs)
         else:
             # file doesn't exist yet which is true if this is first time annotator is accessing messaging UI for the given depID
             # so we create the file and set default status of "ON"
@@ -834,9 +821,6 @@ class MessagingWebAppWorker(object):
         :Returns: value of new flagging status is echoed back to calling code
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         depId = str(self.__reqObj.getValue("identifier"))
         subtypeFromBrwser = str(self.__reqObj.getValue("subtype"))
         #
@@ -846,9 +830,9 @@ class MessagingWebAppWorker(object):
             subTypeRqstd = subtype
 
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
-            self.__lfh.write("+%s.%s() -- depId: %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() -- notes subTypeRqstd: %s\n" % (className, methodName, subTypeRqstd))
+            logger.info("-- Starting.")
+            logger.info("-- depId: %s", depId)
+            logger.info("-- notes subTypeRqstd: %s", subTypeRqstd)
         #
         self.__getSession()
         #
@@ -858,7 +842,7 @@ class MessagingWebAppWorker(object):
             activateNotesFlagging = str(self.__reqObj.getValue("activate_notes_flagging"))
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- desired flag_status is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, activateNotesFlagging))
+            logger.info(" -- desired flag_status is: %s", activateNotesFlagging)
         #
         notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(subtype=subTypeRqstd)
         #
@@ -867,12 +851,9 @@ class MessagingWebAppWorker(object):
                 fp = open(notesFlaggingStatusFilePathAbs, "w")
                 fp.write("%s\n" % activateNotesFlagging)
                 fp.close()
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write(
-                        "\n%s.%s() -- problem writing to notesFlaggingStatusFilePathAbs at:%s\n"
-                        % (self.__class__.__name__, sys._getframe().f_code.co_name, notesFlaggingStatusFilePathAbs)
-                    )
+                    logger.info("-- problem writing to notesFlaggingStatusFilePathAbs at:%s", notesFlaggingStatusFilePathAbs)
         else:
             fp = open(notesFlaggingStatusFilePathAbs, "w")
             fp.write("%s\n" % activateNotesFlagging)
@@ -906,9 +887,6 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         depId = str(self.__reqObj.getValue("identifier"))
         #
         # Added by ZF
@@ -916,9 +894,9 @@ class MessagingWebAppWorker(object):
         groupId = str(self.__reqObj.getValue("groupid"))
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
-            self.__lfh.write("+%s.%s() -- depId: %s\n" % (className, methodName, depId))
-            self.__lfh.write("+%s.%s() -- notes subtype: %s\n" % (className, methodName, subtype))
+            logger.info(" -- Starting.")
+            logger.info(" -- depId: %s", depId)
+            logger.info(" -- notes subtype: %s", subtype)
         #
         suffix = "_" + subtype.upper() if len(subtype) > 1 else ""
         #
@@ -934,9 +912,7 @@ class MessagingWebAppWorker(object):
         notesFlaggingStatusFilePathAbs = os.path.join(archivePth, "NOTES_FLAGGING_STATUS" + suffix)
         #
         if self.__verbose:
-            self.__lfh.write(
-                "\n%s.%s() -- returning notesFlaggingStatusFilePathAbs as:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, notesFlaggingStatusFilePathAbs)
-            )
+            logger.info(" returning notesFlaggingStatusFilePathAbs as:%s", notesFlaggingStatusFilePathAbs)
         #
         return notesFlaggingStatusFilePathAbs
 
@@ -948,13 +924,11 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         bAllMsgsRead = False
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("-- Starting")
 
             #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
@@ -971,13 +945,11 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         bAllMsgsActioned = False
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting.")
 
             #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
@@ -994,13 +966,10 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         bForRelease = False
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("-- Starting.")
 
             #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
@@ -1017,11 +986,9 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("-- Starting.")
 
             #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
@@ -1031,11 +998,9 @@ class MessagingWebAppWorker(object):
     def _updateWfNotifyStatus(self, p_depId, p_status):
         #
         bSuccess = False
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info(" Starting.")
         try:
             # wft=WfTracking(verbose=self.__verbose,log=self.__lfh)
             # bSuccess = wft.setDepMsgNotifyStatus(depId=p_depId,status=p_status)
@@ -1060,10 +1025,10 @@ class MessagingWebAppWorker(object):
                 statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
             #
             bSuccess = True
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             bSuccess = False
             if self.__verbose:
-                self.__lfh.write("+%s.%s() - TRACKING status, update to '%s' failed for depID %s \n" % (className, methodName, p_status, p_depId))
+                logger.info(" - TRACKING status, update to '%s' failed for depID %s", p_status, p_depId)
             logger.exception("In _updateWfNotifyStatus")
             #
         return bSuccess
@@ -1076,20 +1041,17 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         rtrnDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting.")
 
         self.__getSession()
         #
         depId = self.__reqObj.getValue("identifier")
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info("dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -1122,7 +1084,7 @@ class MessagingWebAppWorker(object):
         depId = self.__reqObj.getValue("identifier")
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info(" dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -1147,14 +1109,11 @@ class MessagingWebAppWorker(object):
             JSON response representing a given message and its attributes
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         rtrnDict = {}
         msgDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info(" Starting")
 
         self.__getSession()
         #
@@ -1162,7 +1121,7 @@ class MessagingWebAppWorker(object):
         msgId = self.__reqObj.getValue("msg_id")
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is: %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info(" dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -1186,14 +1145,12 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
         bIsWorkflow = self.__isWorkflow()
         #
         msgDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- Starting.\n" % (className, methodName))
+            logger.info("Starting.")
 
         self.__getSession()
         #
@@ -1201,13 +1158,13 @@ class MessagingWebAppWorker(object):
         msgId = self.__reqObj.getValue("msg_id")
         #
         if self.__verbose:
-            self.__lfh.write("\n%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info("dep_id is:%s", depId)
         #
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
         msgDict = msgingIo.getMsg(msgId, depId)
-        self.__lfh.write("+%s.%s() msgDict is:  %r\n" % (className, methodName, msgDict))
+        logger.info("msgDict is:  %r", msgDict)
         #
         if msgDict["parent_message_id"] != msgDict["message_id"]:
             parentMsgDict = msgingIo.getMsg(msgDict["parent_message_id"], depId)
@@ -1244,9 +1201,6 @@ class MessagingWebAppWorker(object):
 
         """
         #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         #
         self.__getSession()
         # depId = self.__reqObj.getValue("entry_id") # getValue("identifier")
@@ -1273,7 +1227,7 @@ class MessagingWebAppWorker(object):
             # subjPrefix = "FWD: " if msgCategory != "reminder" else ""
             subjPrefix = "FWD: "
         #
-        """ setting below request parameters for downstream processing"""
+        # setting below request parameters for downstream processing
         self.__reqObj.setValue("subject", subjPrefix + subject)  # setting here for downstream processing
         self.__reqObj.setValue("send_status", "Y")  # setting here for downstream processing
         self.__reqObj.setValue("filesource", "archive")  # setting here for downstream processing
@@ -1317,16 +1271,17 @@ class MessagingWebAppWorker(object):
             msgObj = Message.fromReqObj(self.__reqObj, self.__verbose, self.__lfh)
             #
             if self.__verbose:
-                self.__lfh.write("+%s.%s() -- dep_id is: %s\n" % (className, methodName, depId))
+                logger.info("dep_id is: %s", depId)
             #
-            bOk, bPdbxMdlFlUpdtd, failedFileRefs = msgingIo.processMsg(msgObj)
+            bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = msgingIo.processMsg(msgObj)
             #
             rtrnDict["success"][depId] = "true" if bOk is True else "false"
             #
         bGlobalStatusCheckReqd = False
         #
-        """typically only notes actually authored by annotators trigger the Notes indicator in the WFM UI, but annotators have
-        requested that notes generated via emails archived/flagged from BMRB should also trigger the indicator"""
+        # typically only notes actually authored by annotators trigger the Notes indicator in the WFM UI, but annotators have
+        # requested that notes generated via emails archived/flagged from BMRB should also trigger the indicator
+        #
         if (bOk is True) and (contentType == "notes") and (self._getNotesFlaggingStatus() == "false") and (flagMsg == "y"):
             self.__reqObj.setValue("activate_notes_flagging", "true")
             self._toggleNotesFlagging()
@@ -1360,9 +1315,6 @@ class MessagingWebAppWorker(object):
 
         """
         #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         #
         self.__getSession()
         #
@@ -1378,20 +1330,20 @@ class MessagingWebAppWorker(object):
         msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() checking for attached files.\n" % (className, methodName))
+            logger.info("checking for attached files.")
 
         for cnt in range(1, 4):
             auxFl = "aux-file" + str(cnt)
             if self.__isFileUpload(auxFl):
                 if self.__verbose:
-                    self.__lfh.write("+%s.%s() found attached file.\n" % (className, methodName))
+                    logger.info("found attached file.")
                 if self.__uploadFile(auxFl):
                     msgObj.fileReferences.append(auxFl)
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- msgObj.depositionId is: %s\n" % (className, methodName, msgObj.depositionId))
-            self.__lfh.write("+%s.%s() -- msgObj.messageText is: %r\n" % (className, methodName, msgObj.messageText))
-            self.__lfh.write("+%s.%s() -- msgObj.getFileReferences() is: %r\n" % (className, methodName, msgObj.getFileReferences()))
+            logger.info("msgObj.depositionId is: %s", msgObj.depositionId)
+            logger.info("msgObj.messageText is: %r", msgObj.messageText)
+            logger.info("msgObj.getFileReferences() is: %r", msgObj.getFileReferences())
         #
 
         bOk, bPdbxMdlFlUpdtd, failedFileRefs = msgingIo.processMsg(msgObj)
@@ -1420,10 +1372,10 @@ class MessagingWebAppWorker(object):
         rC.addDictionaryItems(rtrnDict)
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- msgObj.messageId is:%s\n" % (className, methodName, msgObj.messageId))
-            self.__lfh.write("+%s.%s() -- msgObj.depositionId is:%s\n" % (className, methodName, msgObj.depositionId))
-            self.__lfh.write("+%s.%s() -- msgObj.getFileReferences() is: %r\n" % (className, methodName, msgObj.getFileReferences()))
-            self.__lfh.write("+%s.%s() -- pdbx_model_updated is: %s\n" % (className, methodName, rtrnDict["pdbx_model_updated"]))
+            logger.info("msgObj.messageId is:%s", msgObj.messageId)
+            logger.info("msgObj.depositionId is:%s", msgObj.depositionId)
+            logger.info("msgObj.getFileReferences() is: %r", msgObj.getFileReferences())
+            logger.info("pdbx_model_updated is: %s", rtrnDict["pdbx_model_updated"])
         #
         return rC
 
@@ -1434,10 +1386,6 @@ class MessagingWebAppWorker(object):
         :Returns:
 
         """
-        #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         #
         self.__getSession()
         depId = self.__reqObj.getValue("identifier")
@@ -1454,7 +1402,7 @@ class MessagingWebAppWorker(object):
         rC.addDictionaryItems(rtrnDict)
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (className, methodName, depId))
+            logger.info("dep_id is:%s", depId)
         #
         return rC
 
@@ -1477,11 +1425,11 @@ class MessagingWebAppWorker(object):
         sSrchAsciiXfrm = p_content.encode("ascii", "xmlcharrefreplace")
         if sSrchAsciiXfrm and len(sSrchAsciiXfrm) > 0:
             if self.__debug:
-                self.__lfh.write("+%s.%s() sSrchAsciiXfrm is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, sSrchAsciiXfrm))
+                logger.debug("sSrchAsciiXfrm is: %r", sSrchAsciiXfrm)
 
             sSrchUtf8 = self.__decodeCifToUtf8(sSrchAsciiXfrm)
             if self.__debug:
-                self.__lfh.write("+%s.%s() sSrchUtf8 is: %r\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, sSrchUtf8))
+                logger.debug("sSrchUtf8 is: %r", sSrchUtf8)
 
             return sSrchUtf8
         else:
@@ -1505,7 +1453,7 @@ class MessagingWebAppWorker(object):
         rtrnDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
+            logger.info(" -- dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -1544,11 +1492,11 @@ class MessagingWebAppWorker(object):
         rtrnDict = {}
         #
         if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, depId))
-            self.__lfh.write("+%s.%s() -- msgId is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, msgId))
-            self.__lfh.write("+%s.%s() -- actionReqdFlg is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, actionReqdFlg))
-            self.__lfh.write("+%s.%s() -- readStatusFlg is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, readStatusFlg))
-            self.__lfh.write("+%s.%s() -- forReleaseFlg is:%s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, forReleaseFlg))
+            logger.info(" -- dep_id is:%s", depId)
+            logger.info(" -- msgId is:%s", msgId)
+            logger.info(" -- actionReqdFlg is:%s", actionReqdFlg)
+            logger.info(" -- readStatusFlg is:%s", readStatusFlg)
+            logger.info(" -- forReleaseFlg is:%s", forReleaseFlg)
         #
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
@@ -1566,57 +1514,49 @@ class MessagingWebAppWorker(object):
 
         return rC
 
-    def _deleteRowOp(self):
-        #
-        rtrnDict = {}
-        #
-        if self.__debug:
-            self.__lfh.write("++++++++++++STARTING %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
-            #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
-        self.__getSession()
-        depId = self.__reqObj.getValue("identifier")
-        rowIdx = self.__reqObj.getValue("row_idx")
-        #
-        rowIdx = int(rowIdx.replace("row_", ""))
-        #
-        if self.__verbose:
-            self.__lfh.write("+%s.%s() -- dep_id is:%s\n" % (className, methodName, depId))
-            # self.__lfh.write("+%s.%s() -- new_value[] is:%s\n" % (className, methodName, newMultiValue ) )
-        #
-        self.__reqObj.setReturnFormat("json")
-        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-        #
-        msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
-        if self.__debug:
-            self.__lfh.write(
-                "++++++++++++%s %s just before call to msgingIo.deleteRow at %s\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-            )
-            #
-        ok = msgingIo.deleteRow(depId, rowIdx)
-        #
-        if self.__debug:
-            self.__lfh.write(
-                "++++++++++++%s %s just after call to msgingIo.deleteRow at %s\n"
-                % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-            )
-            #
-        if ok:
-            rtrnDict["status"] = "OK"
-        else:
-            rtrnDict["status"] = "ERROR"
-        #
-        rC.addDictionaryItems(rtrnDict)
-        #
-        if self.__debug:
-            self.__lfh.write(
-                "++++++++++++COMPLETING %s %s at %s\n" % (self.__class__.__name__, sys._getframe().f_code.co_name, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-            )
-            #
-        return rC
+    # Not implemened in backend code
+    # def _deleteRowOp(self):
+    #     #
+    #     rtrnDict = {}
+    #     #
+    #     if self.__debug:
+    #         logger.debug("++++++++++++STARTING at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+    #         #
+    #     #
+    #     self.__getSession()
+    #     depId = self.__reqObj.getValue("identifier")
+    #     rowIdx = self.__reqObj.getValue("row_idx")
+    #     #
+    #     rowIdx = int(rowIdx.replace("row_", ""))
+    #     #
+    #     if self.__verbose:
+    #         logger.info("dep_id is:%s", depId)
+    #     #
+    #     self.__reqObj.setReturnFormat("json")
+    #     rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+    #     #
+    #     msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
+    #     if self.__debug:
+    #         logger.debug("just before call to msgingIo.deleteRow at %s",
+    #                      time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+    #         #
+    #     ok = msgingIo.deleteRow(depId, rowIdx)
+    #     #
+    #     if self.__debug:
+    #         logger.debug("++++++++++++ just after call to msgingIo.deleteRow at %s",
+    #                      time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+    #         #
+    #     if ok:
+    #         rtrnDict["status"] = "OK"
+    #     else:
+    #         rtrnDict["status"] = "ERROR"
+    #     #
+    #     rC.addDictionaryItems(rtrnDict)
+    #     #
+    #     if self.__debug:
+    #         logger.debug("++++++++++++COMPLETING at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+    #         #
+    #     return rC
 
     def _exit_finished(self):
         """Exiting General Annotation Messaging Module when annotator has completed all necessary processing
@@ -1643,11 +1583,8 @@ class MessagingWebAppWorker(object):
     def __uploadFile(self, fileTag="file"):
         #
         #
-        className = self.__class__.__name__
-        methodName = sys._getframe().f_code.co_name
-        #
         if self.__verbose:
-            self.__lfh.write("++%s.%s() - file upload starting at %s \n" % (className, methodName, time.strftime("%Y %m %d %H:%M:%S", time.localtime())))
+            logger.info(" - file upload starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
 
         rawFile = None
         fileName = ""
@@ -1667,8 +1604,8 @@ class MessagingWebAppWorker(object):
 
             #
             if self.__verbose:
-                self.__lfh.write("++%s.%s() - uploaded file %s\n" % (className, methodName, rawFile.filename))
-                self.__lfh.write("++%s.%s() - base file   %s\n" % (className, methodName, fName))
+                logger.info("uploaded file %s", rawFile.filename)
+                logger.info("base file   %s", fName)
                 #
             # Store upload file in session directory -
 
@@ -1693,13 +1630,13 @@ class MessagingWebAppWorker(object):
                     self.__reqObj.setValue("auxFileType" + str(cnt), fileType)
 
                     if self.__verbose:
-                        self.__lfh.write("+%s.%s() auxFileName%s: %s\n" % (className, methodName, cnt, fileName))
-                        self.__lfh.write("+%s.%s() auxFilePath%s: %s\n" % (className, methodName, cnt, fPathAbs))
-                        self.__lfh.write("+%s.%s() auxFileType%s: %s\n" % (className, methodName, cnt, fileType))
+                        logger.info("auxFileName%s: %s\n", cnt, fileName)
+                        logger.info("auxFilePath%s: %s\n", cnt, fPathAbs)
+                        logger.info("auxFileType%s: %s\n", cnt, fileType)
 
-        except:  # noqa: E722
+        except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                self.__lfh.write("++%s.%s() File upload processing failed for %s\n" % (className, methodName, str(rawFile.filename)))
+                logger.info("File upload processing failed for %s", str(rawFile.filename))
                 logger.exception("In __uploadFile")
 
             return False
@@ -1723,8 +1660,8 @@ class MessagingWebAppWorker(object):
             ResponseContent object.
         """
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - starting\n")
+            logger.info("--------------------------------------------")
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - starting")
         #
         if mode == "completed":
             state = "closed(0)"
@@ -1741,12 +1678,12 @@ class MessagingWebAppWorker(object):
         fileSource = str(self.__reqObj.getValue("filesource")).strip().lower()
         #
         if self.__verbose:
-            self.__lfh.write("--------------------------------------------\n")
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - depId   %s \n" % depId)
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - instId  %s \n" % instId)
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - classID %s \n" % classId)
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - sessionID %s \n" % sessionId)
-            self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - filesource %r \n" % fileSource)
+            logger.info("--------------------------------------------\n")
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - depId   %s", depId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - instId  %s", instId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - classID %s", classId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - sessionID %s", sessionId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - filesource %r", fileSource)
 
         #
         self.__reqObj.setReturnFormat("json")
@@ -1765,9 +1702,9 @@ class MessagingWebAppWorker(object):
                 else:
                     rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
+                    logger.info("+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
                 traceback.print_exc(file=self.__lfh)
                 rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file")
 
@@ -1776,32 +1713,23 @@ class MessagingWebAppWorker(object):
                 bOkay = self.__saveMessagingModState()
                 if bOkay:
                     if self.__verbose:
-                        self.__lfh.write(
-                            "+%s.%s successfully saved cif file to session directory %s at %s\n"
-                            % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-                        )
+                        logger.info("successfully saved cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
                 else:
                     if self.__verbose:
-                        self.__lfh.write(
-                            "+%s.%s failed to save cif file to session directory %s at %s\n"
-                            % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-                        )
+                        logger.info("failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
                     rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
 
-            except:  # noqa: E722
+            except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    self.__lfh.write(
-                        "+%s.%s failed to save cif file to session directory %s at %s\n"
-                        % (self.__class__.__name__, sys._getframe().f_code.co_name, self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-                    )
-                traceback.print_exc(file=self.__lfh)
+                    logger.info("failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+                logger.exception("Failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
                 rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file")
             if self.__verbose:
-                self.__lfh.write("+MessagingWebAppWorker.__exitMessagingMod() - Not in WF environ so skipping status update to TRACKING database for session %s \n" % sessionId)
+                logger.info("+MessagingWebAppWorker.__exitMessagingMod() - Not in WF environ so skipping status update to TRACKING database for session %s", sessionId)
         #
         return rC
 
-    def __updateWfTrackingDb(self, p_status):
+    def __updateWfTrackingDb(self, p_status):  # pylint: disable=unused-argument
         """Private function used to udpate the Workflow Status Tracking Database
 
         :Params:
@@ -1827,7 +1755,7 @@ class MessagingWebAppWorker(object):
         #     bSuccess = True
         #     if self.__verbose:
         #         self.__lfh.write("+MessagingWebAppWorker.__updateWfTrackingDb() -TRACKING status updated to '%s' for session %s \n" % (p_status, sessionId))
-        # except:  # noqa: E722
+        # except:  # noqa: E722 pylint: disable=bare-except
         #     bSuccess = False
         #     if self.__verbose:
         #         self.__lfh.write("+MessagingWebAppWorker.__updateWfTrackingDb() - TRACKING status, update to '%s' failed for session %s \n" % (p_status, sessionId))
@@ -1837,71 +1765,71 @@ class MessagingWebAppWorker(object):
 
     def __saveMessagingModState(self):
         """PLACEHOLDER"""
-        """
-        exprtDirPath=None
-        exprtFilePath=None
-        fileSource = str(self.__reqObj.getValue("filesource")).strip().lower()
-        depId  =  self.__reqObj.getValue("identifier")
-        instId =  self.__reqObj.getValue("instance")
-        #classId = self.__reqObj.getValue("classid")
-        sessionId=self.__sessionId
-        #
-        if (self.__verbose):
-            self.__lfh.write("--------------------------------------------\n")
-            self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - dataFile   %s \n" % dataFile)
-        #
-        if fileSource in ['archive','wf-archive','wf_archive']:
-            self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing archive | filesource %r \n" % fileSource)
-            dfRef=DataFileReference()
-            dfRef.setDepositionDataSetId(depId)
-            dfRef.setStorageType('archive')
-            dfRef.setContentTypeAndFormat('model','pdbx')
-            dfRef.setVersionId('latest')
+        # """
+        # exprtDirPath=None
+        # exprtFilePath=None
+        # fileSource = str(self.__reqObj.getValue("filesource")).strip().lower()
+        # depId  =  self.__reqObj.getValue("identifier")
+        # instId =  self.__reqObj.getValue("instance")
+        # #classId = self.__reqObj.getValue("classid")
+        # sessionId=self.__sessionId
+        # #
+        # if (self.__verbose):
+        #     self.__lfh.write("--------------------------------------------\n")
+        #     self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - dataFile   %s \n" % dataFile)
+        # #
+        # if fileSource in ['archive','wf-archive','wf_archive']:
+        #     self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing archive | filesource %r \n" % fileSource)
+        #     dfRef=DataFileReference()
+        #     dfRef.setDepositionDataSetId(depId)
+        #     dfRef.setStorageType('archive')
+        #     dfRef.setContentTypeAndFormat('model','pdbx')
+        #     dfRef.setVersionId('latest')
 
-            if (dfRef.isReferenceValid()):
-                exprtDirPath=dfRef.getDirPathReference()
-                exprtFilePath=dfRef.getFilePathReference()
-                sP=dfRef.getSitePrefix()
-                if (self.__verbose):
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() site prefix             : %s\n" % sP)
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export directory path: %s\n" % exprtDirPath)
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export file      path: %s\n" % exprtFilePath)
-            else:
-                self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() Bad archival reference for id %s \n" % depId)
+        #     if (dfRef.isReferenceValid()):
+        #         exprtDirPath=dfRef.getDirPathReference()
+        #         exprtFilePath=dfRef.getFilePathReference()
+        #         sP=dfRef.getSitePrefix()
+        #         if (self.__verbose):
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() site prefix             : %s\n" % sP)
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export directory path: %s\n" % exprtDirPath)
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export file      path: %s\n" % exprtFilePath)
+        #     else:
+        #         self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() Bad archival reference for id %s \n" % depId)
 
-        elif (fileSource in ['wf-instance','wf_instance']):
-            self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing instance | filesource %r \n" % fileSource)
-            dfRef=DataFileReference()
-            dfRef.setDepositionDataSetId(depId)
-            dfRef.setWorkflowInstanceId(instId)
-            dfRef.setStorageType('wf-instance')
-            dfRef.setContentTypeAndFormat('model','pdbx')
-            dfRef.setVersionId('latest')
+        # elif (fileSource in ['wf-instance','wf_instance']):
+        #     self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing instance | filesource %r \n" % fileSource)
+        #     dfRef=DataFileReference()
+        #     dfRef.setDepositionDataSetId(depId)
+        #     dfRef.setWorkflowInstanceId(instId)
+        #     dfRef.setStorageType('wf-instance')
+        #     dfRef.setContentTypeAndFormat('model','pdbx')
+        #     dfRef.setVersionId('latest')
 
-            if (dfRef.isReferenceValid()):
-                exprtDirPath=dfRef.getDirPathReference()
-                exprtFilePath=dfRef.getFilePathReference()
-                sP=dfRef.getSitePrefix()
-                if (self.__verbose):
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() site prefix             : %s\n" % sP)
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export directory path: %s\n" % exprtDirPath)
-                    self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export           path: %s\n" % exprtFilePath)
-            else:
-                self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() Bad wf-instance reference for id %s wf id %s\n" % (depId,instId))
-        elif (fileSource in ['rcsb_dev']):
-            self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing for 'rcsb_dev' filesource.\n")
-            exprtDirPath=self.__sessionPath
-            exprtFilePath=os.path.join(self.__sessionPath,"rcsb_dev_testCifFileSave.cif")
-        else:
-            self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing undefined | filesource %r \n" % fileSource)
-            exprtDirPath=self.__sessionPath
-            exprtFilePath=os.path.join(self.__sessionPath,dataFile)
+        #     if (dfRef.isReferenceValid()):
+        #         exprtDirPath=dfRef.getDirPathReference()
+        #         exprtFilePath=dfRef.getFilePathReference()
+        #         sP=dfRef.getSitePrefix()
+        #         if (self.__verbose):
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() site prefix             : %s\n" % sP)
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export directory path: %s\n" % exprtDirPath)
+        #             self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() CC assign details export           path: %s\n" % exprtFilePath)
+        #     else:
+        #         self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() Bad wf-instance reference for id %s wf id %s\n" % (depId,instId))
+        # elif (fileSource in ['rcsb_dev']):
+        #     self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing for 'rcsb_dev' filesource.\n")
+        #     exprtDirPath=self.__sessionPath
+        #     exprtFilePath=os.path.join(self.__sessionPath,"rcsb_dev_testCifFileSave.cif")
+        # else:
+        #     self.__lfh.write("+MessagingWebAppWorker.__saveMessagingModState() - processing undefined | filesource %r \n" % fileSource)
+        #     exprtDirPath=self.__sessionPath
+        #     exprtFilePath=os.path.join(self.__sessionPath,dataFile)
 
-        # export updated mmCif file here
-        # bOk = callExportFile Function
-        msgingIo = MessagingIo(self.__reqObj,self.__verbose,self.__lfh)
-        bOk = msgingIo.doExport(exprtDirPath,exprtFilePath)
-        """
+        # # export updated mmCif file here
+        # # bOk = callExportFile Function
+        # msgingIo = MessagingIo(self.__reqObj,self.__verbose,self.__lfh)
+        # bOk = msgingIo.doExport(exprtDirPath,exprtFilePath)
+        # """
         return True
 
     def __isFileUpload(self, fileTag="file"):
@@ -1914,12 +1842,12 @@ class MessagingWebAppWorker(object):
         # Gracefully exit if no file is provide in the request object -
         fs = self.__reqObj.getRawValue(fileTag)
         if self.__verbose and self.__debug:
-            self.__lfh.write("+MessagingWebApp.__isFileUpload() - type of 'fs' is %s\n" % type(fs))
+            logger.debug("+MessagingWebApp.__isFileUpload() - type of 'fs' is %s", type(fs))
 
         if (fs is None) or isinstance(fs, stringtypes):
             return False
         if self.__verbose and self.__debug:
-            self.__lfh.write("+MessagingWebApp.__isFileUpload() - file upload is found to be True\n")
+            logger.debug("+MessagingWebApp.__isFileUpload() - file upload is found to be True")
         return True
 
     def __getSession(self):
@@ -1928,81 +1856,80 @@ class MessagingWebAppWorker(object):
         self.__sObj = self.__reqObj.newSessionObj()
         self.__sessionId = self.__sObj.getId()
         self.__sessionPath = self.__sObj.getPath()
-        self.__rltvSessionPath = self.__sObj.getRelativePath()
+        # self.__rltvSessionPath = self.__sObj.getRelativePath()
         if self.__verbose:
-            self.__lfh.write("------------------------------------------------------\n")
-            self.__lfh.write("+MessagingWebApp.__getSession() - creating/joining session %s\n" % self.__sessionId)
-            # self.__lfh.write("+MessagingWebApp.__getSession() - workflow storage path    %s\n" % self.__workflowStoragePath)
-            self.__lfh.write("+MessagingWebApp.__getSession() - session path %s\n" % self.__sessionPath)
+            logger.info("------------------------------------------------------")
+            logger.info("+MessagingWebApp.__getSession() - creating/joining session %s", self.__sessionId)
+            # logger.info("+MessagingWebApp.__getSession() - workflow storage path    %s\n" % self.__workflowStoragePath)
+            logger.info("+MessagingWebApp.__getSession() - session path %s", self.__sessionPath)
 
-    def __setSemaphore(self):
-        sVal = str(time.strftime("TMP_%Y%m%d%H%M%S", time.localtime()))
-        self.__reqObj.setValue("semaphore", sVal)
-        return sVal
+    # def __setSemaphore(self):
+    #     sVal = str(time.strftime("TMP_%Y%m%d%H%M%S", time.localtime()))
+    #     self.__reqObj.setValue("semaphore", sVal)
+    #     return sVal
 
-    def __openSemaphoreLog(self, semaphore="TMP_"):
-        # sessionId = self.__reqObj.getSessionId()
-        fPathAbs = os.path.join(self.__sessionPath, semaphore + ".log")
-        self.__lfh = open(fPathAbs, "w")
+    # def __openSemaphoreLog(self, semaphore="TMP_"):
+    #     # sessionId = self.__reqObj.getSessionId()
+    #     fPathAbs = os.path.join(self.__sessionPath, semaphore + ".log")
+    #     self.__lfh = open(fPathAbs, "w")
 
-    def __closeSemaphoreLog(self, semaphore="TMP_"):
-        self.__lfh.flush()
-        self.__lfh.close()
+    # def __closeSemaphoreLog(self, semaphore="TMP_"):
+    #     self.__lfh.flush()
+    #     self.__lfh.close()
 
-    def __postSemaphore(self, semaphore="TMP_", value="OK"):
-        # sessionId = self.__reqObj.getSessionId()
-        fPathAbs = os.path.join(self.__sessionPath, semaphore)
-        fp = open(fPathAbs, "w")
-        fp.write("%s\n" % value)
-        fp.close()
-        return semaphore
+    # def __postSemaphore(self, semaphore="TMP_", value="OK"):
+    #     # sessionId = self.__reqObj.getSessionId()
+    #     fPathAbs = os.path.join(self.__sessionPath, semaphore)
+    #     fp = open(fPathAbs, "w")
+    #     fp.write("%s\n" % value)
+    #     fp.close()
+    #     return semaphore
 
-    def __semaphoreExists(self, semaphore="TMP_"):
-        # sessionId = self.__reqObj.getSessionId()
-        fPathAbs = os.path.join(self.__sessionPath, semaphore)
-        if os.access(fPathAbs, os.F_OK):
-            return True
-        else:
-            return False
+    # def __semaphoreExists(self, semaphore="TMP_"):
+    #     # sessionId = self.__reqObj.getSessionId()
+    #     fPathAbs = os.path.join(self.__sessionPath, semaphore)
+    #     if os.access(fPathAbs, os.F_OK):
+    #         return True
+    #     else:
+    #         return False
 
-    def __getSemaphore(self, semaphore="TMP_"):
+    # def __getSemaphore(self, semaphore="TMP_"):
+    #     # sessionId = self.__reqObj.getSessionId()
+    #     fPathAbs = os.path.join(self.__sessionPath, semaphore)
+    #     if self.__verbose:
+    #         self.__lfh.write("+MessagingWebApp.__getSemaphore() - checking %s in path %s\n" % (semaphore, fPathAbs))
+    #     try:
+    #         fp = open(fPathAbs, "r")
+    #         lines = fp.readlines()
+    #         fp.close()
+    #         sval = lines[0][:-1]
+    #     except:  # noqa: E722 pylint: disable=bare-except
+    #         sval = "FAIL"
+    #     return sval
 
-        # sessionId = self.__reqObj.getSessionId()
-        fPathAbs = os.path.join(self.__sessionPath, semaphore)
-        if self.__verbose:
-            self.__lfh.write("+MessagingWebApp.__getSemaphore() - checking %s in path %s\n" % (semaphore, fPathAbs))
-        try:
-            fp = open(fPathAbs, "r")
-            lines = fp.readlines()
-            fp.close()
-            sval = lines[0][:-1]
-        except:  # noqa: E722
-            sval = "FAIL"
-        return sval
+    # def __openChildProcessLog(self, label="TMP_"):
+    #     # sessionId = self.__reqObj.getSessionId()
+    #     fPathAbs = os.path.join(self.__sessionPath, label + ".log")
+    #     self.__lfh = open(fPathAbs, "w")
 
-    def __openChildProcessLog(self, label="TMP_"):
-        # sessionId = self.__reqObj.getSessionId()
-        fPathAbs = os.path.join(self.__sessionPath, label + ".log")
-        self.__lfh = open(fPathAbs, "w")
+    # def __processTemplate(self, fn, parameterDict={}):
+    #     """Read the input HTML template data file and perform the key/value substitutions in the
+    #     input parameter dictionary.
 
-    def __processTemplate(self, fn, parameterDict={}):
-        """Read the input HTML template data file and perform the key/value substitutions in the
-        input parameter dictionary.
+    #     :Params:
+    #         ``parameterDict``: dictionary where
+    #         key = name of subsitution placeholder in the template and
+    #         value = data to be used to substitute information for the placeholder
 
-        :Params:
-            ``parameterDict``: dictionary where
-            key = name of subsitution placeholder in the template and
-            value = data to be used to substitute information for the placeholder
-
-        :Returns:
-            string representing entirety of content with subsitution placeholders now replaced with data
-        """
-        tPath = self.__reqObj.getValue("TemplatePath")
-        fPath = os.path.join(tPath, fn)
-        ifh = open(fPath, "r")
-        sIn = ifh.read()
-        ifh.close()
-        return sIn % parameterDict
+    #     :Returns:
+    #         string representing entirety of content with subsitution placeholders now replaced with data
+    #     """
+    #     tPath = self.__reqObj.getValue("TemplatePath")
+    #     fPath = os.path.join(tPath, fn)
+    #     ifh = open(fPath, "r")
+    #     sIn = ifh.read()
+    #     ifh.close()
+    #     return sIn % parameterDict
 
     def __isWorkflow(self):
         """Determine if currently operating in Workflow Managed environment
@@ -2014,7 +1941,7 @@ class MessagingWebAppWorker(object):
         fileSource = str(self.__reqObj.getValue("filesource")).lower()
         #
         if self.__verbose:
-            self.__lfh.write("+MessagingWebAppWorker.__isWorkflow() - filesource is %s\n" % fileSource)
+            logger.info("+MessagingWebAppWorker.__isWorkflow() - filesource is %s", fileSource)
         #
         # add wf_archive to fix PDBe wfm issue -- jdw 2011-06-30
         #
@@ -2031,8 +1958,12 @@ class RedirectDevice:
         pass
 
 
-if __name__ == "__main__":
+def main_test():
     sTool = MessagingWebApp()
     d = sTool.doOp()
     for k, v in d.items():
         sys.stdout.write("Key - %s  value - %r\n" % (k, v))
+
+
+if __name__ == "__main__":
+    main_test()
