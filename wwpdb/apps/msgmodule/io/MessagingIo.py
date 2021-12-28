@@ -304,7 +304,7 @@ class MessagingIo(object):
                             myPersist.setContainerList(containerList)
                             myPersist.store(self.__dbFilePath)
 
-                            logger.debug("shelved cif data to %s" , self.__dbFilePath)
+                            logger.debug("shelved cif data to %s", self.__dbFilePath)
 
                         except:  # noqa: E722 pylint: disable=bare-except
                             logger.exception("Failed to shelve cif data")
@@ -336,8 +336,7 @@ class MessagingIo(object):
         dbname = containerNameList[0][0]
 
         if self.__verbose:
-            logger.info(
-                "successfully obtained datablock name as: %s, from %s", dbname, self.__dbFilePath)
+            logger.info("successfully obtained datablock name as: %s, from %s", dbname, self.__dbFilePath)
         catObj = persist.fetchOneObject(self.__dbFilePath, dbname, p_ctgryNm)
 
         if catObj is None:
@@ -524,8 +523,15 @@ class MessagingIo(object):
         return msgDict
 
     def getMsgRowList(
-        self, p_depDataSetId, p_sSendStatus="Y", p_bServerSide=False, p_iDisplayStart=None, p_iDisplayLength=None, p_sSrchFltr=None,  # pylint: disable=unused-argument
-            p_colSearchDict=None, p_bThreadedRslts=False  # pylint: disable=unused-argument
+        self,
+        p_depDataSetId,  # pylint: disable=unused-argument
+        p_sSendStatus="Y",
+        p_bServerSide=False,
+        p_iDisplayStart=None,
+        p_iDisplayLength=None,
+        p_sSrchFltr=None,  # pylint: disable=unused-argument
+        p_colSearchDict=None,
+        p_bThreadedRslts=False,  # pylint: disable=unused-argument
     ):
         """Retrieval of messages for a given deposition dataset ID
 
@@ -697,9 +703,7 @@ class MessagingIo(object):
                         colIndx = columnList.index(colName)
                         #
                         if self.__verbose:
-                            logger.info(
-                                "colIndx for %s is %s as derived from columnList is %r",
-                                colName, colIndx, columnList)
+                            logger.info("colIndx for %s is %s as derived from columnList is %r", colName, colIndx, columnList)
                         #
                         ordL.append(colIndx)
                         if sortOrder == "desc":
@@ -708,8 +712,7 @@ class MessagingIo(object):
                 if len(ordL) > 0:
                     if self.__verbose and self.__debug and self.__debugLvl2:
                         for idx, row in enumerate(rtrnList):
-                            logger.debug(
-                                "+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r", idx, row)
+                            logger.debug("+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r", idx, row)
                     rtrnList = self.__orderBy(rtrnList, ordL, descL)
 
                 if self.__verbose:
@@ -960,8 +963,7 @@ class MessagingIo(object):
                     logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
 
             if not os.access(outputFilePth, os.F_OK):
-                logger.info(
-                    "messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
+                logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
                 try:
                     # file may not exist b/c it is the first time that an
                     # annotator is sending a message in which case we create a new file
@@ -1082,8 +1084,7 @@ class MessagingIo(object):
             bOk = False
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk, bPdbxMdlFlUpdtd, failedFileRefs
 
@@ -1164,9 +1165,7 @@ class MessagingIo(object):
         bReturnVal = True
 
         if highWatermark is not None and len(highWatermark) > 0:  # only if we have a valid high water mark can we peform the sanity check
-            logger.info(
-                "highWatermark of [%s] provided for contentType '%s' so using this for sanity check.",
-                highWatermark, contentType)
+            logger.info("highWatermark of [%s] provided for contentType '%s' so using this for sanity check.", highWatermark, contentType)
             try:
                 if bGotContent:
                     nextOrdinalID = mIIo.nextMessageOrdinal()
@@ -1174,18 +1173,21 @@ class MessagingIo(object):
                 else:
                     currentNumRows = 0
 
-                assert int(currentNumRows) >= int(highWatermark), "MessagingIo._sanityCheck --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n" % (
+                assert int(currentNumRows) >= int(
+                    highWatermark
+                ), "MessagingIo._sanityCheck --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n" % (
                     outputFilePth,
                     currentNumRows,
                     highWatermark,
                 )
             except AssertionError:
                 bReturnVal = False
-                logger.error("CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!",
-                             outputFilePth,
-                             currentNumRows,
-                             highWatermark,
-                             )
+                logger.error(
+                    "CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!",
+                    outputFilePth,
+                    currentNumRows,
+                    highWatermark,
+                )
                 logger.exception("_sanityCheck code failed")
         else:
             logger.info("highWatermark not provided so skipping sanity check")
@@ -1204,8 +1206,7 @@ class MessagingIo(object):
 
         """
         #
-        logger.info(
-            "'message_type' is '%s' so creating PdbxMessageOrigCommRef", p_msgObj.messageType)
+        logger.info("'message_type' is '%s' so creating PdbxMessageOrigCommRef", p_msgObj.messageType)
 
         origSender = self.__reqObj.getValue("orig_sender")
         origRecipient = self.__reqObj.getValue("orig_recipient")
@@ -1566,8 +1567,7 @@ class MessagingIo(object):
             logger.exception("Message read status data update failed")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -1748,8 +1748,7 @@ class MessagingIo(object):
             logger.exception("Update message tags failure")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)\n", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
+        logger.info("Completed at %s (%d seconds)\n", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -1820,8 +1819,7 @@ class MessagingIo(object):
                         msgFound = True
                         if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                             bReturnStatus = False
-                            logger.info(
-                                "-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
+                            logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                             return bReturnStatus
 
                 if msgFound is False and p_statusToCheck != "for_release":
@@ -1841,8 +1839,7 @@ class MessagingIo(object):
                             if row["message_id"] == msgStatus["message_id"]:
                                 if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                                     bReturnStatus = False
-                                    logger.info(
-                                        "-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
+                                    logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                                     return bReturnStatus
 
                     for msg in msgsFrmDpstrLst:
@@ -1875,8 +1872,7 @@ class MessagingIo(object):
             logger.exception("Failure in check global msg")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bReturnStatus
 
@@ -2184,8 +2180,7 @@ class MessagingIo(object):
                         bSuccess = self.__genAnnotMilestoneEmdVrsn(p_depId, fPath, dpstMilestoneFilePth)
                         if not bSuccess:
                             if self.__verbose:
-                                logger.info(
-                                    "WARNING: problem creating 'emd' version of model file at: %s", dpstMilestoneFilePth)
+                                logger.info("WARNING: problem creating 'emd' version of model file at: %s", dpstMilestoneFilePth)
                         #
                         mlstnFilePthDict = msgDE.getMileStoneFilePaths("em-volume-header-annotate", "xml")
                         dpstEmHeaderMilestoneFilePth = mlstnFilePthDict["dpstPth"]
@@ -2197,8 +2192,7 @@ class MessagingIo(object):
 
                         if not bSuccess2:
                             if self.__verbose:
-                                logger.info(
-                                    "+-- WARNING: problem creating xml header version of model file at: %s", dpstEmHeaderMilestoneFilePth)
+                                logger.info("+-- WARNING: problem creating xml header version of model file at: %s", dpstEmHeaderMilestoneFilePth)
                         #
                         if (not bSuccess) or (not bSuccess2):
                             bOk = False
@@ -2234,8 +2228,7 @@ class MessagingIo(object):
                 bOk = False
                 failedMsgFileRefs.append(mileStoneCntntTyp)
                 if self.__verbose:
-                    logger.info(
-                        "-- problem with accessing annotMilestoneFilePth: %s", annotMilestoneFilePth)
+                    logger.info("-- problem with accessing annotMilestoneFilePth: %s", annotMilestoneFilePth)
 
         return bOk
 
@@ -2419,9 +2412,7 @@ class MessagingIo(object):
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
                     if self.__verbose:
-                        logger.info(
-                            "-- problem with accessing session copy of 'review' milestone model file at: %s",
-                            nmrStarReviewFilePath)
+                        logger.info("-- problem with accessing session copy of 'review' milestone model file at: %s", nmrStarReviewFilePath)
 
         return bOk
 
@@ -2493,8 +2484,7 @@ class MessagingIo(object):
                 bOk = False
                 failedMsgFileRefs.append(reviewCntntTyp)
                 if self.__verbose:
-                    logger.info(
-                        "-- problem with depositor milestone path for copyng %s", reviewAnnotMilestoneFilePth)
+                    logger.info("-- problem with depositor milestone path for copyng %s", reviewAnnotMilestoneFilePth)
 
         if os.access(reviewAnnotMilestoneFilePth, os.R_OK) and bOk is True:
 
@@ -2633,8 +2623,7 @@ class MessagingIo(object):
                 return bOk
 
             endTime = time.time()
-            logger.info(
-                "Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
+            logger.info("Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
 
             if bOk and os.access(dpstModelEmHdrFilePth_Local, os.R_OK):
                 shutil.copyfile(dpstModelEmHdrFilePth_Local, p_dstFilePath)
@@ -2782,11 +2771,8 @@ class MessagingIo(object):
         archiveNotifEmails = self.__cI.get("SITE_ARCHIVE_NOTIF_EMAILS")
         #
         if self.__verbose:
-            logger.info(
-                "-- hostname for Annotator Comm UI currently running on this server is '%s'", commHostName)
-            logger.info(
-                " -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'",
-                self.__siteId, depEmailUrl)
+            logger.info("-- hostname for Annotator Comm UI currently running on this server is '%s'", commHostName)
+            logger.info(" -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'", self.__siteId, depEmailUrl)
             #
         msgStrDict = {}
         #
@@ -2884,8 +2870,7 @@ class MessagingIo(object):
                 logger.info("-- Successfully generated email from %s", senderEmail)
                 logger.info("-- email message was %r\n", message)
                 if archiveNotifEmails is not None and archiveNotifEmails == "yes":
-                    logger.info(
-                        "-- email message was also archived to %s", self.__notifEmailArchAddress)
+                    logger.info("-- email message was also archived to %s", self.__notifEmailArchAddress)
         except smtplib.SMTPException:
             logger.exception("In sending email")
             if self.__verbose:
@@ -2953,8 +2938,7 @@ class MessagingIo(object):
                         shutil.copyfile(archiveFilePth, toLocalSessionFilePthAbslt)
 
             except:  # noqa: E722 pylint: disable=bare-except
-                logger.info(
-                    " ----- problem importing a file reference from archiveFilePth: %s", archiveFilePth)
+                logger.info(" ----- problem importing a file reference from archiveFilePth: %s", archiveFilePth)
                 logger.exception("file reference import")
         #
         return rtrnDict
@@ -3048,9 +3032,7 @@ class MessagingIo(object):
             localDateTimeStr = localDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            logger.info(
-                " ----- argument received, '%s', was not in expected datetime format so using data as is.",
-                p_timeStamp)
+            logger.info(" ----- argument received, '%s', was not in expected datetime format so using data as is.", p_timeStamp)
             # traceback.print_exc(file=self.__lfh)
             return p_timeStamp
 
@@ -3072,8 +3054,7 @@ class MessagingIo(object):
             gmtDateTimeStr = gmtDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            logger.info(
-                "----- argument received, '%s', was not in expected datetime format", p_timeStamp)
+            logger.info("----- argument received, '%s', was not in expected datetime format", p_timeStamp)
             logger.exception("Failure in datetime format %s", p_timeStamp)
             return p_timeStamp
 
@@ -3130,7 +3111,12 @@ class MessagingIo(object):
                             if self.__verbose and self.__debug and False:
                                 logger.info(
                                     "rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
-                                    rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                    rowIdx,
+                                    msgId,
+                                    prevMsgId,
+                                    p_indentDict[msgId],
+                                    p_indentDict[prevMsgId],
+                                )
                                 logger.info("new index is [%s]", prevRecrdIdx)
                             p_recordSetLst.insert(prevRecrdIdx, p_recordSetLst.pop(rowIdx))
                             correctionRqd = True
@@ -3182,7 +3168,12 @@ class MessagingIo(object):
                                 if self.__verbose and self.__debug:
                                     logger.info(
                                         "\n rowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
-                                        rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                        rowIdx,
+                                        msgId,
+                                        prevMsgId,
+                                        p_indentDict[msgId],
+                                        p_indentDict[prevMsgId],
+                                    )
                                     logger.info("new index is [%s]", insertIdx)
                                     logger.info("p_bFinalPass is [%s]", p_bFinalPass)
                                 #
@@ -3199,7 +3190,12 @@ class MessagingIo(object):
                             if self.__verbose and self.__debug:
                                 logger.debug(
                                     "\n\nrowIdx is [%s] -- msgId is [%s] -- prevMsgId is [%s] -- indentlevel is [%s] -- indentPrev is [%s]",
-                                    rowIdx, msgId, prevMsgId, p_indentDict[msgId], p_indentDict[prevMsgId])
+                                    rowIdx,
+                                    msgId,
+                                    prevMsgId,
+                                    p_indentDict[msgId],
+                                    p_indentDict[prevMsgId],
+                                )
                                 logger.debug("\n\n+ new index is [%s]", insertIdx)
                             #
                             p_recordSetLst.insert(insertIdx, p_recordSetLst.pop(rowIdx))
@@ -3324,11 +3320,9 @@ class MessagingIo(object):
 
         elif p_dictColSrchFilter:
             if self.__verbose and self.__debug:
-                logger.debug(
-                    "-- performing column-specific searches with search dictionary: %r", p_dictColSrchFilter.items())
+                logger.debug("-- performing column-specific searches with search dictionary: %r", p_dictColSrchFilter.items())
             if self.__verbose and self.__debug and self.__debugLvl2:
-                logger.debug(
-                    "-- performing column-specific searches against recordset: %r", p_rsltSetList)
+                logger.debug("-- performing column-specific searches against recordset: %r", p_rsltSetList)
             #
             bAllCriteriaMet = False
             for trueRowIdx, rcrd in enumerate(p_rsltSetList):
@@ -3582,8 +3576,7 @@ class MsgTmpltHlpr(object):
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
+                    logger.info("problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
                 logger.exception("Problem recovering date from PdbxPersist")
 
     def __getAccessionIdString(self, idList):
@@ -3841,7 +3834,7 @@ class MsgTmpltHlpr(object):
             targetLength = 85
             for num in range(targetLength, targetLength - 20, -1):
                 if self.__debugLvl2:
-                    logger.debug("testing targetLength of:  %s" , num)
+                    logger.debug("testing targetLength of:  %s", num)
                 if len(textwrap.wrap(primaryTitle, num)[-1]) > 10:  # EM: using reference to primaryTitle instead of p_returnDict['title']
                     targetLength = num
                     if self.__debugLvl2:
@@ -3892,8 +3885,7 @@ class MsgTmpltHlpr(object):
         containerNameList = myInd["__containers__"]
         self.__dataBlockName = containerNameList[0][0]
         if self.__verbose:
-            logger.info("successfully obtained datablock name as: %s, from %s",
-                        self.__dataBlockName, self.__dbFilePath)
+            logger.info("successfully obtained datablock name as: %s, from %s", self.__dataBlockName, self.__dbFilePath)
 
     def __isNotCifNull(self, p_value):
         if p_value in [".", "?"]:
@@ -3950,8 +3942,7 @@ class MsgTmpltHlpr(object):
                             lname = row[idLname]
                             if self.__validateEmail(email) is True and email not in emailAddrsSoFar:
                                 if self.__verbose and self.__debug:
-                                    logger.debug("-- [%s, %s, %s] being appended to self.__contactAuths.",
-                                                 email, role, lname)
+                                    logger.debug("-- [%s, %s, %s] being appended to self.__contactAuths.", email, role, lname)
                                 emailAddrsSoFar.append(email)
                                 self.__contactAuths.append((email, role, lname))
                         except:  # noqa: E722 pylint: disable=bare-except
@@ -3979,13 +3970,10 @@ class MsgTmpltHlpr(object):
 
         if len(brainPageContactList) > 0:
             for email, role, lastName in brainPageContactList:
-                logger.info(
-                    "-- found contact author from brainpage --> [%s, %s, %s]", email, role, lastName)
+                logger.info("-- found contact author from brainpage --> [%s, %s, %s]", email, role, lastName)
                 if email not in emailAddrsSoFar:
                     if self.__verbose and self.__debug:
-                        logger.info(
-                            "-- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths.",
-                            email, role, lastName)
+                        logger.info("-- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths.", email, role, lastName)
                     self.__contactAuths.append([email, role, lastName])
 
     def __getEntryAuthors(self, p_IdType="PDB"):
@@ -4452,8 +4440,7 @@ class MsgTmpltHlpr(object):
                 for row in ctgryObj.getRowList():
                     try:
                         if self.__verbose and self.__debug:
-                            logger.debug("found 'requested_accession_types' field at index: %s with value: %s",
-                                         idxRqstdIdTypes, (fullRsltSet[0])[idxRqstdIdTypes])
+                            logger.debug("found 'requested_accession_types' field at index: %s with value: %s", idxRqstdIdTypes, (fullRsltSet[0])[idxRqstdIdTypes])
 
                         self.__rqstdAccessionIdsLst = (row[idxRqstdIdTypes]).split(",")
                         logger.info("self.__rqstdAccessionIdsLst being assigned as: %r", self.__rqstdAccessionIdsLst)
@@ -4567,8 +4554,7 @@ class MsgTmpltHlpr(object):
 
         else:
             if self.__verbose:
-                logger.info("-- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s",
-                            self.__messagingFilePath)
+                logger.info("-- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s", self.__messagingFilePath)
 
     def __getLastOutboundRprtDate(self, p_IdType="PDB"):
         """Returns a string of last timestamp"""

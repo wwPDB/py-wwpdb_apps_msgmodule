@@ -39,7 +39,6 @@ class MyConfigInfo(ConfigInfo):
 
 
 class ImportTests(unittest.TestCase):
-
     @patch("wwpdb.apps.msgmodule.webapp.MessagingWebApp.ConfigInfo", side_effect=MyConfigInfo)
     def testInstantiate(self, mock1):  # pylint:  disable=unused-argument
         """Tests simple instantiation"""

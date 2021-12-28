@@ -17,9 +17,11 @@ __license__ = "Creative Commons Attribution 3.0 Unported"
 __version__ = "V0.07"
 
 import sys
+
 # import os.path
 import traceback
 import logging
+
 # import shutil
 # from wwpdb.utils.config.ConfigInfo import ConfigInfo
 # from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm

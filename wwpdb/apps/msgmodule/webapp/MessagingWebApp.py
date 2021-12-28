@@ -789,8 +789,7 @@ class MessagingWebAppWorker(object):
                 activateNotesFlagging = lines[0][:-1]
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(" -- problem reading notesFlaggingStatusFilePathAbs at:%s",
-                                notesFlaggingStatusFilePathAbs)
+                    logger.info(" -- problem reading notesFlaggingStatusFilePathAbs at:%s", notesFlaggingStatusFilePathAbs)
         else:
             # file doesn't exist yet which is true if this is first time annotator is accessing messaging UI for the given depID
             # so we create the file and set default status of "ON"
