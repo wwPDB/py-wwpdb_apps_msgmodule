@@ -40,8 +40,7 @@ class ExtractMessage(object):
         If no unlock message has been sent, will return None
         """
 
-        msgfile = self.__pI.getFilePath(depid, contentType='messages-to-depositor', formatType='pdbx',
-                                        fileSource="archive", versionId="1")
+        msgfile = self.__pI.getFilePath(depid, contentType="messages-to-depositor", formatType="pdbx", fileSource="archive", versionId="1")
 
         if not os.path.exists(msgfile):
             return None
@@ -57,7 +56,7 @@ class ExtractMessage(object):
             c0 = myContainerList[0]
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
             else:
                 #
@@ -68,9 +67,9 @@ class ExtractMessage(object):
                 for idxIt, itName in enumerate(itNameList):
                     itDict[str(itName).lower()] = idxIt
                     #
-                idxOrdinalId = itDict['_pdbx_deposition_message_info.ordinal_id']
-                idxLastCommDate = itDict['_pdbx_deposition_message_info.timestamp']
-                idxMsgSubj = itDict['_pdbx_deposition_message_info.message_subject']
+                idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
+                idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
+                idxMsgSubj = itDict["_pdbx_deposition_message_info.message_subject"]
 
                 maxUnlockOrdId = 0
                 for row in catObj.getRowList():
@@ -78,7 +77,7 @@ class ExtractMessage(object):
                         ordinalId = int(row[idxOrdinalId])
                         msgsubj = row[idxMsgSubj]
 
-                        if msgsubj == 'System Unlocked':
+                        if msgsubj == "System Unlocked":
                             if ordinalId > maxUnlockOrdId:
                                 maxUnlockOrdId = ordinalId
                                 ret = str(row[idxLastCommDate])
@@ -87,7 +86,7 @@ class ExtractMessage(object):
                         logger.error("Error processing %s %s", depid, str(e))
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             return None
 
         return ret
@@ -99,8 +98,7 @@ class ExtractMessage(object):
 
         logger.info("Starting for deposition %s", depid)
 
-        msgfile = self.__pI.getFilePath(depid, contentType='messages-to-depositor', formatType='pdbx',
-                                        fileSource="archive", versionId="1")
+        msgfile = self.__pI.getFilePath(depid, contentType="messages-to-depositor", formatType="pdbx", fileSource="archive", versionId="1")
 
         if not os.path.exists(msgfile):
             return (None, None)
@@ -118,7 +116,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_file_reference category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_file_reference category", depid)
                 return (None, None)
 
             # Get list of msgids of validtion report
@@ -132,15 +130,15 @@ class ExtractMessage(object):
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
 
-            idxMsgId = itDict['_pdbx_deposition_message_file_reference.message_id']
-            idxContentType = itDict['_pdbx_deposition_message_file_reference.content_type']
+            idxMsgId = itDict["_pdbx_deposition_message_file_reference.message_id"]
+            idxContentType = itDict["_pdbx_deposition_message_file_reference.content_type"]
 
             for row in catObj.getRowList():
                 try:
                     msgId = row[idxMsgId]
                     cT = row[idxContentType]
 
-                    if 'validation-report-annotate' in cT:
+                    if "validation-report-annotate" in cT:
                         msgids.add(msgId)
 
                 except Exception as e:
@@ -155,7 +153,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return (None, None)
 
             #
@@ -166,16 +164,16 @@ class ExtractMessage(object):
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
             #
-            idxTimeStamp = itDict['_pdbx_deposition_message_info.timestamp']
-            idxMsgId = itDict['_pdbx_deposition_message_info.message_id']
-            idxMsgText = itDict['_pdbx_deposition_message_info.message_text']
-            idxSendStatus = itDict['_pdbx_deposition_message_info.send_status']
+            idxTimeStamp = itDict["_pdbx_deposition_message_info.timestamp"]
+            idxMsgId = itDict["_pdbx_deposition_message_info.message_id"]
+            idxMsgText = itDict["_pdbx_deposition_message_info.message_text"]
+            idxSendStatus = itDict["_pdbx_deposition_message_info.send_status"]
 
             lastvalid = None
 
             for row in catObj.getRowList():
                 try:
-                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), '%Y-%m-%d %H:%M:%S')
+                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S")
                     msgId = str(row[idxMsgId])
                     status = str(row[idxSendStatus])
                     msgText = str(row[idxMsgText])
@@ -197,7 +195,7 @@ class ExtractMessage(object):
             ret = lastvalid
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             ret = None
 
         logger.info("Returning (%s, %s)", ret, major)
@@ -208,7 +206,7 @@ class ExtractMessage(object):
         """Returns true if there appears to be a major error in the validation test - otherwise False"""
 
         ret = False
-        if re.search('Some major issues', msgText) is not None:
+        if re.search("Some major issues", msgText) is not None:
             ret = True
 
         # logger.debug("Major validation %s", ret)
@@ -226,8 +224,7 @@ class ExtractMessage(object):
         else:
             msg_content = "messages-from-depositor"
 
-        msgfile = self.__pI.getFilePath(depid, contentType=msg_content, formatType='pdbx',
-                                        fileSource="archive", versionId="1")
+        msgfile = self.__pI.getFilePath(depid, contentType=msg_content, formatType="pdbx", fileSource="archive", versionId="1")
 
         if not os.path.exists(msgfile):
             return None
@@ -246,7 +243,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category" % depid)
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
 
             #
@@ -257,14 +254,14 @@ class ExtractMessage(object):
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
             #
-            idxTimeStamp = itDict['_pdbx_deposition_message_info.timestamp']
-            idxSendStatus = itDict['_pdbx_deposition_message_info.send_status']
+            idxTimeStamp = itDict["_pdbx_deposition_message_info.timestamp"]
+            idxSendStatus = itDict["_pdbx_deposition_message_info.send_status"]
 
             lastsent = None
 
             for row in catObj.getRowList():
                 try:
-                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), '%Y-%m-%d %H:%M:%S')
+                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S")
                     status = str(row[idxSendStatus])
 
                     if status == "Y":
@@ -281,7 +278,7 @@ class ExtractMessage(object):
             ret = lastsent
 
         else:
-            logger.debug("Deposition %s empty message file" % depid)
+            logger.debug("Deposition %s empty message file", depid)
             ret = None
 
         logger.info("Returning %s", ret)

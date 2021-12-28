@@ -25,15 +25,15 @@ class DateUtil(object):
     @staticmethod
     def date_to_display(date):
         """Converts incoming dateIn from ISO 8601 YYYY-MM-DD to Month number, year
-            If dateIn is '.' or '?' returns [UNKNOWN]. If date cannot be parsed, returns date.
-            This should be picked up by dictionary checks.
+        If dateIn is '.' or '?' returns [UNKNOWN]. If date cannot be parsed, returns date.
+        This should be picked up by dictionary checks.
         """
 
-        ret = '[UNKNOWN]'
-        if date not in ['.', '?']:
+        ret = "[UNKNOWN]"
+        if date not in [".", "?"]:
             try:
-                dt = datetime.datetime.strptime(date, '%Y-%m-%d')
-                ret = dt.strftime('%-d %B %Y')
+                dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+                ret = dt.strftime("%-d %B %Y")
             except ValueError:
                 ret = date
 
@@ -43,7 +43,7 @@ class DateUtil(object):
     def datetime_to_display(date):
         """Converts a datetime.date object to ISO 8601 format"""
         try:
-            dt = date.strftime('%-d %B %Y')
+            dt = date.strftime("%-d %B %Y")
         except ValueError:
             dt = date
         return dt
@@ -51,11 +51,12 @@ class DateUtil(object):
 
 def main():
     du = DateUtil()
-    print(du.date_to_display('2018-10-08'))
-    print(du.date_to_display('2018-10'))
-    print(du.date_to_display('.'))
+    print(du.date_to_display("2018-10-08"))
+    print(du.date_to_display("2018-10"))
+    print(du.date_to_display("."))
     dt = datetime.date(2018, 10, 3)
     print(du.datetime_to_display(dt))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

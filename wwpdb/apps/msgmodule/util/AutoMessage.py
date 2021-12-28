@@ -20,6 +20,7 @@ from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 from wwpdb.utils.session.WebRequest import InputRequest
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from wwpdb.io.locator.PathInfo import PathInfo
+
 #
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class AutoMessage(object):
             self.__siteId = siteId
         else:
             self.__siteId = getSiteId()
-        logger.debug("Site id is %s" % self.__siteId)
+        logger.debug("Site id is %s", self.__siteId)
         self.__cI = ConfigInfo(self.__siteId)
         self.__verbose = verbose
         self.__log = log
@@ -39,12 +40,12 @@ class AutoMessage(object):
         if topSessionDir:
             self.__topSessionDir = topSessionDir
         else:
-            self.__topSessionDir = self.__cI.get('SITE_WEB_APPS_TOP_SESSIONS_PATH')
+            self.__topSessionDir = self.__cI.get("SITE_WEB_APPS_TOP_SESSIONS_PATH")
 
     def __getmsgio(self):
-        paramdict = {'TopSessionPath': [self.__topSessionDir]}
+        paramdict = {"TopSessionPath": [self.__topSessionDir]}
         reqobj = InputRequest(paramdict, verbose=True)
-        reqobj.setValue('WWPDB_SITE_ID', self.__siteId)
+        reqobj.setValue("WWPDB_SITE_ID", self.__siteId)
         # Session dir
 
         mio = MessagingIo(reqobj, verbose=self.__verbose, log=self.__log)
@@ -68,7 +69,7 @@ class AutoMessage(object):
             mio.autoMsg(emdents, p_tmpltType=p_tmplt, p_isEmdbEntry=True)
 
     def _getExptl(self, depid):
-        ctrgs = ['exptl']
+        ctrgs = ["exptl"]
 
         ret = []
         try:
@@ -78,11 +79,11 @@ class AutoMessage(object):
             containerl = pr.readFile(inputFilePath=modelpath, selectList=ctrgs)
             if len(containerl) > 0:
                 block0 = containerl[0]
-                cobj = block0.getObj('exptl')
-                if cobj and cobj.hasAttribute('method'):
+                cobj = block0.getObj("exptl")
+                if cobj and cobj.hasAttribute("method"):
                     for row in range(cobj.getRowCount()):
-                        ret.append(cobj.getValue('method', row))
-        except:
+                        ret.append(cobj.getValue("method", row))
+        except Exception as _e:  # noqa: F841
             logger.exception("Failed to parse model file")
 
         return ret
@@ -92,7 +93,7 @@ class AutoMessage(object):
         pdbents = []
         for depid in depidlist:
             expmeths = self._getExptl(depid)
-            if 'ELECTRON MICROSCOPY' in expmeths:
+            if "ELECTRON MICROSCOPY" in expmeths:
                 ements.append(depid)
             else:
                 pdbents.append(depid)
