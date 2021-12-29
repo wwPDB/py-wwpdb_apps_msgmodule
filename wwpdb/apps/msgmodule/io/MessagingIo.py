@@ -1427,9 +1427,9 @@ class MessagingIo(object):
             #    fPath = "/net/wwpdb_da/da_top/data_internal/workflow/D_1100201324/instance/W_016/D_1100201324_correspondence-to-depositor_P1.txt.V1"
 
             if fPath is not None and os.access(fPath, os.R_OK):
-                ifh = open(fPath, "r")
-                for line in ifh:
-                    oL.append(line)
+                with open(fPath, "r") as ifh:
+                    for line in ifh:
+                        oL.append(line)
 
                 rtrnText = "".join(oL)
 
@@ -1437,9 +1437,9 @@ class MessagingIo(object):
             if self.__devMode is True:
                 fPath = "/net/wwpdb_da/da_top/data_internal/workflow/D_1100201324/instance/W_016/D_1100201324_correspondence-to-depositor_P1.txt.V1"
                 if fPath is not None and os.access(fPath, os.R_OK):
-                    ifh = open(fPath, "r")
-                    for line in ifh:
-                        oL.append(line)
+                    with open(fPath, "r") as ifh:
+                        for line in ifh:
+                            oL.append(line)
 
                     rtrnText = "".join(oL)
 
@@ -3402,6 +3402,7 @@ class MsgTmpltHlpr(object):
         self.__dbFilePath = dbFilePath
         self.__pdbxPersist = None
         self.__dataBlockName = None
+        self.__dataCategories = None
         self.__messagingFilePath = None
         #
         self.__contactAuths = []
@@ -3884,6 +3885,7 @@ class MsgTmpltHlpr(object):
         myInd = self.__pdbxPersist.getIndex(dbFileName=self.__dbFilePath)
         containerNameList = myInd["__containers__"]
         self.__dataBlockName = containerNameList[0][0]
+        self.__dataCategories = myInd.get(self.__dataBlockName, None)
         if self.__verbose:
             logger.info("successfully obtained datablock name as: %s, from %s", self.__dataBlockName, self.__dbFilePath)
 
@@ -3897,6 +3899,11 @@ class MsgTmpltHlpr(object):
         return not self.__isNotCifNull(p_value)
 
     def __getCatObj(self, p_ctgryNm):
+
+        if self.__dataCategories is not None and p_ctgryNm not in self.__dataCategories:
+            logger.info("-- Shortcut Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
+            return None
+
         catObj = self.__pdbxPersist.fetchOneObject(self.__dbFilePath, self.__dataBlockName, p_ctgryNm)
 
         if catObj is None:
@@ -4512,9 +4519,10 @@ class MsgTmpltHlpr(object):
     def __getLastCommDate(self):
         # Retrieves last message sent date as well as last unlocked message
         myContainerList = []
-        ifh = open(self.__messagingFilePath, "r")
-        pRd = PdbxReader(ifh)
-        pRd.read(myContainerList)
+        with open(self.__messagingFilePath, "r") as ifh:
+            pRd = PdbxReader(ifh)
+            pRd.read(myContainerList)
+
         if len(myContainerList) >= 1:
             c0 = myContainerList[0]
             catObj = c0.getObj("pdbx_deposition_message_info")
