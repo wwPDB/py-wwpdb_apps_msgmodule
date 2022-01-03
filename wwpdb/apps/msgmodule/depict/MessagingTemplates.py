@@ -51,6 +51,8 @@ class MessagingTemplates(object):
 """
     msgTmplt_annotatorGroupSignoff = "The wwPDB Biocuration Staff"
 
+    msgTmplt_annotatorGuestPdbjSignoff = "Guest Biocurators of PDBj"
+
     msgTmplt_site_contact_details_rcsb = """
 --------------------------------------------------------------------------------------------------------------
 RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
@@ -258,10 +260,13 @@ Thank you for your attention.
 
 %(full_name_annotator)s
 
-The wwPDB Biocuration Staff
+%(annotator_group_signoff)s
+%(site_contact_details)s
 """
 
     msgTmplt_annotatorGroupSignoff_em = "The wwPDB Biocuration Staff"
+
+    msgTmplt_annotatorGuestPdbjSignoff_em = "Guest Biocurators of PDBj"
 
     msgTmplt_default_em = """Dear Depositors,
 

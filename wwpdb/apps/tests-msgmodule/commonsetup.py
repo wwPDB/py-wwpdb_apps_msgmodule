@@ -21,7 +21,7 @@ configInfo = {
     "RO_RESOURCE_PATH": os.path.join(HERE, os.pardir, os.pardir, "mock-data", "da_top", "resources_ro"),
     "SITE_ARCHIVE_STORAGE_PATH": os.path.join(TESTOUTPUT, "data"),
     "SITE_WEB_APPS_TOP_PATH": TESTOUTPUT,
-    "FILE_FORMAT_EXTENSION_DICTIONARY": {"pdbx": "cif", "pdb": "pdb", "nmr-star": "str"},
+    "FILE_FORMAT_EXTENSION_DICTIONARY": {"pdbx": "cif", "pdb": "pdb", "nmr-star": "str", "txt": "txt"},
     "CONTENT_TYPE_DICTIONARY": {
         "model": (["pdbx", "pdb", "pdbml", "cifeps"], "model"),
         "messages-from-depositor": (["pdbx"], "messages-from-depositor"),

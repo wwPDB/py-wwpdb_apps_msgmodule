@@ -3681,7 +3681,9 @@ class MsgTmpltHlpr(object):
         p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
         p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
         # message template closing details
-        p_returnDict["annotator_group_signoff"] = MessagingTemplates.msgTmplt_annotatorGroupSignoff
+        p_returnDict["annotator_group_signoff"] = (
+            MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if (self.__procSite == "PDBC") else MessagingTemplates.msgTmplt_annotatorGroupSignoff
+        )
         p_returnDict["site_contact_details"] = self.__closingSiteDetails
         p_returnDict["unlock_date"] = du.date_to_display(self.__lastUnlockDate) if (self.__lastUnlockDate is not None and len(self.__lastUnlockDate) > 0) else "[NOT AVAILBLE]"
 
@@ -3802,10 +3804,15 @@ class MsgTmpltHlpr(object):
             p_returnDict["vldtn_rprt"] = "validation report and " if self.__emMapAndModelEntry else ""
             p_returnDict["wwpdb_and"] = "wwPDB and " if self.__emMapAndModelEntry else ""
             # message template closing details
-            p_returnDict["annotator_group_signoff"] = (
-                MessagingTemplates.msgTmplt_annotatorGroupSignoff if self.__emModelOnly else MessagingTemplates.msgTmplt_annotatorGroupSignoff_em % p_returnDict
-            )
-            p_returnDict["site_contact_details"] = "" if self.__emMapOnly else self.__closingSiteDetails
+            if self.__procSite != "PDBC":
+                p_returnDict["annotator_group_signoff"] = (
+                    MessagingTemplates.msgTmplt_annotatorGroupSignoff if self.__emModelOnly else MessagingTemplates.msgTmplt_annotatorGroupSignoff_em % p_returnDict
+                )
+            else:
+                p_returnDict["annotator_group_signoff"] = (
+                    MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if self.__emModelOnly else MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff_em % p_returnDict
+                )
+            p_returnDict["site_contact_details"] = self.__closingSiteDetails
 
         ############################
         # END: EM ENTRY PROCESSING #
@@ -4303,6 +4310,9 @@ class MsgTmpltHlpr(object):
         elif procSite == "PDBE":
             self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbe
         elif procSite == "PDBJ":
+            self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbj
+        elif procSite == "PDBC":
+            # During initial training PDBC uses PDBJ closing
             self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbj
 
         if self.__annotatorUserNameDict:
