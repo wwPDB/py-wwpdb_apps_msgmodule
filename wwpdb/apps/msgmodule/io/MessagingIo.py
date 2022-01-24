@@ -4439,7 +4439,7 @@ class MsgTmpltHlpr(object):
                 iTotalRecords = len(fullRsltSet)
 
                 if self.__verbose and self.__debug:
-                    logger.debuge("fullRsltSet obtained as: %r\n", fullRsltSet)
+                    logger.debug("fullRsltSet obtained as: %r\n", fullRsltSet)
 
                 assert iTotalRecords == 1, "expecting '%s' category to contain a single record but had %s records" % (ctgryNm, iTotalRecords)
                 #
