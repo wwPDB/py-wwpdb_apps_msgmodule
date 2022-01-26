@@ -27,6 +27,7 @@
 #    2017-10-09    RPS    Updating template for "explicit approval". Adjusting signoff content for EM Map Only cases.
 #    2018-01-30    RPS    Readjusting signoff content for EM Map Only cases.
 #    2019-06-19    EP     Add msgTmplt_remindUnlocked for automatic sending of message for unlocked
+#    2022-01-26    CS     Update template
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -222,7 +223,7 @@ Please do not use these accession IDs in any publications.
     msgTmplt_systemUnlocked = """Dear Depositor,
 
 The deposition interface has been unlocked as per your request. If you are providing replacement coordinates, please visit the validation server (http://wwpdb-validation.wwpdb.org/validservice/)
-and check your coordinates to ensure the quality of your structure prior to re-submission.  Make sure to press the 'SUBMIT' button once you have finished making your changes within the deposition interface.
+and check your coordinates to ensure the quality of your structure prior to re-submission.  Make sure to press the 'Submit deposition' button once you have finished making your changes within the deposition interface.
 
 %(msg_closing)s
 """
@@ -230,7 +231,7 @@ and check your coordinates to ensure the quality of your structure prior to re-s
     msgTmplt_systemUnlockedPostRel = """Dear Depositor,
 
 The deposition interface has been unlocked as per your request in order to facilitate replacement of your model. You will be able to upload a replacement model, without any change to experimental data. As this entry has already been released, we will treat this as an entry that is to be released as soon as revisions are complete.
-Make sure to press the 'SUBMIT' button once you have finished making your changes within the deposition interface.
+Make sure to press the 'Submit deposition' button once you have finished making your changes within the deposition interface.
 
 %(msg_closing)s
 """
@@ -422,7 +423,7 @@ Please do not use these accession IDs in any publications.
 
     msgTmplt_systemUnlocked_em = """Dear Depositor,
 
-The deposition interface has been unlocked as per your request. Make sure to press the 'SUBMIT' button once you have finished making your changes within the deposition interface.
+The deposition interface has been unlocked as per your request. Make sure to press the 'Submit deposition' button once you have finished making your changes within the deposition interface.
 
 %(msg_closing)s
 """
