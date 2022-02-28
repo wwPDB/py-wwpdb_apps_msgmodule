@@ -36,6 +36,7 @@
 #    2016-08-09    RPS    Changes to support site/annotator specific footers in message templates.
 #                            Introducing support for standalone correspondence viewer.
 #    2016-09-14    ZF     In doRender() function, introducing support for group deposition
+#    2022-02-28    CS     Add processs to deal with map_only withdrawn template
 ##
 ##
 """
@@ -256,7 +257,16 @@ class MessagingDepict(object):
         strParamDict["msg_tmplt_release-nopubl"] = (
             (MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict)
         )  # noqa: E501
-        strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_withdrawn % strParamDict)
+
+        ## CS 2022-02-27 Handle EM map_only withdrawn template
+        if bEmDeposition:
+            if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]": # map_only
+                strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict)
+            else:
+                strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn_em % strParamDict)
+        else:
+            strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn % strParamDict)
+            
         strParamDict["msg_tmplt_vldtn"] = MessagingTemplates.msgTmplt_vldtn % strParamDict
 
         statusCode = strParamDict.get("status_code", "???")

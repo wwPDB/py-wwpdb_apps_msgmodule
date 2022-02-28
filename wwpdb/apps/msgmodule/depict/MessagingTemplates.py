@@ -28,6 +28,7 @@
 #    2018-01-30    RPS    Readjusting signoff content for EM Map Only cases.
 #    2019-06-19    EP     Add msgTmplt_remindUnlocked for automatic sending of message for unlocked
 #    2022-01-26    CS     Update template
+#    2022-02-27    CS     Update template for EM only withdrawn
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -417,6 +418,23 @@ The entry is entitled:
 Please do not use these accession IDs in any publications.
 
 %(thurs_wdrn_clause)s
+
+%(msg_closing)s
+"""
+    ## CS 2022-02-27 Add EM map_only withdrawn template
+    msgTmplt_withdrawn_em_map_only = """Dear Depositors,
+
+This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be withdrawn on %(withdrawn_date)s.
+
+The entry is entitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Please do not use these accession IDs in any publications.
+
+%(thurs_wdrn_clause_em_map_only)s
 
 %(msg_closing)s
 """
