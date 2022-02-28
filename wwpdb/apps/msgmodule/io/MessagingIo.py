@@ -115,6 +115,7 @@
 #    2018-03-27    EP     Calculate one year expiration date for REL entries for reminder template
 #    2018-04-23    EP     Support not copying milestones to deposit directory with switch. Transition most to logging.
 #    2018-05-07    EP     Do not bump version numbers of milestones if same. Multiple messages may refer to same file.
+#    2022-02-27    CS     Add EM only withdrawn clause
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -3680,6 +3681,9 @@ class MsgTmpltHlpr(object):
         p_returnDict["withdrawn_date"] = p_returnDict["release_date"]
         p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
         p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
+        
+        p_returnDict["thurs_wdrn_clause_em_map_only"] = self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else "" # CS 2022-02-27
+        
         # message template closing details
         p_returnDict["annotator_group_signoff"] = (
             MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if (self.__procSite == "PDBC") else MessagingTemplates.msgTmplt_annotatorGroupSignoff
@@ -4693,7 +4697,9 @@ If you have changes to make to the entry please inform us by today, noon local t
                     + """.
 """
                 )
-
+                
+        self.__thursWdrnClauseEmMapOnly = self.__thursWdrnClause # CS 2022-02-27 Add EM only withdrawn clause
+        
         self.__thursWdrnClause += """
 Please use the latest annotated mmCIF file (attached) to start a new deposition if you need to redeposit the structure."""
 
