@@ -421,7 +421,7 @@ Please do not use these accession IDs in any publications.
 
 %(msg_closing)s
 """
-    ## CS 2022-02-27 Add EM map_only withdrawn template
+
     msgTmplt_withdrawn_em_map_only = """Dear Depositors,
 
 This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be withdrawn on %(withdrawn_date)s.
