@@ -3473,7 +3473,7 @@ class MsgTmpltHlpr(object):
         self.__releaseDate = None
         self.__thursPreRlsClause = None
         self.__thursWdrnClause = None
-        self.__thursWdrnClauseEmMapOnly = None # CS 2022-02-27
+        self.__thursWdrnClauseEmMapOnly = None  # CS 2022-02-27
         #
         self.__setup()
 
@@ -3682,10 +3682,9 @@ class MsgTmpltHlpr(object):
         p_returnDict["withdrawn_date"] = p_returnDict["release_date"]
         p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
         p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
-        
-        p_returnDict["thurs_wdrn_clause_em_map_only"] = self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and \
-                                                        len(self.__thursWdrnClauseEmMapOnly) > 0) else "" # CS 2022-02-27
-        
+
+        p_returnDict["thurs_wdrn_clause_em_map_only"] = self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else ""
+
         # message template closing details
         p_returnDict["annotator_group_signoff"] = (
             MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if (self.__procSite == "PDBC") else MessagingTemplates.msgTmplt_annotatorGroupSignoff
@@ -4668,7 +4667,7 @@ class MsgTmpltHlpr(object):
         ):  # i.e. if we're past the deadline for acceptable change requests
             self.__thursPreRlsClause = ""
             self.__thursWdrnClause = ""
-            self.__thursWdrnClauseEmMapOnly = "" # CS 2022-02-27
+            self.__thursWdrnClauseEmMapOnly = ""  # CS 2022-02-27
         else:
             # i.e. if we're still before the deadline for acceptable change requests
             processingSite = self.__procSite if (self.__procSite is not None and len(self.__procSite) > 0) else "[not available]"
@@ -4700,9 +4699,9 @@ If you have changes to make to the entry please inform us by today, noon local t
                     + """.
 """
                 )
-                
-        self.__thursWdrnClauseEmMapOnly = self.__thursWdrnClause # CS 2022-02-27 Add EM only withdrawn clause
-        
+
+        self.__thursWdrnClauseEmMapOnly = self.__thursWdrnClause  # CS 2022-02-27 Add EM only withdrawn clause
+
         self.__thursWdrnClause += """
 Please use the latest annotated mmCIF file (attached) to start a new deposition if you need to redeposit the structure."""
 
