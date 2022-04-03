@@ -261,11 +261,11 @@ class MessagingDepict(object):
         #  CS 2022-02-27 Handle EM map_only withdrawn template
         if bEmDeposition:
             if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # map_only
-                strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict)
+                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict
             else:
-                strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn_em % strParamDict)
+                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
         else:
-            strParamDict["msg_tmplt_withdrawn"] = (MessagingTemplates.msgTmplt_withdrawn % strParamDict)
+            strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn % strParamDict
 
         strParamDict["msg_tmplt_vldtn"] = MessagingTemplates.msgTmplt_vldtn % strParamDict
 

@@ -3012,7 +3012,7 @@ class MessagingIo(object):
 
     def __decodeCifToUtf8(self, p_content):
         if sys.version_info[0] < 3:
-            h = HTMLParser()
+            h = HTMLParser()  # pylint: disable=used-before-assignment
             return h.unescape(p_content).replace("\\xa0", " ").encode("utf-8")
         else:
             return unescape(p_content).replace("\\xa0", " ")
@@ -3683,7 +3683,9 @@ class MsgTmpltHlpr(object):
         p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
         p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
 
-        p_returnDict["thurs_wdrn_clause_em_map_only"] = self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else ""
+        p_returnDict["thurs_wdrn_clause_em_map_only"] = (
+            self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else ""
+        )
 
         # message template closing details
         p_returnDict["annotator_group_signoff"] = (

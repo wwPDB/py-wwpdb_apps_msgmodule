@@ -1407,7 +1407,7 @@ class MessagingWebAppWorker(object):
 
     def __decodeCifToUtf8(self, p_content):
         if sys.version_info[0] < 3:
-            h = HTMLParser()
+            h = HTMLParser()  # pylint: disable=used-before-assignment
             return h.unescape(p_content).encode("utf-8")
         else:
             return unescape(p_content.decode("utf-8"))
