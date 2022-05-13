@@ -177,7 +177,7 @@ The entry is entitled:
 %(title)s
 %(horiz_line)s
 
-Your entry has been updated with the following primary citation:
+Your entry has the following primary citation:
 
 Author(s):   %(citation_authors)s
 
@@ -192,13 +192,21 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 
     msgTmplt_releaseWthOutPblctn = """Dear Depositors,
 
-This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited on %(recvd_date)s with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s.  This is the next available release date.
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s.  This is the next available release date.
 
 The entry is entitled:
 
 %(horiz_line)s
 %(title)s
 %(horiz_line)s
+
+Your entry has the following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
 
 %(doinotice)s%(thurs_prerelease_clause)s
 
@@ -377,7 +385,7 @@ The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
 %(em_title)s
 %(horiz_line)s
 
-Your%(entry_entries_em_rel)s%(has_have_em_rel)sbeen updated with the following primary citation:
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
 
 Author(s):   %(citation_authors)s
 
@@ -399,6 +407,14 @@ The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
 %(horiz_line)s
 %(em_title)s
 %(horiz_line)s
+
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
 
 %(doinotice)s%(thurs_prerelease_clause)s
 
