@@ -202,7 +202,7 @@ class MessagingIo(object):
         "citation",
         "pdbx_contact_author",
         "pdbx_database_PDB_obs_spr",
-        "em_supersede"
+        "em_supersede",
     ]
 
     bMakeEmXmlHeaderFiles = False
@@ -1346,7 +1346,7 @@ class MessagingIo(object):
                 subject = "Implicit Approval of Your Structure - " + accstr
             elif p_tmpltType == "obsolete":
                 otypes = templateDict["obs_id_types"]
-                
+
                 if "EMDB" in otypes:
                     if "PDB" in otypes:
                         msgTmplt = MessagingTemplates.msgTmplt_obsolete_map_model
@@ -3926,7 +3926,7 @@ class MsgTmpltHlpr(object):
             acc.append("EMDB")
         p_returnDict["obs_ids"] = self.__getAccessionIdString(acc) % p_returnDict
         p_returnDict["obs_id_types"] = acc
-        
+
         dt = self.__obsDate
         if dt is None:
             dt = self.__obsEmDate
@@ -3961,12 +3961,12 @@ class MsgTmpltHlpr(object):
             ospec = "Please note that only the coordinates will be obsoleted, the experimental data will stay released.\n\n"
         p_returnDict["obs_special"] = ospec
 
-
     ################################################################################################################
     # ------------------------------------------------------------------------------------------------------------
     #      Private helper methods
     # ------------------------------------------------------------------------------------------------------------
     #
+
     def __initPdbxPersist(self):
         self.__pdbxPersist = PdbxPersist(self.__verbose, self.__lfh)
         myInd = self.__pdbxPersist.getIndex(dbFileName=self.__dbFilePath)
@@ -4393,9 +4393,8 @@ class MsgTmpltHlpr(object):
                 idxId = itDict["_pdbx_database_pdb_obs_spr.id"]
                 idxDate = itDict["_pdbx_database_pdb_obs_spr.date"]
                 idxPdbId = itDict["_pdbx_database_pdb_obs_spr.pdb_id"]
-                idxReplacePdbId = itDict["_pdbx_database_pdb_obs_spr.replace_pdb_id"]
+                # idxReplacePdbId = itDict["_pdbx_database_pdb_obs_spr.replace_pdb_id"]
                 # idxDetails = itDict.get("_pdbx_database_pdb_obs_spr.details", None)
-
 
                 # Only want row with id OBSLTE - entry might have superceded and then obsoleted
                 for row in catObj.getRowList():
@@ -4408,11 +4407,8 @@ class MsgTmpltHlpr(object):
                     except:  # noqa: E722 pylint: disable=bare-except
                         logger.exception("Parsing obsolete")
 
-
                 du = DateUtil()
-                self.__obsDate = (
-                    "[none listed]" if (self.__obsDate is None or len(self.__obsDate) < 1 or self.__isCifNull(self.__obsDate)) else du.date_to_display(self.__obsDate)
-                )
+                self.__obsDate = "[none listed]" if (self.__obsDate is None or len(self.__obsDate) < 1 or self.__isCifNull(self.__obsDate)) else du.date_to_display(self.__obsDate)
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
@@ -4844,13 +4840,14 @@ class MsgTmpltHlpr(object):
                 self.__thursWdrnClause = """
 If this is incorrect or if you have any questions please inform us by noon local time at %s on Thursday %s.""" % (
                     processingSite,
-                    du.datetime_to_display(notherDateRef)
-               )
+                    du.datetime_to_display(notherDateRef),
+                )
+
                 self.__thursObsClause = """
-If this is incorrect or if you have any questions please inform us by noon local time at your processing site on Thursday %s.""" % (
-        du.datetime_to_display(notherDateRef)
-)
-                      
+If this is incorrect or if you have any questions please inform us by noon local time at your processing site on Thursday %s.""" % du.datetime_to_display(
+                    notherDateRef
+                )
+
             else:
                 # else today is Thursday before 11am, so need to tell depositor that they have to communicate any changes by noon today!
                 self.__thursPreRlsClause = "If you have changes to make to the entry please inform us by today, noon local time at " + processingSite + "."

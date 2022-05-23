@@ -523,9 +523,9 @@ The body of the message is provided below for your convenience:<br /><br /><hr /
 
 """
 
-# ######################
-# Obsolete 
-# ######################
+    # ########
+    # Obsolete
+    # ########
     msgTmplt_obsolete_model = """Dear Depositors,
 
 This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) will be obsoleted on %(obs_date)s.
