@@ -522,3 +522,57 @@ The body of the message is provided below for your convenience:<br /><br /><hr /
        %(tab)s%(entry_authors)s<br /><br />
 
 """
+
+# ######################
+# Obsolete 
+# ######################
+    msgTmplt_obsolete_model = """Dear Depositors,
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) will be obsoleted on %(obs_date)s.
+
+The PDB entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+%(obs_special)s%(obs_repl_ids)s%(thurs_obs_clause)s
+
+%(msg_closing)s
+"""
+
+    msgTmplt_obsolete_map_only = """Dear Depositors,
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) will be obsoleted on %(obs_date)s.
+
+The EMDB entry is entitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+%(obs_special)s%(obs_repl_ids)s%(thurs_obs_clause)s
+
+%(msg_closing)s
+"""
+
+    msgTmplt_obsolete_map_model = """Dear Depositors,
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) will be obsoleted on %(obs_date)s.
+
+The PDB entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+The EMDB entry is entitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+%(obs_special)s%(obs_repl_ids)s%(thurs_obs_clause)s
+
+%(msg_closing)s
+"""

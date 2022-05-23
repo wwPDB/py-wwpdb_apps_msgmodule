@@ -201,6 +201,8 @@ class MessagingIo(object):
         "citation_author",
         "citation",
         "pdbx_contact_author",
+        "pdbx_database_PDB_obs_spr",
+        "em_supersede"
     ]
 
     bMakeEmXmlHeaderFiles = False
@@ -221,6 +223,7 @@ class MessagingIo(object):
         self.__skipCopyIfSame = True
         #
         self.__reqObj = reqObj
+
         #
         # Added by ZF
         #
@@ -1341,6 +1344,18 @@ class MessagingIo(object):
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "Implicit Approval of Your Structure - " + accstr
+            elif p_tmpltType == "obsolete":
+                otypes = templateDict["obs_id_types"]
+                
+                if "EMDB" in otypes:
+                    if "PDB" in otypes:
+                        msgTmplt = MessagingTemplates.msgTmplt_obsolete_map_model
+                    else:
+                        msgTmplt = MessagingTemplates.msgTmplt_obsolete_map_only
+                else:
+                    msgTmplt = MessagingTemplates.msgTmplt_obsolete_model
+                subject = "Obsoletion of " + templateDict["obs_ids"]
+                attachFiles = False
 
             # Assemble message with templates
             msg = msgTmplt % templateDict
@@ -3413,6 +3428,8 @@ class MsgTmpltHlpr(object):
         self.__pdbId = None
         self.__entryAuthrs = []
         self.__title = None
+        self.__obsReplacePdb = None
+        self.__obsReplaceEm = None
         #
         self.__emdbId = None
         self.__emEntryAuthrs = []
@@ -3441,6 +3458,8 @@ class MsgTmpltHlpr(object):
         self.__expireDate = None
         self.__initRecvdDate = None
         self.__pdbReleaseDate = None
+        self.__obsDate = None
+        self.__obsEmDate = None
         #
         self.__citAuthors = []
         self.__citTitle = None
@@ -3474,6 +3493,7 @@ class MsgTmpltHlpr(object):
         self.__thursPreRlsClause = None
         self.__thursWdrnClause = None
         self.__thursWdrnClauseEmMapOnly = None  # CS 2022-02-27
+        self.__thursObsClause = None
         #
         self.__setup()
 
@@ -3523,6 +3543,7 @@ class MsgTmpltHlpr(object):
             self.__releaseDate = "01/01/1000 (release date)"
             self.__thursPreRlsClause = "If you have changes to make to the entry, please inform us by noon local time on 01/01/1000 (next Thursday cutoff date)"
             self.__thursWdrnClause = "If this is incorrect or if you have any questions please inform us by noon local time on 01/01/1000 (next Thursday cutoff date)"
+            self.__thursObsClause = "If this is incorrect or if you have any questions please inform us by noon local time at your processing site on Thursday X April 20xx."
 
         else:  # we are in workflow managed environment
             try:
@@ -3543,9 +3564,13 @@ class MsgTmpltHlpr(object):
                     if self.__statusCode:
                         self.__reqObj.setValue("status_code", self.__statusCode)
 
+                    self.__getObsoleteInfo()
+
                     if self.__emDeposition:
                         self.__getId("EMDB")
                         self.__getEmEntryAdminMapping()
+                        self.__getEmObsoleteInfo()
+
                         if self.__emSameTitleAsPDB == "no":
                             self.__getEntryTitle("EMDB")
                         if self.__emSameAuthorsAsPDB == "no":
@@ -3682,6 +3707,7 @@ class MsgTmpltHlpr(object):
         p_returnDict["withdrawn_date"] = p_returnDict["release_date"]
         p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
         p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
+        p_returnDict["thurs_obs_clause"] = self.__thursObsClause if (self.__thursObsClause is not None and len(self.__thursObsClause) > 0) else ""
 
         p_returnDict["thurs_wdrn_clause_em_map_only"] = (
             self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else ""
@@ -3888,6 +3914,53 @@ class MsgTmpltHlpr(object):
             p_returnDict["msg_closing"] = MessagingTemplates.msgTmplt_closing_emMapOnly % p_returnDict
         else:
             p_returnDict["msg_closing"] = MessagingTemplates.msgTmplt_closing % p_returnDict
+
+        #######################
+        # OBSOLETE PROCESSING #
+        #######################
+        # Get accession codes
+        acc = []
+        if self.__statusCode == "OBS":
+            acc.append("PDB")
+        if self.__statusCodeEmMap == "OBS":
+            acc.append("EMDB")
+        p_returnDict["obs_ids"] = self.__getAccessionIdString(acc) % p_returnDict
+        p_returnDict["obs_id_types"] = acc
+        
+        dt = self.__obsDate
+        if dt is None:
+            dt = self.__obsEmDate
+        if dt is None:
+            dt = self.__releaseDate
+
+        p_returnDict["obs_date"] = dt
+        p_returnDict["obs_repl_pdb"] = self.__obsReplacePdb
+        pdb_repl = None
+        em_repl = None
+        if self.__obsReplacePdb is not None:
+            pdb_repl = "PDB entry %s" % self.__obsReplacePdb
+        if self.__obsReplaceEm is not None:
+            em_repl = "EMDB entry %s" % self.__obsReplaceEm
+        if pdb_repl is None and em_repl is None:
+            spr = ""
+        else:
+            spr = "Your entry will be superseded by "
+            if pdb_repl is not None:
+                spr += pdb_repl
+                if em_repl is not None:
+                    spr += " / "
+            if em_repl is not None:
+                spr += em_repl
+            spr += "\n"
+
+        p_returnDict["obs_repl_ids"] = spr
+
+        # For map + model - when only obsolete model.
+        ospec = ""
+        if "PDB" in acc and "EMDB" not in acc and self.__statusCodeEmMap == "REL":
+            ospec = "Please note that only the coordinates will be obsoleted, the experimental data will stay released.\n\n"
+        p_returnDict["obs_special"] = ospec
+
 
     ################################################################################################################
     # ------------------------------------------------------------------------------------------------------------
@@ -4301,6 +4374,88 @@ class MsgTmpltHlpr(object):
                 logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Exeption in gettign EM processing info")
 
+    def __getObsoleteInfo(self):
+        ctgryNm = "pdbx_database_PDB_obs_spr"
+        try:
+            if self.__verbose:
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
+            #
+            catObj = self.__getCatObj(ctgryNm)
+            if catObj:
+                #
+                # Get column name index.
+                #
+                itDict = {}
+                itNameList = catObj.getItemNameList()
+                for idxIt, itName in enumerate(itNameList):
+                    itDict[str(itName).lower()] = idxIt
+                    #
+                idxId = itDict["_pdbx_database_pdb_obs_spr.id"]
+                idxDate = itDict["_pdbx_database_pdb_obs_spr.date"]
+                idxPdbId = itDict["_pdbx_database_pdb_obs_spr.pdb_id"]
+                idxReplacePdbId = itDict["_pdbx_database_pdb_obs_spr.replace_pdb_id"]
+                # idxDetails = itDict.get("_pdbx_database_pdb_obs_spr.details", None)
+
+
+                # Only want row with id OBSLTE - entry might have superceded and then obsoleted
+                for row in catObj.getRowList():
+                    try:
+                        idstatus = (str(row[idxId])).upper()
+                        if idstatus != "OBSLTE":
+                            continue
+                        self.__obsDate = (str(row[idxDate])).upper()
+                        self.__obsReplacePdb = str(row[idxPdbId])
+                    except:  # noqa: E722 pylint: disable=bare-except
+                        logger.exception("Parsing obsolete")
+
+
+                du = DateUtil()
+                self.__obsDate = (
+                    "[none listed]" if (self.__obsDate is None or len(self.__obsDate) < 1 or self.__isCifNull(self.__obsDate)) else du.date_to_display(self.__obsDate)
+                )
+
+        except:  # noqa: E722 pylint: disable=bare-except
+            if self.__verbose:
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Category name %s", ctgryNm)
+
+    def __getEmObsoleteInfo(self):
+        ctgryNm = "em_supersede"
+        try:
+            if self.__verbose:
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
+            #
+            catObj = self.__getCatObj(ctgryNm)
+            if catObj:
+                #
+                # Get column name index.
+                #
+                itDict = {}
+                itNameList = catObj.getItemNameList()
+                for idxIt, itName in enumerate(itNameList):
+                    itDict[str(itName).lower()] = idxIt
+                    #
+                idxDate = itDict["_em_supersede.date"]
+                idxEntry = itDict["_em_supersede.entry"]
+
+                # Only want row with id OBSLTE - entry might have superceded and then obsoleted
+                for row in catObj.getRowList():
+                    try:
+                        self.__obsEmDate = (str(row[idxDate])).upper()
+                        self.__obsReplaceEm = str(row[idxEntry])
+                    except:  # noqa: E722 pylint: disable=bare-except
+                        logger.exception("Parsing obsolete")
+
+                du = DateUtil()
+                self.__obsEmDate = (
+                    "[none listed]" if (self.__obsEmDate is None or len(self.__obsEmDate) < 1 or self.__isCifNull(self.__obsEmDate)) else du.date_to_display(self.__obsEmDate)
+                )
+
+        except:  # noqa: E722 pylint: disable=bare-except
+            if self.__verbose:
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Category name %s", ctgryNm)
+
     def __getAnnotatorDetails(self):
 
         procSite = self.__procSite.upper()
@@ -4670,6 +4825,7 @@ class MsgTmpltHlpr(object):
             self.__thursPreRlsClause = ""
             self.__thursWdrnClause = ""
             self.__thursWdrnClauseEmMapOnly = ""  # CS 2022-02-27
+            self.__thursObsClause = ""  # CS 2022-02-27
         else:
             # i.e. if we're still before the deadline for acceptable change requests
             processingSite = self.__procSite if (self.__procSite is not None and len(self.__procSite) > 0) else "[not available]"
@@ -4688,9 +4844,13 @@ class MsgTmpltHlpr(object):
                 self.__thursWdrnClause = """
 If this is incorrect or if you have any questions please inform us by noon local time at %s on Thursday %s.""" % (
                     processingSite,
-                    du.datetime_to_display(notherDateRef),
-                )
-
+                    du.datetime_to_display(notherDateRef)
+               )
+                self.__thursObsClause = """
+If this is incorrect or if you have any questions please inform us by noon local time at your processing site on Thursday %s.""" % (
+        du.datetime_to_display(notherDateRef)
+)
+                      
             else:
                 # else today is Thursday before 11am, so need to tell depositor that they have to communicate any changes by noon today!
                 self.__thursPreRlsClause = "If you have changes to make to the entry please inform us by today, noon local time at " + processingSite + "."
@@ -4701,6 +4861,7 @@ If you have changes to make to the entry please inform us by today, noon local t
                     + """.
 """
                 )
+                self.__thursObsClause = """If this is incorrect or if you have any questions please inform us by noon local time."""
 
         self.__thursWdrnClauseEmMapOnly = self.__thursWdrnClause  # CS 2022-02-27 Add EM only withdrawn clause
 
