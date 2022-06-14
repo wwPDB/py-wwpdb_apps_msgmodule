@@ -292,8 +292,9 @@ class MessagingIo(object):
                             pdbxReader = IoAdapterCore(self.__verbose, self.__lfh)
                             containerList = pdbxReader.readFile(inputFilePath=modelFilePath, selectList=MessagingIo.ctgrsReqrdFrmModelFile)
 
-                            iCountNames = len(containerList)
-                            assert iCountNames == 1, " -- expecting containerList to have single member but list had %s members\n" % iCountNames
+                            if len(containerList) > 1:
+                                # Jetison the extra data blocks
+                                containerList = containerList[0:1]
 
                             dataBlockName = containerList[0].getName().encode("utf-8")
                             logger.debug("--------------------------------------------\n")
