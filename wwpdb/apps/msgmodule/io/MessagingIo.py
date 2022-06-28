@@ -1471,7 +1471,7 @@ class MessagingIo(object):
             autoMsgObj = AutoNote(messageDict, fileRefList, self.__verbose, self.__lfh)
         else:
             autoMsgObj = AutoMessage(messageDict, fileRefList, self.__verbose, self.__lfh)
-            
+
         bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = self.processMsg(autoMsgObj)
 
         return bOk
@@ -4972,4 +4972,3 @@ class FileSizeLogger(object):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
             logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
-
