@@ -98,3 +98,21 @@ class AutoMessage(object):
             else:
                 pdbents.append(depid)
         return (pdbents, ements)
+
+    def sendSingleMessage(self, depid, subject, msg, testemail=None):
+        """Sends a message to depid, without using templates. No attachments.
+
+        Args:
+           depid (str): Deposition id
+           subject (str): Subject string for message
+           msg (str): Multiline message to send
+           testemail (str): If set overrides entry recipients for testing
+
+        returns:
+           bool:  True if successfule or else false
+        """
+
+        mio = self.__getmsgio()
+        ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail)
+        ret = True
+        return ret

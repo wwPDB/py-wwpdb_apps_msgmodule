@@ -1425,6 +1425,57 @@ class MessagingIo(object):
         #
         return rtrnDict
 
+    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None):
+        """Sends a single message for depId with subject and msg.  If p_testemail is set - will send notification there"""
+        logger.info("Depid %s", depId)
+        logger.info("Subject %s", subject)
+        logger.info("Message %s", msg)
+        logger.info("Test email %s", p_testemail)
+
+        self.__reqObj.setValue("content_type", "msgs")  # as opposed to "notes"
+        self.__reqObj.setValue("filesource", "archive")
+
+        self.__reqObj.setValue("identifier", depId)  # IMPORTANT: enforcing value of deposition ID for all subsequent downstream processing
+
+        # qualifying name of database file, in case code calling this function does so with list of depIDs
+        # in which case we will need to create individual database files for each depID, but all in same session path.
+        self.__dbFilePath = os.path.join(self.__sessionPath, depId + "_modelFileData.db")
+        #
+        self.initializeDataStore()
+
+        # No files are being attached
+        fileRefList = []
+
+        # We are archiving notes
+        isNote = True
+
+        contextType = None
+        contextVal = None
+
+        messageDict = {
+            "deposition_data_set_id": depId,
+            "sender": p_sender,
+            "context_type": contextType,
+            "context_value": contextVal,
+            "message_subject": subject,
+            "message_text": msg,
+            "send_status": "Y",
+            "message_type": "text",
+        }
+
+        if p_testemail:
+            messageDict["test_email_recpt"] = p_testemail
+        #
+
+        if isNote:
+            autoMsgObj = AutoNote(messageDict, fileRefList, self.__verbose, self.__lfh)
+        else:
+            autoMsgObj = AutoMessage(messageDict, fileRefList, self.__verbose, self.__lfh)
+            
+        bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = self.processMsg(autoMsgObj)
+
+        return bOk
+
     def getMsgTmpltDataItems(self, p_returnDict):
         if self.__verbose:
             logger.info("Starting")
@@ -2780,6 +2831,8 @@ class MessagingIo(object):
         senderEmail = self.__cI.get("SITE_NOREPLY_EMAIL", "noreply@mail.wwpdb.org")
         subject = p_msgObj.messageSubject
         recipientLst = []
+        # For testing - allow overriding of recipients
+        test_emailaddr = p_msgObj.getMsgDict().get("test_email_recpt", None)
 
         commHostName = self.__reqObj.getValue("hostname")  # the hostname of site currently hosting the annotator's communication UI
         #
@@ -2814,6 +2867,10 @@ class MessagingIo(object):
                 separator = ", "
             recipientLst.append(emailAddrs)
             greetRecipientList += separator + (("Dr. " + lname) if (lname is not None and (len(lname) > 1)) else "Sir or Madam")
+        #
+        # For testing - override recipientLst if need be.
+        if test_emailaddr:
+            recipientLst = [test_emailaddr]
         #
         msgStrDict["tab"] = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
         #
@@ -4915,3 +4972,4 @@ class FileSizeLogger(object):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
             logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
+
