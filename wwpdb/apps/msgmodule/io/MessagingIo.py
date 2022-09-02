@@ -234,8 +234,8 @@ class MessagingIo(object):
         self.__sessionRelativePath = self.__sObj.getRelativePath()
         # self.__sessionId = self.__sObj.getId()
         #
-        self.__expMethodList = (self.__reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1) else []
-        self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
+        # self.__expMethodList = (self.__reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1) else []
+        # self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         self.__cI = ConfigInfo(self.__siteId)
