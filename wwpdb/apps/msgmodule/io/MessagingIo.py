@@ -2174,7 +2174,8 @@ class MessagingIo(object):
         logger.debug("Starting %s %s", contentType, contentFormat)
 
         bOk = True
-        bEmdCnvrtRqrd = self.__emDeposition and acronym == "model"  # i.e. need to convert model file into "emd" dialect for storage on deposition side
+        # bEmdCnvrtRqrd = self.__emDeposition and acronym == "model"  # i.e. need to convert model file into "emd" dialect for storage on deposition side
+        bEmdCnvrtRqrd = False  # No longer need to perform translation due to emd -> em conversion at DepUI
 
         ###############################################################################################
         # make straight copy of the file to generate "-annotate" milestone version of the file
