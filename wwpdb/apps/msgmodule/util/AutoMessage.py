@@ -54,6 +54,10 @@ class AutoMessage(object):
     def sendRemindUnlocked(self, depidlist):
         self._sendReminderBulk(depidlist, p_tmplt="remind-unlocked")
 
+    def sendRemindFeedback(self, depidlist):
+        """ Sends a reminder that depositor has not responded to validation report """
+        self._sendReminderBulk(depidlist, p_tmplt="remind-feedback")
+
     def sendImplicitApproved(self, depidlist):
         self._sendReminderBulk(depidlist, p_tmplt="implicit-approved")
 

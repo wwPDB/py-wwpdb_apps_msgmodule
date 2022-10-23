@@ -1357,6 +1357,13 @@ class MessagingIo(object):
                     msgTmplt = MessagingTemplates.msgTmplt_obsolete_model
                 subject = "Obsoletion of " + templateDict["obs_ids"]
                 attachFiles = False
+            elif p_tmpltType == "remind-feedback":
+                msgTmplt = MessagingTemplates.msgTmplt_reminder_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder
+                attachFiles = False
+                isNote = True
+                # Need all ids
+                accstr = templateDict["accession_ids"]
+                subject = "ARCHIVED: Still awaiting feedback for " + accstr
 
             # Assemble message with templates
             msg = msgTmplt % templateDict
