@@ -49,7 +49,7 @@ setup(
         "mmcif",
         "mmcif.utils",
         "wwpdb.utils.dp",
-        "wwpdb.utils.emdb ~= 0.17",
+        "wwpdb.utils.emdb >= 0.17",
         "wwpdb.apps.wf_engine",
         "wwpdb.utils.nmr",
     ],
