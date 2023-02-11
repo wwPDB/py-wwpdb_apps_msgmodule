@@ -588,40 +588,40 @@ class MessagingWebAppWorker(object):
 
         return rC
 
-    def _getDataTblDataRawJsonOp(self):
-        """for DEV -- return payload input to DataTables to be displayed on webpage as JSON object for inspection"""
+    # def _getDataTblDataRawJsonOp(self):
+    #     """for DEV -- return payload input to DataTables to be displayed on webpage as JSON object for inspection"""
 
-        if self.__verbose:
-            logger.info("+MessagingWebAppWorker._getDataTblDataRawJsonOp() starting\n")
+    #     if self.__verbose:
+    #         logger.info("+MessagingWebAppWorker._getDataTblDataRawJsonOp() starting\n")
 
-        self.__getSession()
-        # iDisplayStart = int( self.__reqObj.getValue("iDisplayStart") )
-        # iDisplayLength = int( self.__reqObj.getValue("iDisplayLength") )
-        # sEcho = int( self.__reqObj.getValue("sEcho") ) # casting to int as recommended by DataTables
-        sEcho = 10
+    #     self.__getSession()
+    #     # iDisplayStart = int( self.__reqObj.getValue("iDisplayStart") )
+    #     # iDisplayLength = int( self.__reqObj.getValue("iDisplayLength") )
+    #     # sEcho = int( self.__reqObj.getValue("sEcho") ) # casting to int as recommended by DataTables
+    #     sEcho = 10
 
-        depId = self.__reqObj.getValue("identifier")
-        #
-        if self.__verbose:
-            logger.info("-- dep_id is:%s", depId)
-        #
-        self.__reqObj.setDefaultReturnFormat(return_format="html")
+    #     depId = self.__reqObj.getValue("identifier")
+    #     #
+    #     if self.__verbose:
+    #         logger.info("-- dep_id is:%s", depId)
+    #     #
+    #     self.__reqObj.setDefaultReturnFormat(return_format="html")
 
-        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+    #     rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
 
-        msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
-        _bOk, msgColList = msgingIo.getMsgColList()
-        msgRecordList, iTotalRecords, iTotalDisplayRecords = msgingIo.getMsgRowList(depId, True, 0, 20, "")
-        #
-        msgngDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
-        dataTblDict = msgngDpct.getJsonDataTable(msgRecordList, msgColList, 0)
-        dataTblDict["sEcho"] = sEcho
-        dataTblDict["iTotalRecords"] = iTotalRecords
-        dataTblDict["iTotalDisplayRecords"] = iTotalDisplayRecords
+    #     msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
+    #     _bOk, msgColList = msgingIo.getMsgColList()
+    #     msgRecordList, iTotalRecords, iTotalDisplayRecords = msgingIo.getMsgRowList(depId, True, 0, 20, "")
+    #     #
+    #     msgngDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
+    #     dataTblDict = msgngDpct.getJsonDataTable(msgRecordList, msgColList, 0)
+    #     dataTblDict["sEcho"] = sEcho
+    #     dataTblDict["iTotalRecords"] = iTotalRecords
+    #     dataTblDict["iTotalDisplayRecords"] = iTotalDisplayRecords
 
-        rC.setHtmlText(str(dataTblDict))
+    #     rC.setHtmlText(str(dataTblDict))
 
-        return rC
+    #     return rC
 
     def _getMsgTmplts(self):
         """Get
