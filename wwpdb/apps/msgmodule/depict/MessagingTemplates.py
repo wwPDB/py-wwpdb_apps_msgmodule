@@ -116,7 +116,7 @@ Thank you for your attention.
 
     msgTmplt_approvalExplicit = """Dear Depositors,
 
-Thank you for your response, this message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) has been approved. The entry is entitled:
+Thank you for your response. This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) has been approved. The entry is entitled:
 
 %(horiz_line)s
 %(title)s
@@ -323,7 +323,7 @@ Thank you for your attention.
 
     msgTmplt_approvalExplicit_em = """Dear Depositors,
 
-Thank you for your response, this message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) %(has_have)sbeen approved. The%(entry_entries)s%(is_are)sentitled:
+Thank you for your response. This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) %(has_have)sbeen approved. The%(entry_entries)s%(is_are)sentitled:
 
 %(horiz_line)s
 %(em_title)s
