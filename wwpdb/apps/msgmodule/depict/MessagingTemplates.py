@@ -27,8 +27,9 @@
 #    2017-10-09    RPS    Updating template for "explicit approval". Adjusting signoff content for EM Map Only cases.
 #    2018-01-30    RPS    Readjusting signoff content for EM Map Only cases.
 #    2019-06-19    EP     Add msgTmplt_remindUnlocked for automatic sending of message for unlocked
-#    2022-01-26    CS     Update template
-#    2022-02-27    CS     Update template for EM only withdrawn
+#    2022-01-26    CS     update template
+#    2022-02-27    CS     add template for Map-only withdrawn
+#    2023-10-20    CS     add/modify various templates for superseding entry release, EM model-only and map-only
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -122,7 +123,7 @@ Thank you for your response. This message is to inform you that your structure %
 %(title)s
 %(horiz_line)s
 
-We have changed the status of the entry to %(status_code)s (%(entry_status)s). Your structure is now on hold until %(expire_date)s. It may be released earlier if you notify us that the structure is published or can be released.
+We have changed the status of the entry to %(status_code)s (%(entry_status)s). Your structure is now on hold until %(expire_date)s. It may be released earlier if the structure is published or you notify us that the structure can be released.
 
 %(doinotice)s
 Thank you for your attention.
@@ -140,7 +141,7 @@ This message is to inform you that your structure %(accession_ids)s (Deposition 
 
 As we have not heard from you since we sent the validation report and processed files to you on %(outbound_rprt_date)s, we have changed the status of the entry to %(status_code)s (%(entry_status)s) with implicit approval in accordance with wwPDB policies, http://www.wwpdb.org/documentation/policy.
 
-Your structure is now on hold until %(expire_date)s. It may be released earlier if you notify us that the structure is published or can be released.
+Your structure is now on hold until %(expire_date)s. It may be released earlier if the structure is published or you notify us that the structure can be released.
 
 %(doinotice)s
 Thank you for your attention.
@@ -189,10 +190,60 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 
 %(msg_closing)s
 """
+    
+    msgTmplt_releaseWthPblctn_supersede = """Dear Depositors,
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s. This is the next available release date.
+
+On release, this entry will replace %(spr_to_replace_pdb_ids)s in the PDB archive and %(spr_to_replace_pdb_ids)s will be obsoleted.
+
+The entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+Your entry has the following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+"""
 
     msgTmplt_releaseWthOutPblctn = """Dear Depositors,
 
 This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s.  This is the next available release date.
+
+The entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+Your entry has the following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+
+"""
+    msgTmplt_releaseWthOutPblctn_supersede = """Dear Depositors,
+
+This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s.  This is the next available release date.
+
+On release, this entry will replace %(spr_to_replace_pdb_ids)s in the PDB archive and %(spr_to_replace_pdb_ids)s will be obsoleted.
 
 The entry is entitled:
 
@@ -329,7 +380,7 @@ Thank you for your response. This message is to inform you that your %(accession
 %(em_title)s
 %(horiz_line)s
 
-We have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s). Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released.
+We have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s). Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if the structure is published or you notify us that the structure can be released.
 
 %(doinotice)s
 Thank you for your attention.
@@ -347,7 +398,7 @@ This message is to inform you that your %(accession_ids)s (Deposition ID %(ident
 
 As we have not heard from you since we sent the %(vldtn_rprt)sprocessed files to you on %(outbound_rprt_date_em)s, we have changed the status of the entry to %(status_code_em_map)s (%(entry_status_em_map)s) with implicit approval in accordance with wwPDB policies, http://www.wwpdb.org/documentation/policy.html.
 
-Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if you notify us that the entry is published or can be released.
+Your%(entry_entries)s%(is_are)snow on hold until %(expire_date_em_map)s.%(it_they)smay be released earlier if the structure is published or you notify us that the structure can be released.
 
 %(doinotice)s
 Thank you for your attention.
@@ -398,6 +449,54 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 %(msg_closing)s
 """
 
+    msgTmplt_releaseWthPblctn_em_supersede = """Dear Depositors,
+
+This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_em_rel)s', will be released on %(release_date)s.  This is the next available release date.
+
+On release, this entry will replace %(spr_to_replace_pdb_ids)s in the PDB archive and %(spr_to_replace_pdb_ids)s will be obsoleted.
+
+The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+"""
+
+    msgTmplt_releaseWthPblctn_em_map_only = """Dear Depositors,
+
+This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_map)s', will be released on %(release_date)s.  This is the next available release date.
+
+The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+"""   
+    
     msgTmplt_releaseWthOutPblctn_em = """Dear Depositors,
 
 This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_em_rel)s', will be released on %(release_date)s.  This is the next available release date.
@@ -421,6 +520,54 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 %(msg_closing)s
 """
 
+    msgTmplt_releaseWthOutPblctn_em_supersede = """Dear Depositors,
+
+This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_em_rel)s', will be released on %(release_date)s.  This is the next available release date.
+
+On release, this entry will replace %(spr_to_replace_pdb_ids)s in the PDB archive and %(spr_to_replace_pdb_ids)s will be obsoleted.
+
+The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+"""
+
+    msgTmplt_releaseWthOutPblctn_em_map_only = """Dear Depositors,
+
+This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_map)s', will be released on %(release_date)s.  This is the next available release date.
+
+The%(entry_entries_em_rel)s%(is_are_em_rel)sentitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Your%(entry_entries_em_rel)s%(has_have_em_rel)sthe following primary citation:
+
+Author(s):   %(citation_authors)s
+
+Title:   %(citation_title)s
+
+Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_pages)s%(citation_year)s%(citation_pubmedid)s%(citation_doi)s
+
+%(doinotice)s%(thurs_prerelease_clause)s
+
+%(msg_closing)s
+"""
+    
     msgTmplt_withdrawn_em = """Dear Depositors,
 
 This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be withdrawn on %(withdrawn_date)s.
@@ -440,7 +587,7 @@ Please do not use these accession IDs in any publications.
 
     msgTmplt_withdrawn_em_map_only = """Dear Depositors,
 
-This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be withdrawn on %(withdrawn_date)s.
+This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_map)s', will be withdrawn on %(withdrawn_date)s.
 
 The entry is entitled:
 

@@ -36,7 +36,8 @@
 #    2016-08-09    RPS    Changes to support site/annotator specific footers in message templates.
 #                            Introducing support for standalone correspondence viewer.
 #    2016-09-14    ZF     In doRender() function, introducing support for group deposition
-#    2022-02-28    CS     Add processs to deal with map_only withdrawn template
+#    2022-02-28    CS     add processs to deal with map_only withdrawn template
+#    2023-10-20    CS     Further separate scenarios in choosing template for EM model-map, map-only, model-only, and whether this entry supersedes others. 
 ##
 ##
 """
@@ -72,7 +73,8 @@ class MessagingDepict(object):
         :param `log`:      stream for logging.
 
         """
-        self.__verbose = verbose
+        # self.__verbose = verbose
+        self.__verbose = True
         self.__lfh = log
         self.__debug = False
         #
@@ -82,6 +84,8 @@ class MessagingDepict(object):
         self.rltvEdtrSessionPath = None
         #
         self.__expMethodList = []
+        if self.__verbose:
+            logger.info("CStrack+++ initiate MessagingDepict class")
 
     def doRender(self, p_reqObj, p_bIsWorkflow):
         """Render HTML used as starter page/container for the wwPDB Messaging interface
@@ -224,7 +228,7 @@ class MessagingDepict(object):
         depId = str(p_reqObj.getValue("identifier"))
         tmpltPath = p_reqObj.getValue("TemplatePath")
         self.__expMethodList = (p_reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(p_reqObj.getValue("expmethod").replace('"', "")) > 1) else []
-        bEmDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
+        b_em = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         if p_bIsWorkflow:
             strParamDict["identifier"] = depId
@@ -237,35 +241,70 @@ class MessagingDepict(object):
         if self.__verbose:
             logger.info("\n -- dep_id is:%s", depId)
         #
+        if self.__verbose:
+            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getMsgTmplts()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO SUPPORT ALL DOWNSTREAM PROCESSING IN NEED OF DATA PARSED FROM THE COORDINATE FILE
         msgingIo.getMsgTmpltDataItems(strParamDict)
         starterMsgBody = msgingIo.getStarterMsgBody()
         #
         strParamDict["starter_msg_body"] = starterMsgBody if starterMsgBody is not None else ""
-        strParamDict["msg_tmplt_default"] = (MessagingTemplates.msgTmplt_default_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_default % strParamDict)
-        strParamDict["msg_tmplt_approval-expl"] = (
-            (MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_approvalExplicit % strParamDict)
-        )  # noqa: E501
-        strParamDict["msg_tmplt_approval-impl"] = (
-            (MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_approvalImplicit % strParamDict)
-        )  # noqa: E501
-        strParamDict["msg_tmplt_reminder"] = (MessagingTemplates.msgTmplt_reminder_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_reminder % strParamDict)
-        strParamDict["msg_tmplt_release-publ"] = (
-            (MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_releaseWthPblctn % strParamDict)
-        )  # noqa: E501
-        strParamDict["msg_tmplt_release-nopubl"] = (
-            (MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict)
-        )  # noqa: E501
+        strParamDict["msg_tmplt_default"] = (MessagingTemplates.msgTmplt_default_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_default % strParamDict)
+        # strParamDict["msg_tmplt_approval-expl"] = (
+        #     (MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_approvalExplicit % strParamDict)
+        # )  # noqa: E501
+        # strParamDict["msg_tmplt_approval-impl"] = (
+        #     (MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_approvalImplicit % strParamDict)
+        # )  # noqa: E501
+        strParamDict["msg_tmplt_reminder"] = (MessagingTemplates.msgTmplt_reminder_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_reminder % strParamDict)
 
-        #  CS 2022-02-27 Handle EM map_only withdrawn template
-        if bEmDeposition:
-            if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # map_only
+        # CS 2022-02-27 add map-only withdrawn template;
+        # CS 2023-10-20 start, further seperate all scenarios of EM model-map, model-only, and map-only. The selection process needs to be optimized later.
+        logger.info("strParamDict: %s" % strParamDict)
+        if b_em:
+            logger.info("EM-ENTRY")
+            if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]": # EM map-only
+                logger.info("EM-MAP-ONLY")
                 strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict
-            else:
+                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
+                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
+                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only % strParamDict
+                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only % strParamDict
+            elif strParamDict.get("emdb_id", "") == "[EMDBID NOT AVAIL]": # EM model-only
+                logger.info("EM-MODEL-ONLY")
                 strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
+                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
+                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
+                if strParamDict.get("spr_to_replace_pdb_ids", ''):
+                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede % strParamDict
+                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede % strParamDict
+                else:
+                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
+                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
+            else: # EM model+map
+                logger.info("EM-MODEL-MAP")
+                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
+                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
+                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
+                if strParamDict.get("spr_to_replace_pdb_ids", ''):
+                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede % strParamDict
+                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede % strParamDict
+                else:
+                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
+                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
         else:
+            logger.info("NON-EM-ENTRY")
             strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn % strParamDict
+            strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
+            strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
+            if strParamDict.get("spr_to_replace_pdb_ids", ''):
+                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_supersede % strParamDict
+                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_supersede % strParamDict
+            else:
+                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn % strParamDict
+                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict
+        # CS 2022-02-27 add map-only withdrawn template;
+        # CS 2023-10-20 end
 
         strParamDict["msg_tmplt_vldtn"] = MessagingTemplates.msgTmplt_vldtn % strParamDict
 
@@ -275,9 +314,9 @@ class MessagingDepict(object):
             strParamDict["msg_tmplt_system-unlocked"] = MessagingTemplates.msgTmplt_systemUnlockedPostRel % strParamDict
         else:
             strParamDict["msg_tmplt_system-unlocked"] = (
-                (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict) if bEmDeposition else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
+                (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
             )  # noqa: E501
-        strParamDict["msg_tmplt_maponly-authstatus-em"] = (MessagingTemplates.msgTmplt_mapOnly_authStatus_em % strParamDict) if bEmDeposition else ""
+        strParamDict["msg_tmplt_maponly-authstatus-em"] = (MessagingTemplates.msgTmplt_mapOnly_authStatus_em % strParamDict) if b_em else ""
 
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn="msg_tmplts.html", parameterDict=strParamDict))
         #
@@ -407,6 +446,8 @@ class MessagingDepict(object):
         ############################################################################
         # get message template data from MessagingIo
         ############################################################################
+        if self.__verbose:
+            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.doRenderDisplayMsg()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.getMsgTmpltDataItems(myD)
 
@@ -507,6 +548,8 @@ class MessagingDepict(object):
         sContentType = p_reqObj.getValue("content_type")
         bCommHstryRqstd = True if sContentType == "commhstry" else False
         #
+        if self.__verbose:
+            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getDataTableTemplate()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
         #
