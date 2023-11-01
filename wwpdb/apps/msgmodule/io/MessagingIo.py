@@ -118,6 +118,7 @@
 #    2022-02-27    CS     Add EM only withdrawn clause
 #    2023-10-20    CS     For map-only, add "auth_rel_status_code_map" key for msg dict, get value from _em_depui.depositor_hold_instructions
 #    2023-10-20    CS     Update release letter for pdb ids being superseded, for both autoMsg and UI, add "spr_to_replace_pdb_ids" to msg dict
+#    2023-11-01    CS     Update file attachement list process to not to append validation report files if already in workingFileRefsList
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -225,8 +226,6 @@ class MessagingIo(object):
         self.__skipCopyIfSame = True
         #
         self.__reqObj = reqObj
-        if self.__verbose:
-            logger.info("CStrack+++ initate MessagingIo class")
 
         #
         # Added by ZF
@@ -1515,8 +1514,6 @@ class MessagingIo(object):
         return bOk
 
     def getMsgTmpltDataItems(self, p_returnDict):
-        if self.__verbose:
-            logger.info("CStrack+++ call MsgTmpltHlpr class from MessagingIo.getMsgTmpltDataItems()")
         msgTmpltHelper = MsgTmpltHlpr(self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh)
         msgTmpltHelper.populateTmpltDict(p_returnDict)
         if self.__verbose:
@@ -2108,7 +2105,9 @@ class MessagingIo(object):
             preference = ["val-report", "val-report-full", "val-data", "val-data-cif", "val-report-wwpdb-2fo-fc-edmap-coef", "val-report-wwpdb-fo-fc-edmap-coef"]
             for f in preference:
                 if f in avail:
-                    workingFileRefsList.append(f)
+                    if f not in workingFileRefsList:  # CS 2023-11-01 not to append validation report files if already in
+                        workingFileRefsList.append(f)
+            logger.info("CStrack+++ final list of file attachement type: %s" % workingFileRefsList)
 
         if self.__verbose and sIsEmEntry == "true":
             sType = "Map Only" if sIsEmMapOnly == "true" else "Map and Model"
