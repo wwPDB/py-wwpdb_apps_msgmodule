@@ -2107,7 +2107,7 @@ class MessagingIo(object):
                 if f in avail:
                     if f not in workingFileRefsList:  # CS 2023-11-01 not to append validation report files if already in
                         workingFileRefsList.append(f)
-            logger.info("CStrack+++ final list of file attachement type: %s" % workingFileRefsList)
+            logger.info("CStrack+++ final list of file attachement type: %s", workingFileRefsList)
 
         if self.__verbose and sIsEmEntry == "true":
             sType = "Map Only" if sIsEmMapOnly == "true" else "Map and Model"
