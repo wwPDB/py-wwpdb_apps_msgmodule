@@ -190,7 +190,7 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 
 %(msg_closing)s
 """
-    
+
     msgTmplt_releaseWthPblctn_supersede = """Dear Depositors,
 
 This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be released on %(release_date)s. This is the next available release date.
@@ -495,8 +495,8 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 %(doinotice)s%(thurs_prerelease_clause)s
 
 %(msg_closing)s
-"""   
-    
+"""
+
     msgTmplt_releaseWthOutPblctn_em = """Dear Depositors,
 
 This message is to inform you that your %(accession_ids_em_rel)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code_em_rel)s', will be released on %(release_date)s.  This is the next available release date.
@@ -567,7 +567,7 @@ Journal:   %(citation_journal_abbrev)s%(citation_journal_volume)s%(citation_page
 
 %(msg_closing)s
 """
-    
+
     msgTmplt_withdrawn_em = """Dear Depositors,
 
 This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) and the associated experimental data which were deposited with release instructions, '%(auth_rel_status_code)s', will be withdrawn on %(withdrawn_date)s.

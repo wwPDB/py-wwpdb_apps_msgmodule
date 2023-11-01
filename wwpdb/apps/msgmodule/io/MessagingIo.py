@@ -117,7 +117,7 @@
 #    2018-05-07    EP     Do not bump version numbers of milestones if same. Multiple messages may refer to same file.
 #    2022-02-27    CS     Add EM only withdrawn clause
 #    2023-10-20    CS     For map-only, add "auth_rel_status_code_map" key for msg dict, get value from _em_depui.depositor_hold_instructions
-#    2023-10-20    CS     Update release letter for pdb ids being superseded, for both autoMsg and UI, add "spr_to_replace_pdb_ids" to msg dict 
+#    2023-10-20    CS     Update release letter for pdb ids being superseded, for both autoMsg and UI, add "spr_to_replace_pdb_ids" to msg dict
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -211,8 +211,7 @@ class MessagingIo(object):
 
     def __init__(self, reqObj, verbose=False, log=sys.stderr):
         self.__lfh = log
-        # self.__verbose = verbose
-        self.__verbose = True
+        self.__verbose = verbose
         self.__debug = True
         self.__debugLvl2 = False
         self.__devMode = False
@@ -282,12 +281,10 @@ class MessagingIo(object):
             def initdb():
                 if not os.access(self.__dbFilePath, os.R_OK):
                     logger.debug("DB File not present %s", self.__dbFilePath)
-                    
-                    import time
-                    time.sleep(60)
+
                     msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                     modelFilePath = msgDI.getFilePath(contentType="model", format="pdbx")
-                    logger.info("CStrack+++ read modelFilePath = %s" % modelFilePath)
+                    logger.info("CStrack+++ read modelFilePath = %s", modelFilePath)
 
                     # parse info from model file
                     if modelFilePath is not None and os.access(modelFilePath, os.R_OK):
@@ -1336,24 +1333,24 @@ class MessagingIo(object):
             subject = "Release of " + sAccessionIdString
 
             # Template specific flags
-            
+
             # CS 2023-10-20 start, update auto message template based on PDB ID being superseded if any
             if p_tmpltType == "release-publ":
-                 if p_isEmdbEntry:
-                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]": # EM map-only
+                if p_isEmdbEntry:
+                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only
                     if templateDict.get("spr_to_replace_pdb_ids", ''):
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em
-                 else:
+                else:
                     if templateDict.get("spr_to_replace_pdb_ids", ''):
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn
             elif p_tmpltType == "release-nopubl":
                 if p_isEmdbEntry:
-                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]": # EM map-only
+                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only
                     if templateDict.get("spr_to_replace_pdb_ids", ''):
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede
@@ -1365,7 +1362,7 @@ class MessagingIo(object):
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn
             # CS 2023-10-20 end
-            
+
             elif p_tmpltType == "remind-unlocked":
                 msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
                 attachFiles = False
@@ -1523,7 +1520,7 @@ class MessagingIo(object):
         msgTmpltHelper = MsgTmpltHlpr(self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh)
         msgTmpltHelper.populateTmpltDict(p_returnDict)
         if self.__verbose:
-            logger.info("CStrack+++ completed MsgTmpltHlpr.populateTmpltDict with p_returnDict %s" % p_returnDict)
+            logger.info("CStrack+++ completed MsgTmpltHlpr.populateTmpltDict with p_returnDict %s", p_returnDict)
 
     def getStarterMsgBody(self):
         rtrnText = None
@@ -3554,7 +3551,7 @@ class MsgTmpltHlpr(object):
         self.__postRelStatus = None
         #
         self.__authRelStatusCode = None
-        self.__authRelStatusCodeMap = None # CS 2023-10-20
+        self.__authRelStatusCodeMap = None  # CS 2023-10-20
         self.__authApprovalType = None  # only used to determine default msg template
         #
         self.__holdDate = None  # used as expire_date and to build coordRelBlock and entryStatus
@@ -3562,7 +3559,7 @@ class MsgTmpltHlpr(object):
         self.__initRecvdDate = None
         self.__pdbReleaseDate = None
         self.__obsDate = None
-        self.__sprDate = None
+        # self.__sprDate = None
         self.__obsEmDate = None
         #
         self.__citAuthors = []
@@ -3623,7 +3620,7 @@ class MsgTmpltHlpr(object):
             self.__statusCode = "TEST_CODE"
             self.__statusCodeEmMap = "TEST EM STATUS CODE"
             self.__authRelStatusCode = "TEST STATUS (auth rel status code)"
-            self.__authRelStatusCodeMap = "TEST STATUS (auth rel status code)" # CS 2023-10-20
+            self.__authRelStatusCodeMap = "TEST STATUS (auth rel status code)"  # CS 2023-10-20
             self.__entryStatus = "Hold until Whenever (test entry status)"
 
             self.__holdDate = "01/01/1000 (hold date)"
@@ -3764,8 +3761,8 @@ class MsgTmpltHlpr(object):
         p_returnDict["status_code"] = self.__statusCode if (self.__statusCode is not None and len(self.__statusCode) > 0) else "[NOT AVAILABLE]"
         p_returnDict["entry_status"] = self.__entryStatus if (self.__entryStatus is not None and len(self.__entryStatus) > 0) else "[NOT AVAILABLE]"
         p_returnDict["auth_rel_status_code"] = self.__authRelStatusCode if (self.__authRelStatusCode is not None and len(self.__authRelStatusCode) > 0) else "[NOT AVAILABLE]"
-        p_returnDict["auth_rel_status_code_map"] = self.__authRelStatusCodeMap if (self.__authRelStatusCodeMap is not None and len(self.__authRelStatusCodeMap) > 0) else "[NOT AVAILABLE]" # CS 2023-10-20
-        
+        p_returnDict["auth_rel_status_code_map"] = self.__authRelStatusCodeMap if (self.__authRelStatusCodeMap is not None and len(self.__authRelStatusCodeMap) > 0) else "[NOT AVAILABLE]"  # CS 2023-10-20  # noqa: E501
+
         p_returnDict["expire_date"] = self.__expireDate
         p_returnDict["recvd_date"] = (
             du.date_to_display(self.__initRecvdDate)
@@ -4032,7 +4029,7 @@ class MsgTmpltHlpr(object):
         #######################
         if self.__sprToReplacePdb:
             p_returnDict["spr_to_replace_pdb_ids"] = self.__sprToReplacePdb  # CS 2023-10-20
-        
+
         #######################
         # OBSOLETE PROCESSING #
         #######################
@@ -4306,7 +4303,7 @@ class MsgTmpltHlpr(object):
             if self.__emMapOnly:
                 self.__emSameTitleAsPDB = "no"
                 self.__emSameAuthorsAsPDB = "no"
-                
+
                 # CS 2023-10-20 grab author release status for map from em_depui start
                 ctgryNm = "em_depui"
                 try:
@@ -4318,11 +4315,11 @@ class MsgTmpltHlpr(object):
                         itNameList = catObj.getItemNameList()
                         for idxIt, itName in enumerate(itNameList):
                             itDict[str(itName).lower()] = idxIt
-                        idxAuthRelStatusCodeMap = itDict["_em_depui.depositor_hold_instructions"] # CS 2023-10-20
+                        idxAuthRelStatusCodeMap = itDict["_em_depui.depositor_hold_instructions"]  # CS 2023-10-20
 
                         for row in catObj.getRowList():
                             try:
-                                self.__authRelStatusCodeMap = str(row[idxAuthRelStatusCodeMap]) # CS 2023-10-20
+                                self.__authRelStatusCodeMap = str(row[idxAuthRelStatusCodeMap])  # CS 2023-10-20
                             except:  # noqa: E722 pylint: disable=bare-except
                                 pass
                 except:  # noqa: E722 pylint: disable=bare-except
@@ -4331,7 +4328,6 @@ class MsgTmpltHlpr(object):
                     logger.exception("in __getEmEntryAdminMapping")
                 # CS 2023-10-20 end
 
-                    
     def __getEntryTitle(self, p_IdType="PDB"):
 
         if p_IdType == "PDB":
@@ -4533,10 +4529,10 @@ class MsgTmpltHlpr(object):
                 idxDate = itDict["_pdbx_database_pdb_obs_spr.date"]
                 idxPdbIdNew = itDict["_pdbx_database_pdb_obs_spr.pdb_id"]
                 idxPdbIdOld = itDict["_pdbx_database_pdb_obs_spr.replace_pdb_id"]
-                
+
                 # CS 2023-10-20 add supersede/obsolete parsing start
                 # Process each row seprately because entry might have superceded others and then been obsoleted
-                # only pick the last record of ether supercede or obsolete 
+                # only pick the last record of ether supercede or obsolete
                 for row in catObj.getRowList():
                     try:
                         idstatus = (str(row[idxId])).upper()
@@ -4544,7 +4540,7 @@ class MsgTmpltHlpr(object):
                             self.__obsDate = (str(row[idxDate])).upper()
                             self.__obsReplacePdb = str(row[idxPdbIdNew])  # record PDB that supersedes this entry
                         elif idstatus == "SPRSDE":  # CS 2023-10-20 check if this entry supersedes other PDB IDs
-                            self.__sprDate = (str(row[idxDate])).upper() # CS 2023-10-20
+                            # self.__sprDate = (str(row[idxDate])).upper()  # CS 2023-10-20
                             self.__sprToReplacePdb = str(row[idxPdbIdOld])  # CS 2023-10-20 record PDB being superseded
                         else:
                             continue
@@ -4554,7 +4550,7 @@ class MsgTmpltHlpr(object):
                 self.__obsDate = "[none listed]" if (self.__obsDate is None or len(self.__obsDate) < 1 or self.__isCifNull(self.__obsDate)) else du.date_to_display(self.__obsDate)
                 # self.__sprDate = "[none listed]" if (self.__sprDate is None or len(self.__sprDate) < 1 or self.__isCifNull(self.__sprDate)) else du.date_to_display(self.__sprDate)
                 # CS 2023-10-20 end
-                
+
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
 
