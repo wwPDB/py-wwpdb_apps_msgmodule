@@ -119,6 +119,7 @@
 #    2023-10-20    CS     For map-only, add "auth_rel_status_code_map" key for msg dict, get value from _em_depui.depositor_hold_instructions
 #    2023-10-20    CS     Update release letter for pdb ids being superseded, for both autoMsg and UI, add "spr_to_replace_pdb_ids" to msg dict
 #    2023-11-01    CS     Update file attachement list process to not to append validation report files if already in workingFileRefsList
+#    2023-11-02    CS     Update to include PDB extension id in letter, add pdb_ext_id in msg dict
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -3503,9 +3504,9 @@ class MsgTmpltHlpr(object):
         #     "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
         # }
 
-        self.__idMapToString = {"PDB": "PDB ID %(pdb_id)s", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}
+        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}  # CS 2023-11-02
 
-        self.__idMapToString_EM = {"PDB": "PDB entry ID %(pdb_id)s", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}
+        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}  # CS 2023-11-02
 
         if self.__verbose and self.__debug:
             for value in self.__expMethodList:
@@ -3523,6 +3524,7 @@ class MsgTmpltHlpr(object):
         self.__rqstdAccessionIdsLst = []
         #
         self.__pdbId = None
+        self.__pdbExtId = None
         self.__entryAuthrs = []
         self.__title = None
         self.__obsReplacePdb = None
@@ -3745,6 +3747,7 @@ class MsgTmpltHlpr(object):
             # so the "accessionIdList" at this time only consists of single member (but perhaps this may change in the future?)
             # at this current time it's only for EM experimental method where we have to handle the generation of more than one accession ID for the same deposition
         p_returnDict["pdb_id"] = self.__pdbId if (self.__pdbId is not None and len(self.__pdbId) > 0 and self.__pdbId != "?") else "[PDBID NOT AVAIL]"
+        p_returnDict["pdb_ext_id"] = self.__pdbExtId if (self.__pdbExtId is not None and len(self.__pdbExtId) > 0 and self.__pdbExtId != "?") else "[PDBEXTID NOT AVAIL]"  # CS 2023-11-02
         p_returnDict["emdb_id"] = self.__emdbId if (self.__emdbId is not None and len(self.__emdbId) > 0 and self.__emdbId != "?") else "[EMDBID NOT AVAIL]"
         p_returnDict["accession_ids"] = (self.__getAccessionIdString(accessionIdList)) % p_returnDict
         #################################################################################
@@ -4247,15 +4250,18 @@ class MsgTmpltHlpr(object):
                     #
                 idxDbId = itDict["_database_2.database_id"]
                 idxDbCode = itDict["_database_2.database_code"]
+                idxDbExtCode = itDict["_database_2.pdbx_database_accession"]  # CS 2023-11-02
 
                 for row in catObj.getRowList():
                     try:
                         dbId = row[idxDbId]
                         dbCode = row[idxDbCode]
+                        dbExtCode = row[idxDbExtCode]  # CS 2023-11-02
 
                         if dbId.upper() == p_IdType:
                             if p_IdType == "PDB":
                                 self.__pdbId = dbCode
+                                self.__pdbExtId = dbExtCode  # CS 2023-11-02
                             elif p_IdType == "EMDB":
                                 self.__emdbId = dbCode
 
