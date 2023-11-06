@@ -120,6 +120,7 @@
 #    2023-10-20    CS     Update release letter for pdb ids being superseded, for both autoMsg and UI, add "spr_to_replace_pdb_ids" to msg dict
 #    2023-11-01    CS     Update file attachement list process to not to append validation report files if already in workingFileRefsList
 #    2023-11-02    CS     Update to include PDB extension id in letter, add pdb_ext_id in msg dict
+#    2023-11-06    CS     Update logic for __getDefaultMsgTmpltType(), i.e. default message pop-up for StatusMod
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -4796,14 +4797,25 @@ class MsgTmpltHlpr(object):
         If it is an EM map only entry --> if _pdbx_database_status.status_code= AUTH -> launch mapOnly-AuthStatus_letter_template
         """
 
-        if self.__emDeposition:
+        # if self.__emDeposition:
+        #     statusCode = self.__statusCodeEmMap
+        # else:
+        #     # Not a question mark
+        #     if self.__postRelStatus is not None and len(self.__postRelStatus) > 1:
+        #         statusCode = self.__postRelStatus
+        #     else:
+        #         statusCode = self.__statusCode
+
+        # CS 2023-11-06 start change logic for default template, primary on statusCode dependency, impact EM entries only 
+        if self.__postRelStatus and len(self.__postRelStatus) > 1:
+            statusCode = self.__postRelStatus
+        elif self.__statusCode and len(self.__statusCode) > 1:
+            statusCode = self.__statusCode
+        elif self.__emDeposition:
             statusCode = self.__statusCodeEmMap
         else:
-            # Not a question mark
-            if self.__postRelStatus is not None and len(self.__postRelStatus) > 1:
-                statusCode = self.__postRelStatus
-            else:
-                statusCode = self.__statusCode
+            pass
+        # CS 2023-11-06 end
 
         if statusCode and len(statusCode) > 1:
             if statusCode == "HPUB" or statusCode == "HOLD":
