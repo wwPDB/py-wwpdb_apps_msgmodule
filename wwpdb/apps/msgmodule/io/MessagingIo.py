@@ -4797,6 +4797,7 @@ class MsgTmpltHlpr(object):
         If it is an EM map only entry --> if _pdbx_database_status.status_code= AUTH -> launch mapOnly-AuthStatus_letter_template
         """
 
+        # CS 2023-11-06 start change logic for default template, primary on statusCode dependency, impact EM entries only
         # if self.__emDeposition:
         #     statusCode = self.__statusCodeEmMap
         # else:
@@ -4805,8 +4806,6 @@ class MsgTmpltHlpr(object):
         #         statusCode = self.__postRelStatus
         #     else:
         #         statusCode = self.__statusCode
-
-        # CS 2023-11-06 start change logic for default template, primary on statusCode dependency, impact EM entries only 
         if self.__postRelStatus and len(self.__postRelStatus) > 1:
             statusCode = self.__postRelStatus
         elif self.__statusCode and len(self.__statusCode) > 1:
