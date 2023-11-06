@@ -261,16 +261,16 @@ class MessagingDepict(object):
         # CS 2023-10-20 start, further seperate all scenarios of EM model-map, model-only, and map-only. The selection process needs to be optimized later.
         logger.info("strParamDict: %s", strParamDict)
         if b_em:
-            logger.info("EM-ENTRY")
+            logger.info("CStrack+++ EM-ENTRY")
             if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
-                logger.info("EM-MAP-ONLY")
+                logger.info("CStrack+++ EM-MAP-ONLY")
                 strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict
                 strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
                 strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
                 strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only % strParamDict
                 strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only % strParamDict
-            elif strParamDict.get("emdb_id", "") == "[EMDBID NOT AVAIL]":  # EM model-only
-                logger.info("EM-MODEL-ONLY")
+            elif strParamDict.get("modelonly", "") == "true":  # EM model-only
+                logger.info("CStrack+++ EM-MODEL-ONLY")
                 strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
                 strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
                 strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
@@ -281,7 +281,7 @@ class MessagingDepict(object):
                     strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
                     strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
             else:  # EM model+map
-                logger.info("EM-MODEL-MAP")
+                logger.info("CStrack+++ EM-MODEL-MAP")
                 strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
                 strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
                 strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
@@ -292,7 +292,7 @@ class MessagingDepict(object):
                     strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
                     strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
         else:
-            logger.info("NON-EM-ENTRY")
+            logger.info("CStrack+++ NON-EM-ENTRY")
             strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn % strParamDict
             strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
             strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
