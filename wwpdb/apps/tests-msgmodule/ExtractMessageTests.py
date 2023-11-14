@@ -15,6 +15,14 @@ import os
 import sys
 import logging
 
+if __package__ is None or __package__ == "":
+    from os import path
+
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+    from commonsetup import TESTOUTPUT  # noqa:  F401 pylint: disable=import-error,unused-import
+else:
+    from .commonsetup import TESTOUTPUT  # noqa: F401
+
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(DIR, 'test_data')
 SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(DIR)))
