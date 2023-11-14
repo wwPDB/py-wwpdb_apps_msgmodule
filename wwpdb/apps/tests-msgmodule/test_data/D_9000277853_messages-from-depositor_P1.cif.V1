@@ -1,0 +1,53 @@
+data_messages
+# 
+loop_
+_pdbx_deposition_message_info.ordinal_id 
+_pdbx_deposition_message_info.message_id 
+_pdbx_deposition_message_info.deposition_data_set_id 
+_pdbx_deposition_message_info.timestamp 
+_pdbx_deposition_message_info.sender 
+_pdbx_deposition_message_info.context_type 
+_pdbx_deposition_message_info.context_value 
+_pdbx_deposition_message_info.parent_message_id 
+_pdbx_deposition_message_info.message_subject 
+_pdbx_deposition_message_info.message_text 
+_pdbx_deposition_message_info.message_type 
+_pdbx_deposition_message_info.send_status 
+1 d8a85c0a-a10b-4579-b9f3-f447a46da51c D_1000277853 '2023-11-06 17:58:18' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? d8a85c0a-a10b-4579-b9f3-f447a46da51c 'Re-upload files' 
+;Dear PDB Deposition Staff,
+
+Thank you for sending me the final report with major issues. After carefully reviewing it, I agree with the Discrepancy R factor.
+
+I am puzzled by the large difference between the R factors calculated using Refmac. To confirm, may I please deposit the PDB coordinates again? Could you please unlock the entry?
+
+
+Short answer to other questions are following:
+
+lease answer or confirm the following questions:
+(1) Have you refined the structures with ANISO? if yes, please include the file with ANISO B/U values.
+No i dint use this software only refmac.
+
+(2) Is the deposited SF file the final structure factor out of the last round of the refinement? If not, please provide that SF file. If yes, please indicate which bin did you use for the free set.
+SF file not from the final refinement. 
+
+Thank you,
+
+;
+text Y 
+2 4314dc23-c0aa-4922-abbf-8cac333154af D_1000277853 '2023-11-07 00:24:22' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? 4314dc23-c0aa-4922-abbf-8cac333154af 'Re-upload files' 
+;Dear PDB Deposition Staff,
+
+Thank you for your prompt response and unlocking the entry.
+
+I have updated the PDB coordinates and MTZ file to 1.7 &#197; resolution.
+
+Regarding the Aniso record, I apologize for the confusion. I used TLS parameters in my previous submission, but not in this one.
+
+Please let me know if you have any questions.
+
+Thank you for your support.
+
+Sincerely,
+;
+text Y 
+# 
