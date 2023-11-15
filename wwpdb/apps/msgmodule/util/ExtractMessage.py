@@ -4,7 +4,7 @@
 #
 # Update:
 #    2023-11-10    CS     Refactor code to add general process to parse message file; Add functions to retrieve datetime of last messages of various type.
-#                         
+#
 ##
 """
 Support for automatic extracting information from send messages
@@ -22,8 +22,8 @@ import datetime
 import logging
 import re
 from mmcif.io.PdbxReader import PdbxReader
-from wwpdb.io.locator.PathInfo import PathInfo
 from mmcif_utils.persist.LockFile import LockFile
+from wwpdb.io.locator.PathInfo import PathInfo
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,12 @@ class ExtractMessage(object):
         # Parameters to tune lock file management --
         self.__timeoutSeconds = 10
         self.__retrySeconds = 0.2
-        
+
         self.__depid = None  # deposition id is stored as cached class variable, see __readMsgFile() for re-use cached data
         self.__contentType = None  # contentType is stored as cached class variable
         self.__lc = []  # list of data containers for the message file as cached class variable
 
-    def __getMsgFilePath(self, depid, contentType, test_folder):
+    def __getMsgFilePath(self, depid, contentType, test_folder=None):
         """Returns message filepath in the archive
         The following 3 types of contentType are allowed:
         messages-from-depositor 
@@ -50,25 +50,25 @@ class ExtractMessage(object):
         notes-from-annotator
         """
         if test_folder:
-            logger.info("look for message file for %s in author-provided folder %s" % (depid, test_folder))
+            logger.info("look for message file for %s in author-provided folder %s", depid, test_folder)
             filename_msg = depid + '_' + contentType + '_P1.cif.V1'
             filepath_msg = os.path.join(test_folder, filename_msg)
         else:
-            logger.info("look for message file for %s in the archive" % depid)
+            logger.info("look for message file for %s in the archive", depid)
             filepath_msg = self.__pI.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
-            
+
         if not os.path.exists(filepath_msg):
-            logger.warning("cannot find message file for %s" % depid)
+            logger.warning("cannot find message file for %s", depid)
             return None
-        
+
         return filepath_msg
 
-    def __readMsgFile(self, depid, contentType, b_use_cache, test_folder):
-        """Parse message file, return dict for pdbx_deposition_message_info cat
+    def __readMsgFile(self, depid, contentType, b_use_cache=True, test_folder=None):
+        """Parse message file to data in self.__lc.
         Message file can be either messages-from-depositor, messages-to-depositor, or notes-from-annotator
         """
         if b_use_cache and self.__depid == depid and self.__contentType == contentType and self.__lc:
-            logger.info("use cached message data in self.__lc for %s, ignore new contents" % depid)
+            logger.info("use cached message data in self.__lc for %s, ignore new contents", depid)
             # If the same message file was just read and parsed, use the cached data in self.__lc, in order to avoid parsing
             # the same file multiple times with different functions since each function uses depid as argument.
             # This should be used for read-only functions. Be mindful of the consequence of ignoring new data written into the
@@ -78,7 +78,7 @@ class ExtractMessage(object):
             filepath_msg = self.__getMsgFilePath(depid, contentType, test_folder)
             if not filepath_msg:
                 return None
-            logger.info("read message file for %s at %s" % (depid, filepath_msg))
+            logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
                 with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds,
@@ -90,7 +90,7 @@ class ExtractMessage(object):
             except FileExistsError as e:
                 logger.info("%s filelock exists, skip with error %s", filepath_msg, e)
                 self.__lc = []
-            
+
             self.__depid = depid
 
     def __selectLastMsgByTitlePhrase(self, phrase):
@@ -98,7 +98,7 @@ class ExtractMessage(object):
         dc0 = self.__lc[0]
         catObj = dc0.getObj("pdbx_deposition_message_info")
         if catObj is None:
-            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s" % self.__depid)
+            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
             return None
         else:
             itDict = {}
@@ -122,7 +122,7 @@ class ExtractMessage(object):
                             ret = self.convertStrToDatetime(str(row[idxLastCommDate]))
 
                 except Exception as e:
-                    logger.error("Error processing message file for %s" % self.__depid)
+                    logger.error("Error processing message file for %s, %s", self.__depid, e)
         return ret
 
     def convertStrToDatetime(self, s_datetime):
@@ -139,20 +139,20 @@ class ExtractMessage(object):
         elif to_from == "both":
             datetime_to = self.getLastSentMessageDate(depid, True, b_use_cache=b_use_cache, test_folder=test_folder)
             datetime_from = self.getLastSentMessageDate(depid, False, b_use_cache=b_use_cache, test_folder=test_folder)
-            
+
             if not datetime_from:
                 return datetime_to
-            
+
             if not datetime_to:
                 return datetime_from
-            
+
             if datetime_to > datetime_from:
                 return datetime_to
             else:
                 return datetime_from
         else:
             return None
-    
+
     def getLastReceivedMsgDatetime(self, depid, b_use_cache=True, test_folder=None):
         """Return date of last message from depositor as python datetime.
         """
@@ -174,9 +174,9 @@ class ExtractMessage(object):
             ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
-        
-        return ret        
-        
+
+        return ret
+
     def getLastManualReminderDatetime(self, depid, b_use_cache=True, test_folder=None):
         """Return date of last reminder message to depositor as python datetime.
         System-sent messages in archived notes file are not counted.
@@ -187,9 +187,9 @@ class ExtractMessage(object):
             ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
-        
+
         return ret
-    
+
     def getLastReleaseNoticeDatetime(self, depid, b_use_cache=True, test_folder=None):
         """Return date of last release notice to depositor as python datetime.
         """
@@ -199,9 +199,9 @@ class ExtractMessage(object):
             ret = self.__selectLastMsgByTitlePhrase(phrase='Release of')
         else:
             logger.info("Deposition %s empty message file", depid)
-        
+
         return ret
-    
+
     def getLastUnlockDatetime(self, depid, b_use_cache=True, test_folder=None):
         """Return date of last unlock message to depositor as python datetime.
         alias function of getLastUnlocked to standardize return type and name style for function calls
@@ -301,7 +301,7 @@ class ExtractMessage(object):
 
         lastvalid = None
         major = None
-        
+
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
 
         if len(self.__lc) >= 1:

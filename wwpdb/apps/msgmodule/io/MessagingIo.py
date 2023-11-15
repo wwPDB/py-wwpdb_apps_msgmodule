@@ -4251,13 +4251,16 @@ class MsgTmpltHlpr(object):
                     #
                 idxDbId = itDict["_database_2.database_id"]
                 idxDbCode = itDict["_database_2.database_code"]
-                idxDbExtCode = itDict["_database_2.pdbx_database_accession"]  # CS 2023-11-02
+                idxDbExtCode = itDict.get("_database_2.pdbx_database_accession", None)  # CS 2023-11-02
 
                 for row in catObj.getRowList():
                     try:
                         dbId = row[idxDbId]
                         dbCode = row[idxDbCode]
-                        dbExtCode = row[idxDbExtCode]  # CS 2023-11-02
+                        if idxDbExtCode:  # CS 2023-11-02
+                            dbExtCode = row[idxDbExtCode]
+                        else:
+                            dbExtCode = None
 
                         if dbId.upper() == p_IdType:
                             if p_IdType == "PDB":
