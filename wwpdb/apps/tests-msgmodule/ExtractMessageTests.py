@@ -40,6 +40,7 @@ logger = logging.getLogger()
 logger.addHandler(c_handler)
 logger.setLevel(logging.INFO)
 
+
 class TestExtractMessage(unittest.TestCase):
     """Unit test for ExtractMessage.py
     """
