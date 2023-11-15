@@ -14,8 +14,6 @@ import unittest
 import os
 import sys
 import logging
-from wwpdb.apps.msgmodule.util.ExtractMessage import ExtractMessage
-
 if __package__ is None or __package__ == "":
     from os import path
 
@@ -23,6 +21,9 @@ if __package__ is None or __package__ == "":
     from commonsetup import TESTOUTPUT  # noqa:  F401 pylint: disable=import-error,unused-import
 else:
     from .commonsetup import TESTOUTPUT  # noqa: F401
+
+from wwpdb.apps.msgmodule.util.ExtractMessage import ExtractMessage
+
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(DIR, 'test_data')
