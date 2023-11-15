@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractMessage(object):
+    """Class to read message files and extract message date and contents
+    """
     def __init__(self, siteId=None, verbose=False, log=sys.stderr):
         self.__siteId = siteId
         self.__verbose = verbose
@@ -45,8 +47,8 @@ class ExtractMessage(object):
     def __getMsgFilePath(self, depid, contentType, test_folder=None):
         """Returns message filepath in the archive
         The following 3 types of contentType are allowed:
-        messages-from-depositor 
-        messages-to-depositor 
+        messages-from-depositor
+        messages-to-depositor
         notes-from-annotator
         """
         if test_folder:
@@ -81,9 +83,7 @@ class ExtractMessage(object):
             logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
-                with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds,
-                              verbose=self.__verbose, log=self.__log
-                ) as _lf:
+                with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__log):
                     with open(filepath_msg, 'r') as file:
                         cif_parser = PdbxReader(file)
                         cif_parser.read(self.__lc)

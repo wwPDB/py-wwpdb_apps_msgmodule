@@ -14,6 +14,7 @@ import unittest
 import os
 import sys
 import logging
+from wwpdb.apps.msgmodule.util.ExtractMessage import ExtractMessage
 
 if __package__ is None or __package__ == "":
     from os import path
@@ -25,9 +26,8 @@ else:
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(DIR, 'test_data')
-SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(DIR)))
-sys.path.append(SRC_DIR)
-from wwpdb.apps.msgmodule.util.ExtractMessage import ExtractMessage
+# SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(DIR)))
+# sys.path.append(SRC_DIR)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s]-%(module)s.%(funcName)s: %(message)s")
 logger = logging.getLogger()
@@ -41,6 +41,8 @@ logger.addHandler(c_handler)
 logger.setLevel(logging.INFO)
 
 class TestExtractMessage(unittest.TestCase):
+    """Unit test for ExtractMessage.py
+    """
     def setUp(self):
         self.exmsg = ExtractMessage()
 
@@ -71,7 +73,7 @@ class TestExtractMessage(unittest.TestCase):
 
         rt2 = self.exmsg.getLastMsgDatetime("D_9000277853", test_folder=DATA_DIR)
         logger.info("last message date for %s is %s", "D_9000277853", rt2)
-        dt_ref2= self.exmsg.convertStrToDatetime('2023-11-07 00:24:22')
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-11-07 00:24:22')
         self.assertEqual(rt2, dt_ref2)
 
     def test_getLastSentMsgDatetime(self):
@@ -83,7 +85,7 @@ class TestExtractMessage(unittest.TestCase):
 
         rt2 = self.exmsg.getLastSentMsgDatetime("D_9000277853", test_folder=DATA_DIR)
         logger.info("last message to depositor date for %s is %s", "D_9000277853", rt2)
-        dt_ref2= self.exmsg.convertStrToDatetime('2023-11-06 21:28:38')
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-11-06 21:28:38')
         self.assertEqual(rt2, dt_ref2)
 
     def test_getLastReceivedMsgDatetime(self):
