@@ -248,6 +248,7 @@ class MessagingIo(object):
         self.__emdDialectMappingFile = self.__cIA.get_emd_mapping_file_path()
         self.__contentTypeDict = self.__cI.get("CONTENT_TYPE_DICTIONARY")
         self.__release_message_subjects = self.__cI.get("COMMUNICATION_RELEASE_MESSAGE_SUBJECTS")
+        self.__approval_no_correct_message_subjects = self.__cI.get("COMMUNICATION_APPROVAL_WITHOUT_CHANGES_MESSAGE_SUBJECTS")
         #
         self.__dbFilePath = os.path.join(self.__sessionPath, "modelFileData.db")
         #
@@ -1713,6 +1714,18 @@ class MessagingIo(object):
         # NOTE: in order to make semantic sense, we need to return the boolean opposite of the above return value
         return not bNoFlagsForRelease
 
+    def anyUnactionApprovalWithoutCorrection(self):
+        """
+        :Returns:
+            boolean indicating whether any messages exist with approval without correction that still needs to be actioned
+
+        """
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+        # are all messages read?
+        bAnyAction = self.__globalMessageStatusCheck(p_statusToCheck="approval_no_correct", p_flagForFalseReturn="N")
+
+        return bAnyAction
+
     def anyNotesExist(self):
         """
         :Returns:
@@ -1917,21 +1930,23 @@ class MessagingIo(object):
                     if ok:
                         msgStatusLst = mIIo2.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-            for msg in msgsFrmDpstrLst:
-                msgFound = False
+            # Approval no correct is a pseudo flag.  We are not storing in message flags
+            if p_statusToCheck != "approval_no_correct":
+                for msg in msgsFrmDpstrLst:
+                    msgFound = False
 
-                for msgStatus in msgStatusLst:
-                    if msg["message_id"] == msgStatus["message_id"]:
-                        msgFound = True
-                        if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
-                            bReturnStatus = False
-                            logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
-                            return bReturnStatus
+                    for msgStatus in msgStatusLst:
+                        if msg["message_id"] == msgStatus["message_id"]:
+                            msgFound = True
+                            if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
+                                bReturnStatus = False
+                                logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
+                                return bReturnStatus
 
-                if msgFound is False and p_statusToCheck != "for_release":
-                    # handling here for instances in which the given message was not found in message_status category
-                    bReturnStatus = False
-                    return bReturnStatus
+                    if msgFound is False and p_statusToCheck not in ["for_release", "approval_no_correct"]:
+                        # handling here for instances in which the given message was not found in message_status category
+                        bReturnStatus = False
+                        return bReturnStatus
 
             if p_statusToCheck == "for_release":  # for this status check we have to check messages authored by annotators as well for "for_release" flags
 
@@ -1972,6 +1987,29 @@ class MessagingIo(object):
                                 bReturnStatus = False
                                 return bReturnStatus
             #
+            if p_statusToCheck == "approval_no_correct":  # for this status check if any unactioned that are approval w/o corrections
+
+                # Look for an approval message from depositor - that is still pending
+
+                for msg in msgsFrmDpstrLst:
+                    found = False  # found if any approval message
+                    if msg["context_type"] in self.__approval_no_correct_message_subjects:
+                        msgid = msg["message_id"]
+
+                        # Check if message requres action - if so - return True
+                        for msgStatus in msgStatusLst:
+                            found = False
+
+                            if msgid == msgStatus["message_id"]:
+                                if msgStatus["action_reqd"] == "Y":
+                                    return True
+
+                            # Message either found - with no work, or not found at all.  If not found - assume action
+                            if not found:
+                                return True
+
+                # No messages require action
+                return False
 
         except:  # noqa: E722 pylint: disable=bare-except
             logger.info("check global msg '%s' status failed", p_statusToCheck)
