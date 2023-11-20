@@ -121,6 +121,7 @@
 #    2023-11-01    CS     Update file attachement list process to not to append validation report files if already in workingFileRefsList
 #    2023-11-02    CS     Update to include PDB extension id in letter, add pdb_ext_id in msg dict
 #    2023-11-06    CS     Update logic for __getDefaultMsgTmpltType(), i.e. default message pop-up for StatusMod
+#    2023-11-20    EP     Add anyUnactionApprovalWithoutCorrection() to determine if any pendingapproval without corrections that need to be acted upon
 ##
 """
 Class to manage persistence/retrieval of messaging data

@@ -35,6 +35,7 @@
 # 2016-09-07    RPS    Providing separate, dedicated means for activating/deactivating UI flag for detecting presence of
 #                      notes archived via BMRB emails (vs. standard annotator authored notes).
 # 2016-09-14    ZF     Added __checkGroupDeposition() function to support for group deposition
+# 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
 ##
 """
 wwPDB Messaging web request and response processing modules.
