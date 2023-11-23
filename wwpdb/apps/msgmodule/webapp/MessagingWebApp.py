@@ -35,6 +35,7 @@
 # 2016-09-07    RPS    Providing separate, dedicated means for activating/deactivating UI flag for detecting presence of
 #                      notes archived via BMRB emails (vs. standard annotator authored notes).
 # 2016-09-14    ZF     Added __checkGroupDeposition() function to support for group deposition
+# 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
 ##
 """
 wwPDB Messaging web request and response processing modules.
@@ -692,6 +693,7 @@ class MessagingWebAppWorker(object):
         bAllMsgsRead = self.__checkAllMsgsRead()
         bAllMsgsActioned = self.__checkAllMsgsActioned()
         bAnyFlagsForRelease = self.__checkAnyReleaseFlags()
+        bAnyApproval = self.__checkAnyApprovalFlags()
         bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords = self.__checkAnyNotesExist()
 
         # logger.info(("+%s.%s() -- bAnyNotesIncldngArchvdMsgs is '%s' -- bAnnotNotes is '%s' -- iNumNotesRecords is '%s' for DEPID %s \n" % (className, methodName,bAnyNotesIncldngArchvdMsgs,bAnnotNotes,iNumNotesRecords,depId))  # noqa: E501
@@ -722,6 +724,11 @@ class MessagingWebAppWorker(object):
         else:
             notesExistFlag = ""
 
+        if bAnyApproval:
+            approvalFlag = "A"
+        else:
+            approvalFlag = ""
+
         if bBmrbNotes is True:
             bmrbNotesExistFlag = "B"
         else:
@@ -734,7 +741,7 @@ class MessagingWebAppWorker(object):
 
         rtrnDict["num_notes_records"] = iNumNotesRecords
 
-        aggregateFlag = newMsgsFlag + msgsNeedActionFlag + msgsForReleaseFlag
+        aggregateFlag = newMsgsFlag + msgsNeedActionFlag + msgsForReleaseFlag + approvalFlag
         #
         if activateNotesFlagging == "true":
             aggregateFlag += notesExistFlag
@@ -976,6 +983,26 @@ class MessagingWebAppWorker(object):
         bForRelease = msgingIo.anyReleaseFlags()
 
         return bForRelease
+
+    def __checkAnyApprovalFlags(self):
+        """Checks whether there are any messages in which approval without correction flagged and not actions.
+
+        :Helpers:
+
+        :Returns:
+
+        """
+        bForApproval = False
+        #
+        if self.__verbose:
+            logger.info("-- Starting.")
+
+        #
+        msgingIo = MessagingIo(self.__reqObj, self.__verbose, self.__lfh)
+        #
+        bForApproval = msgingIo.anyUnactionApprovalWithoutCorrection()
+
+        return bForApproval
 
     def __checkAnyNotesExist(self):
         """Get
