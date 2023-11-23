@@ -486,7 +486,7 @@ class ExtractMessage(object):
 
         return ret
 
-    def getPendingDepositorMessages(self, depid, b_use_cache=True, test_folder=None):
+    def getPendingDepositorMessages(self, depid, b_use_cache=True, test_folder=None):  # pylint: disable=unused-argument
         """Returns list of messages that have been sent by depositor and pending action present"""
 
         logger.info("Starting for deposition %s", depid)
@@ -494,8 +494,7 @@ class ExtractMessage(object):
         dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
         bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
 
-
-        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)            
+        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_frmDpstr.read(dep_fpath)
         if not ok:
             return []
@@ -504,12 +503,11 @@ class ExtractMessage(object):
             pdbxMsgIo_frmDpstr.getMessageInfo()
         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)            
+        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_toDpstr.read(bio_fpath)
         if not ok:
             # Assume all messages unacknowledged
             return depRecordSetLst
-
 
         bioStatusSetLst = (
             pdbxMsgIo_toDpstr.getMsgStatusInfo()
@@ -530,10 +528,9 @@ class ExtractMessage(object):
             if not found:
                 ret.append(dep)
 
-        return ret;
+        return ret
 
     def getApprovalNoCorrectSubjects(self):
         """Returns list of subjects used for approval without corrections"""
         cI = ConfigInfo(self.__siteId)
         return cI.get("COMMUNICATION_APPROVAL_WITHOUT_CHANGES_MESSAGE_SUBJECTS")
-
