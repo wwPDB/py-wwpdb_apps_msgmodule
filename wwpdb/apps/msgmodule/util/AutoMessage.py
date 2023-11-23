@@ -136,7 +136,6 @@ class AutoMessage(object):
         mio = self.__getmsgio(depId)
         for msgId in msgidlist:
             msgStatusDict = {"message_id": msgId, "deposition_data_set_id": depId, "read_status": "Y", "action_reqd": actionReqd, "for_release": forReleaseFlg}
-            #mio.getMsg(msgId, depId)
             bOk = mio.tagMsg(msgStatusDict)
             if not bOk:
                 ret = False
