@@ -4,6 +4,7 @@
 #
 # Update:
 #    2023-11-10    CS     Refactor code to add general process to parse message file; Add functions to retrieve datetime of last messages of various type.
+#    2023-11-23    EP     Add getApprovalNoCorrectSubjects() and getPendingDepositorMessages()
 #
 ##
 """
@@ -21,9 +22,11 @@ import sys
 import datetime
 import logging
 import re
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from mmcif.io.PdbxReader import PdbxReader
 from mmcif_utils.persist.LockFile import LockFile
 from wwpdb.io.locator.PathInfo import PathInfo
+from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 
 logger = logging.getLogger(__name__)
 
@@ -482,3 +485,55 @@ class ExtractMessage(object):
         logger.info("Returning %s", ret)
 
         return ret
+
+    def getPendingDepositorMessages(self, depid, b_use_cache=True, test_folder=None):
+        """Returns list of messages that have been sent by depositor and pending action present"""
+
+        logger.info("Starting for deposition %s", depid)
+
+        dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
+        bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
+
+
+        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)            
+        ok = pdbxMsgIo_frmDpstr.read(dep_fpath)
+        if not ok:
+            return []
+
+        depRecordSetLst = (
+            pdbxMsgIo_frmDpstr.getMessageInfo()
+        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+
+        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)            
+        ok = pdbxMsgIo_toDpstr.read(bio_fpath)
+        if not ok:
+            # Assume all messages unacknowledged
+            return depRecordSetLst
+
+
+        bioStatusSetLst = (
+            pdbxMsgIo_toDpstr.getMsgStatusInfo()
+        )
+
+        ret = []
+        for dep in depRecordSetLst:
+            msgid = dep["message_id"]
+
+            found = False
+            for s in bioStatusSetLst:
+                if s["message_id"] == msgid:
+                    found = True
+                    if s["action_reqd"] == "Y":
+                        ret.append(dep)
+                    break
+
+            if not found:
+                ret.append(dep)
+
+        return ret;
+
+    def getApprovalNoCorrectSubjects(self):
+        """Returns list of subjects used for approval without corrections"""
+        cI = ConfigInfo(self.__siteId)
+        return cI.get("COMMUNICATION_APPROVAL_WITHOUT_CHANGES_MESSAGE_SUBJECTS")
+
