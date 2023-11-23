@@ -42,10 +42,15 @@ class AutoMessage(object):
         else:
             self.__topSessionDir = self.__cI.get("SITE_WEB_APPS_TOP_SESSIONS_PATH")
 
-    def __getmsgio(self):
+    def __getmsgio(self, identifier=None):
         paramdict = {"TopSessionPath": [self.__topSessionDir]}
         reqobj = InputRequest(paramdict, verbose=True)
         reqobj.setValue("WWPDB_SITE_ID", self.__siteId)
+
+        if identifier:
+            reqobj.setValue("identifier", identifier)
+            reqobj.setValue("content_type", "msgs")
+            reqobj.setValue("filesource", "archive")
         # Session dir
 
         mio = MessagingIo(reqobj, verbose=self.__verbose, log=self.__log)
@@ -122,4 +127,18 @@ class AutoMessage(object):
         mio = self.__getmsgio()
         ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail)
         ret = True
+        return ret
+
+    def tagMessageStatus(self, depId, msgidlist, actionReqd="N", forReleaseFlg="N"):
+        """Tags a message"""
+
+        ret = True
+        mio = self.__getmsgio(depId)
+        for msgId in msgidlist:
+            msgStatusDict = {"message_id": msgId, "deposition_data_set_id": depId, "read_status": "Y", "action_reqd": actionReqd, "for_release": forReleaseFlg}
+            #mio.getMsg(msgId, depId)
+            bOk = mio.tagMsg(msgStatusDict)
+            if not bOk:
+                ret = False
+
         return ret
