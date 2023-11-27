@@ -2000,21 +2000,23 @@ class MessagingIo(object):
                 # Look for an approval message from depositor - that is still pending
 
                 for msg in msgsFrmDpstrLst:
-                    found = False  # found if any approval message
                     if msg["context_type"] in self.__approval_no_correct_message_subjects:
                         msgid = msg["message_id"]
 
                         # Check if message requres action - if so - return True
+                        found = False
                         for msgStatus in msgStatusLst:
-                            found = False
 
                             if msgid == msgStatus["message_id"]:
                                 if msgStatus["action_reqd"] == "Y":
                                     return True
+                                else:
+                                    found = True
+                                    break
 
-                            # Message either found - with no work, or not found at all.  If not found - assume action
-                            if not found:
-                                return True
+                        # Message either found - with no work, or not found at all.  If not found - assume action
+                        if not found:
+                            return True
 
                 # No messages require action
                 return False
