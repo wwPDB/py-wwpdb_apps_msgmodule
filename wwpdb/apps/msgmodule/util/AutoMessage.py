@@ -159,4 +159,3 @@ class AutoMessage(object):
         bAllMsgsRead = mio.areAllMsgsRead()
 
         return bAllMsgsRead
-
