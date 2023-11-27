@@ -160,4 +160,3 @@ class AutoMessage(object):
 
         return bAllMsgsRead
 
-
