@@ -141,3 +141,23 @@ class AutoMessage(object):
                 ret = False
 
         return ret
+
+    def getAllMsgsActioned(self, depId):
+        """Returns True if all messages are actioned"""
+
+        mio = self.__getmsgio(depId)
+
+        bAllMsgsActioned = mio.areAllMsgsActioned()
+
+        return bAllMsgsActioned
+
+    def getAllMsgsRead(self, depId):
+        """Returns Trus if all messages are read"""
+
+        mio = self.__getmsgio(depId)
+        #
+        bAllMsgsRead = mio.areAllMsgsRead()
+
+        return bAllMsgsRead
+
+
