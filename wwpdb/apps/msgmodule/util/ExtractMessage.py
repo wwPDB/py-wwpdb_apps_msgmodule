@@ -376,7 +376,7 @@ class ExtractMessage(object):
                     msgSubject = str(row[idxMsgSubject])
 
                     if status == "Y" and msgId in msgids:
-                        if re.search("validation report", msgSubject, re.IGNORECASE):  # check subject subject to confirm validation letter
+                        if re.search("processed files are ready for your review", msgSubject, re.IGNORECASE):  # check subject subject to confirm validation letter
                             if lastvalid:
                                 if timeStamp > lastvalid:
                                     # logger.debug("Updating lastvalid %s %s", lastvalid, timeStamp)
