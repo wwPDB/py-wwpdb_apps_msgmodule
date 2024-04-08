@@ -130,7 +130,7 @@ class ExtractMessage(object):
         return ret
 
     # CS 2024-04-04 add search below by context_type
-    def __selectLastMsgByContextType(self, l_context_type_to_search): 
+    def __selectLastMsgByContextType(self, l_context_type_to_search):
         """ return datetime of the lastest message based on context type
 
         input: arg l_context_type_to_search is a list of the context types to search for.
@@ -178,7 +178,7 @@ class ExtractMessage(object):
 
         lastvalid = None
         major = None
-        
+
         dc0 = self.__lc[0]
         catObj = dc0.getObj("pdbx_deposition_message_info")
         if catObj is None:
@@ -194,7 +194,7 @@ class ExtractMessage(object):
             idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
             idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
             idxContextValue = itDict["_pdbx_deposition_message_info.context_value"]
-            
+
             maxOrdId = 0
             for row in catObj.getRowList():
                 try:
@@ -213,7 +213,7 @@ class ExtractMessage(object):
 
                 except Exception as e:
                     logger.error("Error processing message file for %s, %s", self.__depid, e)
-                    
+
         return (lastvalid, major)
 
     def convertStrToDatetime(self, s_datetime):
@@ -262,7 +262,7 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="notes-from-annotator", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"]) #CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"])  # CS 2024-04-04 search by context_type first
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
@@ -279,7 +279,7 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"]) #CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"])  # CS 2024-04-04 search by context_type first
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
@@ -295,7 +295,7 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(["release-publ", "release-nopubl"]) #CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["release-publ", "release-nopubl"])  # CS 2024-04-04 search by context_type first
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
@@ -411,13 +411,13 @@ class ExtractMessage(object):
 
         if len(self.__lc) >= 1:
             logger.info("start searching for last validation letter by context_type")
-            (lastvalid, major) = self.__getLastValidationByContextType()  #CS 2024-04-04 first search by context_type/context_value
+            (lastvalid, major) = self.__getLastValidationByContextType()  # CS 2024-04-04 first search by context_type/context_value
             if lastvalid:
                 logger.info("found last validation letter by context_type")
-                return (lastvalid, major)  #return if find by  context_type/context_value
-            
+                return (lastvalid, major)  # return if find message by context_type/context_value
+
             logger.info("fail to find last validation letter by context_type, default to search by subject/text parsing")
-            
+
             c0 = self.__lc[0]
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:

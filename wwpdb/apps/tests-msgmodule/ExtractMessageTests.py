@@ -183,7 +183,7 @@ class TestExtractMessage(unittest.TestCase):
         logger.info("last message to depositor date for %s is %s", "D_0000277853", rt2)
         dt_ref2 = self.exmsg.convertStrToDatetime('2023-11-06 21:28:38')
         self.assertEqual(rt2, dt_ref2)
-        
+
     def test_getLastUnlockDatetime_addContextType(self):
         logger.info("test getLastUnlockDatetime")
         rt1 = self.exmsg.getLastUnlockDatetime("D_0000265933", test_folder=DATA_DIR)
@@ -225,6 +225,7 @@ class TestExtractMessage(unittest.TestCase):
         logger.info("last reminder for %s was sent on %s", "D_0000277853", rt2)
         dt_ref2 = self.exmsg.convertStrToDatetime('2023-10-25 21:51:35')
         self.assertEqual(rt2, dt_ref2)
+
 
 if __name__ == "__main__":
     unittest.main()

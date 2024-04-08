@@ -220,7 +220,7 @@ class MessagingDepict(object):
         #
         logger.info("CStrack+++ dump input web request obj for templates generation")
         logger.info("".join(p_reqObj.dump()))
-        
+
         oL = []
         #
         strParamDict = {}
@@ -330,7 +330,7 @@ class MessagingDepict(object):
         logger.info("CStrack+++ use html template of *msg_tmplts.html*")
         #
         logger.info(''.join(oL))
-        
+
         return oL
 
     def doRenderAllCorrespondence(self, p_reqObj):
@@ -505,7 +505,7 @@ class MessagingDepict(object):
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
         #
         logger.info("CStrack+++ use html template of *%s*", tmpltFile)
-        
+
         return oL
 
     # ####### BEGIN -- Specific to DataTable Implementation ##################

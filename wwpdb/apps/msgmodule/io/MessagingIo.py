@@ -1255,7 +1255,7 @@ class MessagingIo(object):
     def autoMsg(self, p_depIdList, p_tmpltType="release-publ", p_isEmdbEntry=False, p_sender="auto"):
         """
         Send message based on template type p_tmpltType, invoked by 'auto' batch operation rather than frontend UI selection.
-        Originally deleveloped as a  method to enable release message to be automatically sent by another server-side 
+        Originally deleveloped as a  method to enable release message to be automatically sent by another server-side
         python module (e.g. Release module) (i.e. as opposed to being invoked via URL request).
         The message is then archived in notes-from-annotator.
 
@@ -1279,7 +1279,7 @@ class MessagingIo(object):
         #
         rtrnDict = {}
         #
-        contextType = p_tmpltType  #CS 2024-04-04 record message type, following frontend message-to-depositor drop-down list
+        contextType = p_tmpltType  # CS 2024-04-04 record message type
         contextVal = None
         #
         # Added by ZF
@@ -1308,7 +1308,7 @@ class MessagingIo(object):
             self.__reqObj.setValue("em_map_and_model", "false")
 
             useAnnotatorName = False
-            if p_tmpltType in ["remind-unlocked", "approval-impl"]: # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+            if p_tmpltType in ["remind-unlocked", "approval-impl"]:  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
                 useAnnotatorName = True
 
             # Trigger lookup of annotator initial to name if desired by template
@@ -1377,13 +1377,13 @@ class MessagingIo(object):
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "ARCHIVED: Please attend to your unlocked deposition session - " + accstr
-            elif p_tmpltType == "approval-impl": # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+            elif p_tmpltType == "approval-impl":  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
                 msgTmplt = MessagingTemplates.msgTmplt_approvalImplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalImplicit
                 attachFiles = False
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "Implicit Approval of Your Structure - " + accstr
-            elif p_tmpltType == "approval-expl": # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
+            elif p_tmpltType == "approval-expl":  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
                 msgTmplt = MessagingTemplates.msgTmplt_approvalExplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalExplicit
                 attachFiles = False
                 # Need all ids
@@ -1401,7 +1401,7 @@ class MessagingIo(object):
                     msgTmplt = MessagingTemplates.msgTmplt_obsolete_model
                 subject = "Obsoletion of " + templateDict["obs_ids"]
                 attachFiles = False
-            elif p_tmpltType == "reminder":  #CS 2024-04-04 change type from remind-feedback to reminder to match frontend drop-down
+            elif p_tmpltType == "reminder":  # CS 2024-04-04 change type from remind-feedback to reminder to match frontend drop-down
                 msgTmplt = MessagingTemplates.msgTmplt_reminder_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder
                 attachFiles = False
                 isNote = True
@@ -1476,10 +1476,10 @@ class MessagingIo(object):
         #
         return rtrnDict
 
-    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None, p_tmpltType="other"):  #CS 2024-04-04 add p_tmpltType arg
+    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None, p_tmpltType="other"):  # CS 2024-04-04 add p_tmpltType arg
         """Sends a single message for depId with subject and msg. If p_testemail is set - will send notification there
         Different from autoMsg, this function sends customized message pre-composed and passed by subject and msg args.
-        Although template type p_tmpltType is an arg, the message doesn't base on the template type which is only provided for record. 
+        Although template type p_tmpltType is an arg, the message doesn't base on the template type which is only provided for record.
         The message is then archived in notes-from-annotator.
         The function is invoked by programmatic process rather than frontend UI selection including the following:
         (1) WFM manager use the function to send confirmation message
@@ -1487,7 +1487,7 @@ class MessagingIo(object):
         (3) OnholdEntryReminder
         (4) SessionExpiringNotice
         (5) CitationRequest
-        
+
         """
         logger.info("Depid %s", depId)
         logger.info("Subject %s", subject)
@@ -1511,7 +1511,7 @@ class MessagingIo(object):
         # We are archiving notes
         isNote = True
 
-        contextType = p_tmpltType #CS 2024-04-04 record message type, following frontend message-to-depositor drop-down list, default at "other"
+        contextType = p_tmpltType  # CS 2024-04-04 record message type, following frontend message-to-depositor drop-down list, default at "other"
         contextVal = None
 
         messageDict = {

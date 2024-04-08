@@ -64,10 +64,10 @@ class AutoMessage(object):
         self._sendReminderBulk(depidlist, p_tmplt="reminder")
 
     def sendImplicitApproved(self, depidlist):
-        self._sendReminderBulk(depidlist, p_tmplt="approval-impl") # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+        self._sendReminderBulk(depidlist, p_tmplt="approval-impl")  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
 
     def sendExplicitApproved(self, depidlist):
-        self._sendReminderBulk(depidlist, p_tmplt="approval-expl") # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
+        self._sendReminderBulk(depidlist, p_tmplt="approval-expl")  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
 
     def _sendReminderBulk(self, depidlist, p_tmplt):
         """Sends the bulk messages - handling setting EM flag"""
@@ -127,7 +127,7 @@ class AutoMessage(object):
 
         mio = self.__getmsgio()
         ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail, p_tmpltType=p_tmpltType)
-        ## ret = True
+        # ret = True
         return ret
 
     def tagMessageStatus(self, depId, msgidlist, actionReqd="N", forReleaseFlg="N"):
