@@ -140,34 +140,32 @@ class ExtractMessage(object):
 
         """
         ret = None
-        dc0 = self.__lc[0]
-        catObj = dc0.getObj("pdbx_deposition_message_info")
-        if catObj is None:
-            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
-            return None
-        else:
+        try:
+            dc0 = self.__lc[0]
+            catObj = dc0.getObj("pdbx_deposition_message_info")
             itDict = {}
             itNameList = catObj.getItemNameList()
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
-                #
+
             idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
             idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
             idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
 
             maxOrdId = 0
             for row in catObj.getRowList():
-                try:
-                    ordinalId = int(row[idxOrdinalId])
-                    context_type_recorded = row[idxContextType]
+                ordinalId = int(row[idxOrdinalId])
+                context_type_recorded = row[idxContextType]
 
-                    if context_type_recorded in l_context_type_to_search:
-                        if ordinalId > maxOrdId:
-                            maxOrdId = ordinalId
-                            ret = self.convertStrToDatetime(str(row[idxLastCommDate]))
+                if context_type_recorded in l_context_type_to_search:
+                    if ordinalId > maxOrdId:
+                        maxOrdId = ordinalId
+                        ret = self.convertStrToDatetime(str(row[idxLastCommDate]))
 
-                except Exception as e:
-                    logger.error("Error processing message file for %s, %s", self.__depid, e)
+        except Exception as e:
+            logger.error("Error processing message file for %s, %s", self.__depid, e)
+            return None
+
         return ret
 
     # CS 2024-04-04 add validation letter search below by context_type/context_value
@@ -178,18 +176,14 @@ class ExtractMessage(object):
 
         lastvalid = None
         major = None
-
-        dc0 = self.__lc[0]
-        catObj = dc0.getObj("pdbx_deposition_message_info")
-        if catObj is None:
-            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
-            return None
-        else:
+        try:
+            dc0 = self.__lc[0]
+            catObj = dc0.getObj("pdbx_deposition_message_info")
             itDict = {}
             itNameList = catObj.getItemNameList()
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
-                #
+
             idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
             idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
             idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
@@ -197,22 +191,22 @@ class ExtractMessage(object):
 
             maxOrdId = 0
             for row in catObj.getRowList():
-                try:
-                    ordinalId = int(row[idxOrdinalId])
-                    context_type_recorded = row[idxContextType]
-                    context_value_recorded = row[idxContextValue]
+                ordinalId = int(row[idxOrdinalId])
+                context_type_recorded = row[idxContextType]
+                context_value_recorded = row[idxContextValue]
 
-                    if context_type_recorded == "vldtn":
-                        if ordinalId > maxOrdId:
-                            maxOrdId = ordinalId
-                            lastvalid = self.convertStrToDatetime(str(row[idxLastCommDate]))
-                            if context_value_recorded == "major-issue-in-validation":
-                                major = True
-                            else:
-                                major = False
+                if context_type_recorded == "vldtn":
+                    if ordinalId > maxOrdId:
+                        maxOrdId = ordinalId
+                        lastvalid = self.convertStrToDatetime(str(row[idxLastCommDate]))
+                        if context_value_recorded == "major-issue-in-validation":
+                            major = True
+                        else:
+                            major = False
 
-                except Exception as e:
-                    logger.error("Error processing message file for %s, %s", self.__depid, e)
+        except Exception as e:
+            logger.error("Error processing message file for %s, %s", self.__depid, e)
+            return (None, None)
 
         return (lastvalid, major)
 
