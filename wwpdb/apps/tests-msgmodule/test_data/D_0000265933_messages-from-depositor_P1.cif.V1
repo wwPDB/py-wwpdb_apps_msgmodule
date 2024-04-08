@@ -1,0 +1,21 @@
+data_messages
+# 
+_pdbx_deposition_message_info.ordinal_id               1 
+_pdbx_deposition_message_info.message_id               f3777fd5-a449-43df-b62f-bb9875029371 
+_pdbx_deposition_message_info.deposition_data_set_id   D_0000265933 
+_pdbx_deposition_message_info.timestamp                '2022-12-18 07:30:00' 
+_pdbx_deposition_message_info.sender                   'depositor - Cat, Thomas (responsible scientist)' 
+_pdbx_deposition_message_info.context_type             'Re-upload files' 
+_pdbx_deposition_message_info.context_value            ? 
+_pdbx_deposition_message_info.parent_message_id        f3777fd5-a449-43df-b62f-bb9875029371 
+_pdbx_deposition_message_info.message_subject          'Re-upload files' 
+_pdbx_deposition_message_info.message_text             
+;Hi, 
+
+After reviewing this structure for publication, we have had to make some small changes. Is it possible to upload new structures for this deposition? 
+
+Cheers, 
+;
+_pdbx_deposition_message_info.message_type             text 
+_pdbx_deposition_message_info.send_status              Y 
+# 

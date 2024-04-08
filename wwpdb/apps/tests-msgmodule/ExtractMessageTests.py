@@ -4,6 +4,7 @@
 # Date:    2023-11-08
 # Updates:
 #    2023-11-08    CS    Created.
+#    2024-04-04    CS    Update to include tests on context_type and context_value that are now recorded.
 ##
 
 """
@@ -144,6 +145,86 @@ class TestExtractMessage(unittest.TestCase):
         dt_ref2 = self.exmsg.convertStrToDatetime('2023-10-25 21:51:35')
         self.assertEqual(rt2, dt_ref2)
 
+    def test_getLastAutoReminderDatetime_addContextType(self):
+        logger.info("test getLastAutoReminderDatetime")
+        rt1 = self.exmsg.getLastAutoReminderDatetime("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last auto reminder for %s is %s", "D_0000265933", rt1)
+        dt_ref1 = self.exmsg.convertStrToDatetime('2023-11-12 14:53:21')
+        self.assertEqual(rt1, dt_ref1)
+
+        rt2 = self.exmsg.getLastAutoReminderDatetime("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last auto reminder for %s is %s", "D_0000277853", rt2)
+        self.assertFalse(rt2)
+
+        rt3 = self.exmsg.getLastAutoReminderDatetime("D_000219", test_folder=DATA_DIR)
+        logger.info("last auto reminder for %s is %s", "D_000219", rt3)
+        self.assertFalse(rt3)
+
+    def test_getLastMsgDatetime_addContextType(self):
+        logger.info("test getLastMsgDatetime")
+        rt1 = self.exmsg.getLastMsgDatetime("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last message date for %s is %s", "D_0000265933", rt1)
+        dt_ref1 = self.exmsg.convertStrToDatetime('2023-07-03 14:30:21')
+        self.assertEqual(rt1, dt_ref1)
+
+        rt2 = self.exmsg.getLastMsgDatetime("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last message date for %s is %s", "D_0000277853", rt2)
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-11-07 00:24:22')
+        self.assertEqual(rt2, dt_ref2)
+
+    def test_getLastSentMsgDatetime_addContextType(self):
+        logger.info("test getLastSentMsgDatetime")
+        rt1 = self.exmsg.getLastSentMsgDatetime("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last message to depositor date for %s is %s", "D_0000265933", rt1)
+        dt_ref1 = self.exmsg.convertStrToDatetime('2023-07-03 14:30:21')
+        self.assertEqual(rt1, dt_ref1)
+
+        rt2 = self.exmsg.getLastSentMsgDatetime("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last message to depositor date for %s is %s", "D_0000277853", rt2)
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-11-06 21:28:38')
+        self.assertEqual(rt2, dt_ref2)
+        
+    def test_getLastUnlockDatetime_addContextType(self):
+        logger.info("test getLastUnlockDatetime")
+        rt1 = self.exmsg.getLastUnlockDatetime("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last unlocked date for %s is %s", "D_0000265933", rt1)
+        dt_ref1 = self.exmsg.convertStrToDatetime("2022-12-19 13:33:27")
+        self.assertEqual(rt1, dt_ref1)
+
+        rt2 = self.exmsg.getLastUnlockDatetime("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last unlocked date for %s is %s", "D_0000277853", rt2)
+        self.assertFalse(rt2)
+
+    def test_getLastValidation_addContextType(self):
+        logger.info("test getLastValidation")
+        rt1 = self.exmsg.getLastValidation("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last validation for %s was sent on %s with major issue status %s", "D_0000265933", rt1[0], rt1[1])
+        dt_ref1 = self.exmsg.convertStrToDatetime('2022-12-22 16:50:33')
+        self.assertEqual(rt1[0], dt_ref1)
+        self.assertFalse(rt1[1])
+
+        rt2 = self.exmsg.getLastValidation("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last validation for %s was sent on %s with major issue status %s", "D_0000277853", rt2[0], rt2[1])
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-10-09 20:16:32')
+        self.assertEqual(rt2[0], dt_ref2)
+        self.assertTrue(rt2[1])
+
+        rt3 = self.exmsg.getLastValidation("D_800219", test_folder=DATA_DIR)
+        logger.info("last validation for %s was sent on %s with major issue status %s", "D_800219", rt3[0], rt3[1])
+        dt_ref3 = self.exmsg.convertStrToDatetime('2021-09-30 21:09:27')
+        self.assertEqual(rt3[0], dt_ref3)
+        self.assertTrue(rt3[1])
+
+    def test_getLastManualReminderDatetime_addContextType(self):
+        logger.info("test getLastManualReminderDatetime")
+        rt1 = self.exmsg.getLastManualReminderDatetime("D_0000265933", test_folder=DATA_DIR)
+        logger.info("last reminder for %s was sent on %s", "D_0000265933", rt1)
+        self.assertFalse(rt1)
+
+        rt2 = self.exmsg.getLastManualReminderDatetime("D_0000277853", test_folder=DATA_DIR)
+        logger.info("last reminder for %s was sent on %s", "D_0000277853", rt2)
+        dt_ref2 = self.exmsg.convertStrToDatetime('2023-10-25 21:51:35')
+        self.assertEqual(rt2, dt_ref2)
 
 if __name__ == "__main__":
     unittest.main()

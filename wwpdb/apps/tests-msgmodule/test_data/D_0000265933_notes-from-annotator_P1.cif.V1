@@ -1,0 +1,139 @@
+data_messages
+# 
+loop_
+_pdbx_deposition_message_info.ordinal_id 
+_pdbx_deposition_message_info.message_id 
+_pdbx_deposition_message_info.deposition_data_set_id 
+_pdbx_deposition_message_info.timestamp 
+_pdbx_deposition_message_info.sender 
+_pdbx_deposition_message_info.context_type 
+_pdbx_deposition_message_info.context_value 
+_pdbx_deposition_message_info.parent_message_id 
+_pdbx_deposition_message_info.message_subject 
+_pdbx_deposition_message_info.message_text 
+_pdbx_deposition_message_info.message_type 
+_pdbx_deposition_message_info.send_status 
+1 d7d90662-36b7-48ef-8a2b-c2aa0d557d62 D_9000265933 '2022-08-08 18:02:33' noreply@mail.wwpdb.org session-expire ? d7d90662-36b7-48ef-8a2b-c2aa0d557d62 'ARCHIVED: The deposition session D_9000265933 will expire soon'               
+;HEADER:
+Return-Path: <SRS0=88VL=YM=mail.wwpdb.org=noreply@rcsb.rutgers.edu>
+Delivered-To: wwpdb-da-system@rcsb.rutgers.edu
+Received: from localhost (localhost [127.0.0.1])
+	by mail.rcsb.rutgers.edu (Postfix) with ESMTP id E888D243B;
+	Mon,  8 Aug 2022 13:50:05 -0400 (EDT)
+X-Virus-Scanned: amavisd-new at rcsb.rutgers.edu
+Received: from mail.rcsb.rutgers.edu ([127.0.0.1])
+	by localhost (mail.rcsb.rutgers.edu [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id T9cNY9vzcnh4; Mon,  8 Aug 2022 13:50:05 -0400 (EDT)
+Received: from pdb-hp-linux-14.rcsb.rutgers.edu (pdb-hp-linux-14.rcsb.rutgers.edu [128.6.150.50])
+	by mail.rcsb.rutgers.edu (Postfix) with ESMTP id 48EAC617;
+	Mon,  8 Aug 2022 13:50:03 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mail.rcsb.rutgers.edu 48EAC617
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mail.wwpdb.org;
+	s=2021182; t=1659981003;
+	bh=IPa4jRomv7Zlqr4BDxzv+8VgA4XAeh2+21+ckOtVVwg=;
+	h=Subject:From:To:Date:From;
+	b=E3AGta9kvUNFrYD1lC+L2xtqBOPDUcTgKQ4DfuQq1pBaBOt8IGD0rTN+Iglq0u/pV
+	 UUboBJ/j1pUf4q3ALssNVAsvvNXFhDWv3w71OswjMLb8mYt1LaSHYLkN8UGMppXqxz
+	 d2cxo/jfefjp6kx0b96an8n4FuO4O7ulfb4dn+UA=
+Received: from pdb-hp-linux-14.rcsb.rutgers.edu (localhost [IPv6:::1])
+	by pdb-hp-linux-14.rcsb.rutgers.edu (Postfix) with ESMTP id 31FB93000204;
+	Mon,  8 Aug 2022 13:50:03 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+Subject: The deposition session D_9000265933 will expire soon
+From: noreply@mail.wwpdb.org
+To: chenghua@rcsb.rutgers.edu
+Message-Id: <20220808175003.31FB93000204@pdb-hp-linux-14.rcsb.rutgers.edu>
+Date: Mon,  8 Aug 2022 13:50:03 -0400 (EDT)
+
+
+
+
+BODY:
+You have not logged into your deposition D_9000265933 with the title "Mechanism and structural insi=
+ghts of heparanase inhibition by heparan sulfate mimetic, Pentosan Polysulfate and three synthetic =
+analogues."  in the wwPDB OneDep system in the last 60 days.=20
+Un-submitted sessions expire 3 months after the last login.=20
+If you wish to continue this deposition use the following URL to complete your deposition within th=
+e next 30 days or your session and uploaded files will be deleted.=20
+https://deposit.wwpdb.org/deposition/=20
+
+The wwPDB Annotation Staff
+
+
+;
+archive_auto        Y 
+2 9d4a0c0f-1b24-47ae-b308-b09f417ec6ca D_9000265933 '2023-06-12 05:21:11' auto                   hold-expire ? 9d4a0c0f-1b24-47ae-b308-b09f417ec6ca 'PDB entry D_9000265933 (XXXX) hold expiration date 2023/08/09 is approaching' 
+;Crystal structure of HPSE P6 in complex with triose pentosan inhibitor
+
+Cat, T.
+
+
+Dear Drs. Cat
+
+
+The entry D_9000265933 (XXXX) has been on hold since 2022-08-08. The hold
+expiration date 2023-08-08 is now approaching. The entry will be released
+to public upon hold expiration.
+We request that you confirm release or withdrawal of your entry.
+If we do not hear from you by 2023-08-03 noon ET, the entry will be released
+promptly on 2023-08-09 upon hold expiration.
+Please let us know immediately if the primary citation associated with this
+entry has been published. Please include PubMed ID or full citation.
+Sincerely,
+
+CS
+The wwPDB Annotation Staff
+
+To reply: log into the wwPDB Deposition System https://deposit.wwpdb.org/deposition
+wwPDB entry release policy: https://www.wwpdb.org/policy.html#toc_release
+;
+archive_auto_noorig Y
+3 d7af8e72-cdd3-431d-835b-87b7304d41c3 D_9000265933 '2023-11-12 14:53:21' auto reminder ? d7af8e72-cdd3-431d-835b-87b7304d41c3 'ARCHIVED: Still awaiting feedback for pdb_0000xxxx (PDB ID XXXX)' 
+;Dear Depositors,
+
+Please acknowledge receipt of this message.
+
+This message is to inform you that your structure pdb_00000xxxx (PDB ID XXXX) (Deposition ID D_9000265933) is still awaiting your input. The entry is entitled:
+
+======================================================
+Structure of ABC
+======================================================
+
+We have not heard from you since we sent you the validation report, processed PDB and mmCIF files on 21 October 2023. Please respond to the questions raised in our previous correspondence as soon as possible.
+
+In accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy), if we find a publication describing the entry, it will be released with CAVEAT records highlighting any outstanding issues.  If after 21 October 2024 (one year from the deposition date) we are unable to find a publication describing this structure, the entry may be withdrawn if there remain outstanding issues, otherwise the entry will be released.
+
+Thank you for your attention.
+
+Sincerely yours,
+
+
+
+The wwPDB Biocuration Staff
+
+--------------------------------------------------------------------------------------------------------------
+RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
+http://www.rcsb.org
+Rutgers, The State University of New Jersey, Piscataway, NJ, USA
+Facebook: http://www.facebook.com/RCSBPDB
+Twitter: http://twitter.com/#!/buildmodels
+--------------------------------------------------------------------------------------------------------------
+
+
+;
+archive_auto_noorig Y 
+# 
+_pdbx_deposition_message_origcomm_reference.ordinal_id                    1 
+_pdbx_deposition_message_origcomm_reference.message_id                    d7d90662-36b7-48ef-8a2b-c2aa0d557d62 
+_pdbx_deposition_message_origcomm_reference.deposition_data_set_id        D_9000265933 
+_pdbx_deposition_message_origcomm_reference.orig_message_id               ? 
+_pdbx_deposition_message_origcomm_reference.orig_deposition_data_set_id   None 
+_pdbx_deposition_message_origcomm_reference.orig_timestamp                '2022-08-08 17:50:03' 
+_pdbx_deposition_message_origcomm_reference.orig_sender                   noreply@mail.wwpdb.org 
+_pdbx_deposition_message_origcomm_reference.orig_recipient                chenghua@chenghua.rcsb.rutgers.edu
+_pdbx_deposition_message_origcomm_reference.orig_message_subject          'The deposition session D_9000265933 will expire soon' 
+_pdbx_deposition_message_origcomm_reference.orig_attachments              ? 
+# 

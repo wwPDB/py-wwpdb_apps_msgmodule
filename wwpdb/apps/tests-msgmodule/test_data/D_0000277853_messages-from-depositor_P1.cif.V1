@@ -13,7 +13,7 @@ _pdbx_deposition_message_info.message_subject
 _pdbx_deposition_message_info.message_text 
 _pdbx_deposition_message_info.message_type 
 _pdbx_deposition_message_info.send_status 
-1 d8a85c0a-a10b-4579-b9f3-f447a46da51c D_9000277853 '2023-11-06 17:58:18' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? d8a85c0a-a10b-4579-b9f3-f447a46da51c 'Re-upload files' 
+1 d8a85c0a-a10b-4579-b9f3-f447a46da51c D_0000277853 '2023-11-06 17:58:18' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? d8a85c0a-a10b-4579-b9f3-f447a46da51c 'Re-upload files' 
 ;Dear PDB Deposition Staff,
 
 Thank you for sending me the final report with major issues. After carefully reviewing it, I agree with the Discrepancy R factor.
@@ -34,7 +34,7 @@ Thank you,
 
 ;
 text Y 
-2 4314dc23-c0aa-4922-abbf-8cac333154af D_9000277853 '2023-11-07 00:24:22' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? 4314dc23-c0aa-4922-abbf-8cac333154af 'Re-upload files' 
+2 4314dc23-c0aa-4922-abbf-8cac333154af D_0000277853 '2023-11-07 00:24:22' 'depositor - Cat, Thomas (responsible scientist)' 'Re-upload files' ? 4314dc23-c0aa-4922-abbf-8cac333154af 'Re-upload files' 
 ;Dear PDB Deposition Staff,
 
 Thank you for your prompt response and unlocking the entry.

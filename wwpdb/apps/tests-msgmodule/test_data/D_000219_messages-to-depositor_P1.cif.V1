@@ -1,0 +1,275 @@
+data_messages
+# 
+loop_
+_pdbx_deposition_message_info.ordinal_id 
+_pdbx_deposition_message_info.message_id 
+_pdbx_deposition_message_info.deposition_data_set_id 
+_pdbx_deposition_message_info.timestamp 
+_pdbx_deposition_message_info.sender 
+_pdbx_deposition_message_info.context_type 
+_pdbx_deposition_message_info.context_value 
+_pdbx_deposition_message_info.parent_message_id 
+_pdbx_deposition_message_info.message_subject 
+_pdbx_deposition_message_info.message_text 
+_pdbx_deposition_message_info.message_type 
+_pdbx_deposition_message_info.send_status 
+1 c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 '2021-09-30 21:09:27' EP   vldtn major-issue-in-validation c221ca93-bc5e-4cac-b422-1d617024d1e2 'PDB ID 0303 - Validation report and processed files are ready for your review' 
+;Dear Depositors,
+
+Thank you for depositing your structure, PDB ID 0303 and Deposition ID D_000219, with the wwPDB.
+
+Entry title:   Structure of Pentavalent Phosphorous Intermediate of an Enzyme Catalyzed Phosphoryl transfer Reaction observed on cocrystallization with Glucose 1-phosphate
+
+Entry authors:   Cat, T.
+
+wwPDB encourage depositors to provide ORCID identifiers and information on relevant grants funding their research when
+depositing PDB data. ORCID identifiers are unique to each researcher; usage will help avoid ambiguity in attributing
+the correct authorship of PDB, BMRB, and EMDB entries. In order to register an ORCID, please visit http://orcid.org.
+
+Please review the processed files and validation report in PDF format  based on the recommendations of the
+wwPDB Validation Task Force. We encourage you to submit it to journals during manuscript review. If you have
+any corrections, please send a message through the communication system requesting that we open the deposition
+interface for you to upload new coordinates and make any changes.
+
+From July 1st 2019, coordinate files will only be accepted in mmCIF format for structures determined by crystallographic
+methods (X-ray, neutron, fiber, and electron diffraction). PDB format files will no longer be accepted from this date.
+
+Some major issues were raised during data processing which must be resolved prior to release of the file. The
+outstanding issues are summarized below. All correspondence for revisions including revised coordinates, and/or
+supporting data factor files should be uploaded and resubmitted through the deposition interface.
+
+Outstanding Issues:
+
+
+1. Chirality Error
+
+Chirality errors in your coordinates have been indicated in section 5.1 (Standard geometry) or 5.4 (nonstandard
+residues in protein, DNA, RNA chains) or 5.6 (Ligand geometry) in the PDF validation report. These errors are
+highlighted in the database_PDB_caveat section of the coordinate CIF file.
+
+G16 A 1301 HAS WRONG CHIRALITY AT ATOM C1
+
+Please upload new coordinates to resolve this issue.
+
+
+
+In addition, please verify the following:
+
+
+2. Sequence
+
+Please verify that the sample sequence in the entity_poly section of the coordinate CIF file includes all
+residues used in the experiment including expression tags and residues missing due to disorder.
+
+
+3. Assembly
+
+Assembly 1 provided by the author contains:
+1 copy of chain A
+
+Please login to your deposition session and visit the Assembly Review page to verify the annotated assemblies in 3D.
+
+
+4. Ligand Identity
+
+The following chemical group exists in your deposition. Please review section 2 of the validation report
+(Entry composition) to verify ligand chemistry.
+
+ID:      G16
+Name:    1,6-di-O-phosphono-alpha-D-glucopyranose
+Synonym: ALPHA-D-GLUCOSE 1,6-BISPHOSPHATE; 1,6-di-O-phosphono-alpha-D-glucose; 1,6-
+di-O-phosphono-D-glucose; 1,6-di-O-phosphono-glucose
+Formula: C6 H13 O12 P2
+
+ID:      MG
+Name:    MAGNESIUM ION
+Formula: Mg
+
+
+5. Fit of model to data RSR Z-score
+
+Section 6 (Fit of model and data) of the validation report indicates a number of RSR-Z outliers in an electron
+density map calculated from your data. Please examine these outliers.
+
+RSRZ outliers:
+Molecule  Chain ID  Res Num  Res Name    RSRZ
+      1        A      1220      GLN    11.142
+      1        A      1221      LYS    10.550
+      1        A      1219      LYS     9.767
+
+
+6. Distant Waters
+
+Water molecules that are more than 5 Angstrom away from the nearest non-solvent hydrogen-bonding partner are
+listed below. Please review these potentially distant waters, and revisit those that do not belong to a second,
+third, etc. solvation shells (bound to other waters).
+
+RESIDUE                     XYZ                DISTANCE (A)
+HOH A 1860         3.778   53.085   22.094        5.92
+HOH A 1861         9.589   34.541   -6.950        6.08
+HOH A 1862        28.676   32.398   12.009        6.21
+HOH A 1863        24.926    7.720   24.584        6.23
+HOH A 1864         5.715   21.203   26.914        6.28
+HOH A 1865        29.039   31.638   14.422        6.33
+HOH A 1866        -4.991   50.864   26.546        6.42
+HOH A 1867         6.457   52.159   22.507        6.65
+HOH A 1868         6.290   33.722   -7.910        6.66
+HOH A 1869         8.194   33.123   -9.046        6.69
+HOH A 1870        26.955   21.719   -0.642        7.02
+HOH A 1871        -6.165   51.397    9.069        7.09
+HOH A 1872        -7.206   52.191   25.244        7.86
+HOH A 1873       -10.162   51.060   24.727        10.03
+HOH A 1874       -10.362   48.130   26.093        10.53
+HOH A 1875       -11.043   52.254   22.909        10.86
+
+
+7. Missing and/or Inconsistent Values
+
+Provide the refinement statistics for the highest resolution shell, including resolution limits, number of
+observed unique reflections, completeness, and Rfree/Rwork.
+
+
+8. Header
+
+The header 'ISOMERASE' has been selected for the entry.  If this is not correct, select a header from the list
+available in: ftp://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/class.dat.
+
+
+9. Cis-Peptides
+
+The following peptides were found to be in the cis conformation, and will be annotated as such.  Please confirm that
+these peptide are intended to be cispeptides.
+ 
+LYS  A  1145  PRO  A  1146    10.08  
+
+
+10. Only One Contact Author
+
+There is only one contact author and PI information provided for this deposition. Please confirm that you are the sole
+PI and no other authors need to be informed regarding process of the release of the entry, otherwise please provide
+additional authors that should be informed.
+
+
+
+If we do not hear from you and a paper is published within a year citing this entry, the entry will be released
+with a CAVEAT record. Otherwise this entry will be automatically withdrawn at the one year anniversary of the
+deposition.
+
+When the primary citation associated with your entry is published, please notify us through the deposition
+system and provide the PubMed ID (if available), journal name, volume, page numbers, title, authors list and DOI.
+
+Thank you for your attention.
+
+
+    
+Sincerely yours,
+
+Ezra Peisach
+
+The wwPDB Biocuration Staff
+
+--------------------------------------------------------------------------------------------------------------
+RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
+http://www.rcsb.org
+Rutgers, The State University of New Jersey, Piscataway, NJ, USA
+Facebook: http://www.facebook.com/RCSBPDB
+Twitter: http://twitter.com/#!/buildmodels
+-------------------------------------------------------------------------------------------------------------- 
+
+
+
+;
+text Y 
+2 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 '2022-06-30 03:08:56' auto release-publ ? eac572e7-0fd1-4b79-ab89-21d55a524174 'Release of PDB ID 0303'                                                        
+;Dear Depositors,
+
+This message is to inform you that your structure PDB ID 0303 (Deposition ID D_000219) and the associated experimental data which were deposited with release instructions, 'HOLD', will be released on 6 July 2022.  This is the next available release date.
+
+The entry is entitled:
+
+=====================================================================================
+Structure of ABC
+=====================================================================================
+
+Your entry has the following primary citation:
+
+Author(s):   Cat, T.
+
+Title:   The pentacovalent phosphorus intermediate of a phosphoryl transfer reaction.
+
+Journal:   Science
+Volume:   999
+Pages:   9990 - 9999
+Year:   2000
+PubMed ID:   12345678
+DOI:   99.9999/science.999999
+
+Your entry has been assigned the following PDB DOI: https://doi.org/10.2210/pdb0303/pdb
+
+Please use the above PDB DOI link to access your data.
+If you have changes to make to the entry, please inform us by noon local time at RCSB on Thursday 30 June 2022.
+
+Sincerely yours,
+
+
+
+The wwPDB Biocuration Staff
+
+--------------------------------------------------------------------------------------------------------------
+RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
+http://www.rcsb.org
+Rutgers, The State University of New Jersey, Piscataway, NJ, USA
+Facebook: http://www.facebook.com/RCSBPDB
+Twitter: http://twitter.com/#!/buildmodels
+--------------------------------------------------------------------------------------------------------------
+
+
+;
+text Y 
+# 
+loop_
+_pdbx_deposition_message_file_reference.ordinal_id 
+_pdbx_deposition_message_file_reference.message_id 
+_pdbx_deposition_message_file_reference.deposition_data_set_id 
+_pdbx_deposition_message_file_reference.content_type 
+_pdbx_deposition_message_file_reference.content_format 
+_pdbx_deposition_message_file_reference.partition_number 
+_pdbx_deposition_message_file_reference.version_id 
+_pdbx_deposition_message_file_reference.storage_type 
+_pdbx_deposition_message_file_reference.upload_file_name 
+1  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 model-annotate                          pdbx 1 1 archive ? 
+2  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 model-review                            pdbx 1 1 archive ? 
+3  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 model-annotate                          pdb  1 1 archive ? 
+4  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 structure-factors-annotate              pdbx 1 1 archive ? 
+5  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-report-annotate              pdf  1 1 archive ? 
+6  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-report-full-annotate         pdf  1 1 archive ? 
+7  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-data-annotate                xml  1 1 archive ? 
+8  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-data-annotate                pdbx 1 1 archive ? 
+9  c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-report-2fo-map-coef-annotate pdbx 1 1 archive ? 
+10 c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 validation-report-fo-map-coef-annotate  pdbx 1 1 archive ? 
+11 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 model-annotate                          pdbx 1 3 archive ? 
+12 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 model-review                            pdbx 1 2 archive ? 
+13 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 model-annotate                          pdb  1 2 archive ? 
+14 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 structure-factors-annotate              pdbx 1 2 archive ? 
+15 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-annotate              pdf  1 1 archive ? 
+16 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-full-annotate         pdf  1 1 archive ? 
+17 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-data-annotate                xml  1 1 archive ? 
+18 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-data-annotate                pdbx 1 1 archive ? 
+19 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-slider-annotate       png  1 1 archive ? 
+20 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-2fo-map-coef-annotate pdbx 1 1 archive ? 
+21 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-fo-map-coef-annotate  pdbx 1 1 archive ? 
+22 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-annotate              pdf  1 1 archive ? 
+23 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-full-annotate         pdf  1 1 archive ? 
+24 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-data-annotate                xml  1 1 archive ? 
+25 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-data-annotate                pdbx 1 1 archive ? 
+26 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-2fo-map-coef-annotate pdbx 1 1 archive ? 
+27 eac572e7-0fd1-4b79-ab89-21d55a524174 D_000219 validation-report-fo-map-coef-annotate  pdbx 1 1 archive ? 
+# 
+loop_
+_pdbx_deposition_message_status.message_id 
+_pdbx_deposition_message_status.deposition_data_set_id 
+_pdbx_deposition_message_status.read_status 
+_pdbx_deposition_message_status.action_reqd 
+_pdbx_deposition_message_status.for_release 
+c221ca93-bc5e-4cac-b422-1d617024d1e2 D_000219 Y Y N 
+# 

@@ -36,6 +36,7 @@
 #                      notes archived via BMRB emails (vs. standard annotator authored notes).
 # 2016-09-14    ZF     Added __checkGroupDeposition() function to support for group deposition
 # 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
+# 2024-04-04    CS     Add process on context_type/context_value of message-to-depositor recorded by frontend JavaScript and passed here through wsgi message submit URL 
 ##
 """
 wwPDB Messaging web request and response processing modules.
@@ -60,6 +61,7 @@ import os
 import sys
 import time
 import traceback
+import re
 
 try:
     from html import unescape
@@ -1345,7 +1347,15 @@ class MessagingWebAppWorker(object):
         self.__getSession()
         #
         rtrnDict = {}
-        #
+        
+        #CS 2024-04-04 start processing context_value, add "major-issue-in-validation" if frontend submitted validation message contains major issue
+        if self.__reqObj.getValue("context_type") == "vldtn":
+            if not self.__reqObj.getValue("context_value").strip():
+                message_text = self.__reqObj.getValue("message")
+                if re.search("major issue", message_text.lower()) and re.search("outstanding issue", message_text.lower()): 
+                    self.__reqObj.setValue("context_value", "major-issue-in-validation")
+        #CS 2024-04-04 end
+        
         self.__reqObj.setReturnFormat(return_format="json")
         self.__reqObj.setValue("message_state", p_msgState)  # setting here for downstream processing, used only for processing purposes
         # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.

@@ -1,0 +1,229 @@
+data_messages
+# 
+loop_
+_pdbx_deposition_message_info.ordinal_id 
+_pdbx_deposition_message_info.message_id 
+_pdbx_deposition_message_info.deposition_data_set_id 
+_pdbx_deposition_message_info.timestamp 
+_pdbx_deposition_message_info.sender 
+_pdbx_deposition_message_info.context_type 
+_pdbx_deposition_message_info.context_value 
+_pdbx_deposition_message_info.parent_message_id 
+_pdbx_deposition_message_info.message_subject 
+_pdbx_deposition_message_info.message_text 
+_pdbx_deposition_message_info.message_type 
+_pdbx_deposition_message_info.send_status 
+1 c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 '2023-10-09 20:16:32' CS vldtn major-issue-in-validation c33cf1ad-c965-4303-8dfb-d63c1e059951 'PDB ID XXXX - Validation report and processed files are ready for your review'         
+;Dear Depositors,
+
+Thank you for depositing your structure, PDB ID XXXX and Deposition ID D_9000277853, with the wwPDB.
+
+Entry title:   Crystal structure of ABC
+
+Entry authors:   Cat, T.
+
+wwPDB encourage depositors to provide ORCID identifiers and information on relevant grants funding their research when
+depositing PDB data. ORCID identifiers are unique to each researcher; usage will help avoid ambiguity in attributing
+the correct authorship of PDB, BMRB, and EMDB entries. In order to register an ORCID, please visit http://orcid.org.
+
+Please log into your deposition session and review the processed files and validation report in PDF format
+generated based on the recommendations of the wwPDB Validation Task Force. The processed files are located
+below this message on Communication page of your deposition session. We encourage you to submit the validation
+report to journals during manuscript review. If you have any corrections, please send a message through the
+communication page requesting that we open the deposition interface for you to upload new coordinates and/or
+make any changes.
+
+We encourage you to submit your raw X-ray diffraction data at one of the raw image archives:
+
+     proteindiffraction.org
+     SBGrid
+     Zenodo
+     CXIDB
+     XRDa
+
+After the raw image is deposited into one of the above resources, please provide the image deposition DOI to
+the PDB via OneDep communication or at the OneDep "Related entries" page by requesting unlock of deposition
+session. See FAQ at https://www.wwpdb.org/deposition/faq#start.
+
+Some major issues were raised during data processing which must be resolved prior to release of the file. The
+outstanding issues are summarized below. All correspondence for revisions including revised coordinates, and/or
+supporting data factor files should be uploaded and resubmitted through the deposition interface.
+
+Outstanding Issues:
+
+
+1. Discrepancy Between Reported and Calculated R and/or free R
+
+There is a significant discrepancy between the reported and calculated R and/or Rfree values. Please review the
+validation report and upload a corrected coordinate and/or structure factor file at the deposition interface.
+
+Three problems are found. (1)The calculated Rwork factor is higher than the reported, (1)the calculated Rfree is roughly same as Rwork. (3) Your file header indicated "U VALUES      : REFINED INDIVIDUALLY" but the uploaded file does not have Anisotropic values.
+
+Please answer or confirm the following questions:
+(1) Have you refined the structures with ANISO? if yes, please include the file with ANISO B/U values.
+(2) Is the deposited SF file the final structure factor out of the last round of the refinement? If not, please provide that SF file. If yes, please indicate which bin did you use for the free set.
+
+
+
+In addition, please verify the following:
+
+
+2. Sequence
+
+Please verify that the sample sequence in the entity_poly section of the coordinate CIF file encompasses all
+residues used in the experiment including expression tags, engineered mutations, unobserved regions due to
+disorder, etc. and excluding portions that were cleaved-off prior to or during the experiment.
+
+
+3. Assembly
+
+Assembly 1 provided by the author and predicted by PISA contains:
+2 copies of chain A
+
+Please login to your deposition session and visit the Assembly Review page to verify the annotated assemblies in 3D.
+
+
+4. Ligand Identity
+
+The following chemical group exists in your deposition. Please review section 2 of the validation report
+(Entry composition) to verify ligand chemistry.
+
+ID:      PEG
+Name:    DI(HYDROXYETHYL)ETHER
+Formula: C4 H10 O3
+
+
+5. Fit of model to data RSR Z-score
+
+Section 6 (Fit of model and data) of the validation report indicates a number of RSR-Z outliers in an electron
+density map calculated from your data. Please examine these outliers.
+
+RSRZ outliers:
+Molecule  Chain ID  Res Num  Res Name    RSRZ
+      1        A       306      GLN     7.399
+      1        A       305      PHE     5.032
+
+
+6. Header
+
+The header 'VIRAL PROTEIN' has been selected for the entry.  If this is not correct, select a header from the list
+available in: https://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/class.dat
+
+
+
+If we do not hear from you, this entry may either be released or withdrawn on the one year anniversary of its deposition.
+However, if a paper citing this entry is published within a year of its deposition,this entry will be released as per 
+our release policies.
+
+When the primary citation associated with your entry is published, please notify us through the deposition
+system and provide the PubMed ID (if available), journal name, volume, page numbers, title, authors list and DOI.
+
+Thank you for your attention.
+
+
+Sincerely yours,
+
+Chenghua Shao
+
+The wwPDB Biocuration Staff
+
+--------------------------------------------------------------------------------------------------------------
+RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
+http://www.rcsb.org
+Rutgers, The State University of New Jersey, Piscataway, NJ, USA
+Facebook: http://www.facebook.com/RCSBPDB
+Twitter: http://twitter.com/#!/buildmodels
+--------------------------------------------------------------------------------------------------------------
+
+
+
+;
+text Y 
+2 2214965d-4f64-452d-a78e-e04f67d470fb D_9000277853 '2023-10-25 21:51:35' CS reminder ? 2214965d-4f64-452d-a78e-e04f67d470fb 'Still awaiting feedback for PDB ID XXXX'                                               
+;Dear Depositors,
+
+Please acknowledge receipt of this message.
+
+This message is to inform you that your structure PDB ID XXXX (Deposition ID D_9000277853) is still awaiting your input. The entry is entitled:
+
+==================================================================================
+Crystal structure of ABC
+==================================================================================
+
+We have not heard from you since we sent you the validation report, processed PDB and mmCIF files on 9 October 2023. Please respond to the questions raised in our previous correspondence as soon as possible.
+
+In accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy), if we find a publication describing the entry, it will be released with CAVEAT records highlighting any outstanding issues.  If after 6 October 2024 (one year from the deposition date) we are unable to find a publication describing this structure, the entry may be withdrawn if there remain outstanding issues, otherwise the entry will be released.
+
+Thank you for your attention.
+
+Sincerely yours,
+
+Chenghua Shao
+
+The wwPDB Biocuration Staff
+
+--------------------------------------------------------------------------------------------------------------
+RCSB Protein Data Bank (RCSB PDB), a wwPDB partner site
+http://www.rcsb.org
+Rutgers, The State University of New Jersey, Piscataway, NJ, USA
+Facebook: http://www.facebook.com/RCSBPDB
+Twitter: http://twitter.com/#!/buildmodels
+--------------------------------------------------------------------------------------------------------------
+
+
+
+;
+text Y 
+3 47d6dc72-1567-4a37-aafe-faebafcc7081 D_9000277853 '2023-11-06 21:28:38' CS undefined ? d8a85c0a-a10b-4579-b9f3-f447a46da51c 'RE: Re-upload files'                                                                   
+;I have unlocked the session so you can re-upload. 
+ANISO is not a software name. I meant to ask whether you refined the structure with anisotropic B factor. Because the remarks in your file indicated you did, yet the deposited coordinates do not included Aniso record. If you have used earlier version of REFMAC, check the TLSANL documentation to output full B factor. 
+
+SF file must be the final one, please upload mtz file directly, and let us know whether you have specify a specific bin as a free set. 
+
+;
+text Y 
+# 
+loop_
+_pdbx_deposition_message_file_reference.ordinal_id 
+_pdbx_deposition_message_file_reference.message_id 
+_pdbx_deposition_message_file_reference.deposition_data_set_id 
+_pdbx_deposition_message_file_reference.content_type 
+_pdbx_deposition_message_file_reference.content_format 
+_pdbx_deposition_message_file_reference.partition_number 
+_pdbx_deposition_message_file_reference.version_id 
+_pdbx_deposition_message_file_reference.storage_type 
+_pdbx_deposition_message_file_reference.upload_file_name 
+1  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 model-annotate                          pdbx 1 1 archive ? 
+2  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 model-review                            pdbx 1 1 archive ? 
+3  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 model-annotate                          pdb  1 1 archive ? 
+4  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 structure-factors-annotate              pdbx 1 1 archive ? 
+5  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-report-annotate              pdf  1 1 archive ? 
+6  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-report-full-annotate         pdf  1 1 archive ? 
+7  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-data-annotate                xml  1 1 archive ? 
+8  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-data-annotate                pdbx 1 1 archive ? 
+9  c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-report-2fo-map-coef-annotate pdbx 1 1 archive ? 
+10 c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 validation-report-fo-map-coef-annotate  pdbx 1 1 archive ? 
+11 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 model-annotate                          pdbx 1 2 archive ? 
+12 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 model-review                            pdbx 1 2 archive ? 
+13 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 model-annotate                          pdb  1 2 archive ? 
+14 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 structure-factors-annotate              pdbx 1 2 archive ? 
+15 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-report-annotate              pdf  1 2 archive ? 
+16 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-report-full-annotate         pdf  1 2 archive ? 
+17 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-data-annotate                xml  1 2 archive ? 
+18 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-data-annotate                pdbx 1 2 archive ? 
+19 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-report-2fo-map-coef-annotate pdbx 1 2 archive ? 
+20 caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 validation-report-fo-map-coef-annotate  pdbx 1 2 archive ? 
+# 
+loop_
+_pdbx_deposition_message_status.message_id 
+_pdbx_deposition_message_status.deposition_data_set_id 
+_pdbx_deposition_message_status.read_status 
+_pdbx_deposition_message_status.action_reqd 
+_pdbx_deposition_message_status.for_release 
+c33cf1ad-c965-4303-8dfb-d63c1e059951 D_9000277853 Y Y N 
+2214965d-4f64-452d-a78e-e04f67d470fb D_9000277853 Y Y N 
+d8a85c0a-a10b-4579-b9f3-f447a46da51c D_9000277853 Y N N 
+47d6dc72-1567-4a37-aafe-faebafcc7081 D_9000277853 Y Y N 
+4314dc23-c0aa-4922-abbf-8cac333154af D_9000277853 Y N N 
+caff5621-6577-417f-a0ed-160b6ebfffea D_9000277853 Y Y N 
+# 

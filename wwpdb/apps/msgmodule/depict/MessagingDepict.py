@@ -83,8 +83,8 @@ class MessagingDepict(object):
         self.rltvEdtrSessionPath = None
         #
         self.__expMethodList = []
-        if self.__verbose:
-            logger.info("CStrack+++ initiate MessagingDepict class")
+        # if self.__verbose:
+        #     logger.info("CStrack+++ initiate MessagingDepict class")
 
     def doRender(self, p_reqObj, p_bIsWorkflow):
         """Render HTML used as starter page/container for the wwPDB Messaging interface
@@ -205,6 +205,7 @@ class MessagingDepict(object):
         tmpltFile = "msging_launch_embed_tmplt.html" if embeddedVw.lower() == "true" else "msging_launch_tmplt.html"
 
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
+        logger.info("CStrack+++ use html template of *%s*", tmpltFile)
         #
         return oL
 
@@ -217,6 +218,9 @@ class MessagingDepict(object):
 
         """
         #
+        logger.info("CStrack+++ dump input web request obj for templates generation")
+        logger.info("".join(p_reqObj.dump()))
+        
         oL = []
         #
         strParamDict = {}
@@ -240,8 +244,8 @@ class MessagingDepict(object):
         if self.__verbose:
             logger.info("\n -- dep_id is:%s", depId)
         #
-        if self.__verbose:
-            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getMsgTmplts()")
+        # if self.__verbose:
+        #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getMsgTmplts()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO SUPPORT ALL DOWNSTREAM PROCESSING IN NEED OF DATA PARSED FROM THE COORDINATE FILE
         msgingIo.getMsgTmpltDataItems(strParamDict)
@@ -259,7 +263,7 @@ class MessagingDepict(object):
 
         # CS 2022-02-27 add map-only withdrawn template;
         # CS 2023-10-20 start, further seperate all scenarios of EM model-map, model-only, and map-only. The selection process needs to be optimized later.
-        logger.info("strParamDict: %s", strParamDict)
+        # logger.info("strParamDict: %s", strParamDict)
         if b_em:
             logger.info("CStrack+++ EM-ENTRY")
             if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
@@ -317,8 +321,16 @@ class MessagingDepict(object):
             )  # noqa: E501
         strParamDict["msg_tmplt_maponly-authstatus-em"] = (MessagingTemplates.msgTmplt_mapOnly_authStatus_em % strParamDict) if b_em else ""
 
+        logger.info("CStrack+++ dump parameter dict for templates")
+        logger.info("\n".join(list(strParamDict.keys())))
+        # logger.info(strParamDict["msg_tmplt_vldtn"])
+        # logger.info(strParamDict["msg_tmplt_approval-expl"])
+
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn="msg_tmplts.html", parameterDict=strParamDict))
+        logger.info("CStrack+++ use html template of *msg_tmplts.html*")
         #
+        logger.info(''.join(oL))
+        
         return oL
 
     def doRenderAllCorrespondence(self, p_reqObj):
@@ -369,6 +381,7 @@ class MessagingDepict(object):
         # tmpltFile = "msging_launch_embed_tmplt.previewMsg.html" if embeddedVw.lower() == "true" else "msging_launch_tmplt.previewMsg.20150622.html"
 
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
+        logger.info("CStrack+++ use html template of *%s*", tmpltFile)
         #
         return oL
 
@@ -445,8 +458,8 @@ class MessagingDepict(object):
         ############################################################################
         # get message template data from MessagingIo
         ############################################################################
-        if self.__verbose:
-            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.doRenderDisplayMsg()")
+        # if self.__verbose:
+        #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.doRenderDisplayMsg()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.getMsgTmpltDataItems(myD)
 
@@ -491,6 +504,8 @@ class MessagingDepict(object):
         tmpltFile = "display_msg_tmplt.html"
         oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
         #
+        logger.info("CStrack+++ use html template of *%s*", tmpltFile)
+        
         return oL
 
     # ####### BEGIN -- Specific to DataTable Implementation ##################
@@ -547,8 +562,8 @@ class MessagingDepict(object):
         sContentType = p_reqObj.getValue("content_type")
         bCommHstryRqstd = True if sContentType == "commhstry" else False
         #
-        if self.__verbose:
-            logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getDataTableTemplate()")
+        # if self.__verbose:
+        #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getDataTableTemplate()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
         bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
         #

@@ -5,6 +5,7 @@
 # Update:
 #    2023-11-10    CS     Refactor code to add general process to parse message file; Add functions to retrieve datetime of last messages of various type.
 #    2023-11-23    EP     Add getApprovalNoCorrectSubjects() and getPendingDepositorMessages()
+#    2024-04-04    CS     Use context_type and context_value to find target message, and default to subject/title parsing as was used previously.
 #
 ##
 """
@@ -128,6 +129,93 @@ class ExtractMessage(object):
                     logger.error("Error processing message file for %s, %s", self.__depid, e)
         return ret
 
+    # CS 2024-04-04 add search below by context_type
+    def __selectLastMsgByContextType(self, l_context_type_to_search): 
+        """ return datetime of the lastest message based on context type
+
+        input: arg l_context_type_to_search is a list of the context types to search for.
+        list is used because some searches invole multiple context_type, e.g. ["release-publ", "release-nopubl"]
+
+        output: return datetime
+
+        """
+        ret = None
+        dc0 = self.__lc[0]
+        catObj = dc0.getObj("pdbx_deposition_message_info")
+        if catObj is None:
+            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
+            return None
+        else:
+            itDict = {}
+            itNameList = catObj.getItemNameList()
+            for idxIt, itName in enumerate(itNameList):
+                itDict[str(itName).lower()] = idxIt
+                #
+            idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
+            idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
+            idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
+
+            maxOrdId = 0
+            for row in catObj.getRowList():
+                try:
+                    ordinalId = int(row[idxOrdinalId])
+                    context_type_recorded = row[idxContextType]
+
+                    if context_type_recorded in l_context_type_to_search:
+                        if ordinalId > maxOrdId:
+                            maxOrdId = ordinalId
+                            ret = self.convertStrToDatetime(str(row[idxLastCommDate]))
+
+                except Exception as e:
+                    logger.error("Error processing message file for %s, %s", self.__depid, e)
+        return ret
+
+    # CS 2024-04-04 add validation letter search below by context_type/context_value
+    def __getLastValidationByContextType(self):
+        """Returns (datetime, major issue)  of the last time a validation was sent as determined by
+        context_type and context_value
+        """
+
+        lastvalid = None
+        major = None
+        
+        dc0 = self.__lc[0]
+        catObj = dc0.getObj("pdbx_deposition_message_info")
+        if catObj is None:
+            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
+            return None
+        else:
+            itDict = {}
+            itNameList = catObj.getItemNameList()
+            for idxIt, itName in enumerate(itNameList):
+                itDict[str(itName).lower()] = idxIt
+                #
+            idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
+            idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
+            idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
+            idxContextValue = itDict["_pdbx_deposition_message_info.context_value"]
+            
+            maxOrdId = 0
+            for row in catObj.getRowList():
+                try:
+                    ordinalId = int(row[idxOrdinalId])
+                    context_type_recorded = row[idxContextType]
+                    context_value_recorded = row[idxContextValue]
+
+                    if context_type_recorded == "vldtn":
+                        if ordinalId > maxOrdId:
+                            maxOrdId = ordinalId
+                            lastvalid = self.convertStrToDatetime(str(row[idxLastCommDate]))
+                            if context_value_recorded == "major-issue-in-validation":
+                                major = True
+                            else:
+                                major = False
+
+                except Exception as e:
+                    logger.error("Error processing message file for %s, %s", self.__depid, e)
+                    
+        return (lastvalid, major)
+
     def convertStrToDatetime(self, s_datetime):
         return datetime.datetime.strptime(str(s_datetime), "%Y-%m-%d %H:%M:%S")
 
@@ -174,7 +262,11 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="notes-from-annotator", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"]) #CS 2024-04-04 search by context_type first
+            if ret_by_context_type:
+                ret = ret_by_context_type
+            else:
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
 
@@ -187,7 +279,11 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"]) #CS 2024-04-04 search by context_type first
+            if ret_by_context_type:
+                ret = ret_by_context_type
+            else:
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
 
@@ -199,7 +295,11 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret = self.__selectLastMsgByTitlePhrase(phrase='Release of')
+            ret_by_context_type = self.__selectLastMsgByContextType(["release-publ", "release-nopubl"]) #CS 2024-04-04 search by context_type first
+            if ret_by_context_type:
+                ret = ret_by_context_type
+            else:
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Release of')
         else:
             logger.info("Deposition %s empty message file", depid)
 
@@ -258,14 +358,16 @@ class ExtractMessage(object):
                 idxOrdinalId = itDict["_pdbx_deposition_message_info.ordinal_id"]
                 idxLastCommDate = itDict["_pdbx_deposition_message_info.timestamp"]
                 idxMsgSubj = itDict["_pdbx_deposition_message_info.message_subject"]
+                idxContextType = itDict["_pdbx_deposition_message_info.context_type"]
 
                 maxUnlockOrdId = 0
                 for row in catObj.getRowList():
                     try:
                         ordinalId = int(row[idxOrdinalId])
                         msgsubj = row[idxMsgSubj]
+                        context_type_recorded = row[idxContextType]
 
-                        if msgsubj == "System Unlocked":
+                        if context_type_recorded == "system-unlocked" or msgsubj == "System Unlocked":
                             if ordinalId > maxUnlockOrdId:
                                 maxUnlockOrdId = ordinalId
                                 ret = str(row[idxLastCommDate])
@@ -308,6 +410,14 @@ class ExtractMessage(object):
         self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
 
         if len(self.__lc) >= 1:
+            logger.info("start searching for last validation letter by context_type")
+            (lastvalid, major) = self.__getLastValidationByContextType()  #CS 2024-04-04 first search by context_type/context_value
+            if lastvalid:
+                logger.info("found last validation letter by context_type")
+                return (lastvalid, major)  #return if find by  context_type/context_value
+            
+            logger.info("fail to find last validation letter by context_type, default to search by subject/text parsing")
+            
             c0 = self.__lc[0]
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:
@@ -394,8 +504,8 @@ class ExtractMessage(object):
         else:
             logger.debug("Deposition %s empty message file", depid)
 
+        logger.info("finished searching for last validation letter by subject/text parsing")
         logger.info("Returning (%s, %s)", lastvalid, major)
-
         return (lastvalid, major)
 
     def _majorValidation(self, msgText):

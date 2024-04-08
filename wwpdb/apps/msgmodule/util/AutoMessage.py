@@ -5,7 +5,7 @@
 # Update:
 """
 Support for automatic scripts to send template drive email messages and archive in normal message stream/notes
-
+Auto messages are archived in notes-from-annotator
 
 """
 __docformat__ = "restructuredtext en"
@@ -61,13 +61,13 @@ class AutoMessage(object):
 
     def sendRemindFeedback(self, depidlist):
         """ Sends a reminder that depositor has not responded to validation report """
-        self._sendReminderBulk(depidlist, p_tmplt="remind-feedback")
+        self._sendReminderBulk(depidlist, p_tmplt="reminder")
 
     def sendImplicitApproved(self, depidlist):
-        self._sendReminderBulk(depidlist, p_tmplt="implicit-approved")
+        self._sendReminderBulk(depidlist, p_tmplt="approval-impl") # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
 
     def sendExplicitApproved(self, depidlist):
-        self._sendReminderBulk(depidlist, p_tmplt="explicit-approved")
+        self._sendReminderBulk(depidlist, p_tmplt="approval-expl") # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
 
     def _sendReminderBulk(self, depidlist, p_tmplt):
         """Sends the bulk messages - handling setting EM flag"""
@@ -111,7 +111,7 @@ class AutoMessage(object):
                 pdbents.append(depid)
         return (pdbents, ements)
 
-    def sendSingleMessage(self, depid, subject, msg, testemail=None):
+    def sendSingleMessage(self, depid, subject, msg, testemail=None, p_tmpltType="other"):
         """Sends a message to depid, without using templates. No attachments.
 
         Args:
@@ -119,14 +119,15 @@ class AutoMessage(object):
            subject (str): Subject string for message
            msg (str): Multiline message to send
            testemail (str): If set overrides entry recipients for testing
+           p_tmpltType as template type
 
         returns:
            bool:  True if successfule or else false
         """
 
         mio = self.__getmsgio()
-        ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail)
-        ret = True
+        ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail, p_tmpltType=p_tmpltType)
+        ## ret = True
         return ret
 
     def tagMessageStatus(self, depId, msgidlist, actionReqd="N", forReleaseFlg="N"):
