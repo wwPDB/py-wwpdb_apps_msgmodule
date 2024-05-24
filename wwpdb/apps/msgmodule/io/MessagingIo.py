@@ -1408,6 +1408,9 @@ class MessagingIo(object):
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "ARCHIVED: Still awaiting feedback for " + accstr
+            else:
+                logger.error("Unknown message template %s", p_tmpltType)
+                msgTmplt = "This is an unknown message template."
 
             # Assemble message with templates
             msg = msgTmplt % templateDict
@@ -4258,6 +4261,9 @@ class MsgTmpltHlpr(object):
         elif p_IdType == "EMDB":
             ctgryNm = "em_author_list"
             itemNm = "author"
+        else:
+            logger.error("p_IdType unknown %s", p_IdType)
+            return
 
         try:
             if self.__verbose:
@@ -4407,6 +4413,9 @@ class MsgTmpltHlpr(object):
         elif p_IdType == "EMDB":
             ctgryNm = "em_admin"
             itemNm = "title"
+        else:
+            logger.error("p_IdType unknown %s", p_IdType)
+            return
 
         try:
             if self.__verbose:
@@ -4961,6 +4970,9 @@ class MsgTmpltHlpr(object):
         elif p_IdType == "EMDB":
             cType = "correspondence-to-depositor"
             frmt = "txt"
+        else:
+            logger.error("lastOutboundRpttDate: unknown IdType %s", p_IdType)
+            return
 
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         pathDict = msgDI.getMileStoneFilePaths(contentType=cType, format=frmt)

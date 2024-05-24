@@ -1703,6 +1703,9 @@ class MessagingWebAppWorker(object):
             state = "closed(0)"
         elif mode == "unfinished":
             state = "waiting"
+        else:
+            state = "unknown"
+            logger.error("+MessagingWebAppWorker.__exitMessagingMod() unknown mode: %s", mode)
         #
         bIsWorkflow = self.__isWorkflow()
         #
