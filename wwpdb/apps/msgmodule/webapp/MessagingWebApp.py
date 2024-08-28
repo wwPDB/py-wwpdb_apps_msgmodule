@@ -1286,9 +1286,9 @@ class MessagingWebAppWorker(object):
         # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
         for depId in depIdLst:
-            logger.info("start processing %s", depId)
+            logger.warning("start processing %s", depId)
             depId_2 = self._verifyOrConvertId(depId)
-            logger.info("verified or converted id %s", depId_2)
+            logger.warning("verified or converted id %s", depId_2)
 
             if not depId_2:
                 logger.warning("fail to verify or convert the id %s", depId)
