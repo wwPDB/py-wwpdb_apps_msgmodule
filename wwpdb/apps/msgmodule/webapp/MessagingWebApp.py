@@ -1292,7 +1292,7 @@ class MessagingWebAppWorker(object):
 
             if not depId_2:
                 logger.error("fail to verify or convert the id %s", depId)
-                # bOk = False
+                bOk = False
                 rtrnDict["success"][depId] = "false"
                 continue
 
