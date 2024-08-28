@@ -63,6 +63,10 @@ class AutoMessage(object):
         """ Sends a reminder that depositor has not responded to validation report """
         self._sendReminderBulk(depidlist, p_tmplt="reminder")
 
+    def sendRemindAuthToRel(self, depidlist):
+        """ Sends a reminder that depositor has not responded to validation report on AUTH entries deposited as REL """
+        self._sendReminderBulk(depidlist, p_tmplt="reminder-auth-to-rel")
+
     def sendImplicitApproved(self, depidlist):
         self._sendReminderBulk(depidlist, p_tmplt="approval-impl")  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
 

@@ -1408,6 +1408,12 @@ class MessagingIo(object):
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "ARCHIVED: Still awaiting feedback for " + accstr
+            elif p_tmpltType == "reminder-auth-to-rel":
+                msgTmplt = MessagingTemplates.msgTmplt_reminder_auth_to_rel_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder_auth_to_rel
+                attachFiles = False
+                isNote = True
+                accstr = templateDict["accession_ids"]
+                subject = "ARCHIVED: Impending release of " + accstr
             else:
                 logger.error("Unknown message template %s", p_tmpltType)
                 msgTmplt = "This is an unknown message template."

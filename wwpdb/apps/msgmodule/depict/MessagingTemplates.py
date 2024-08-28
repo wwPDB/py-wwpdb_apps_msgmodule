@@ -131,6 +131,7 @@ Thank you for your attention.
 %(msg_closing)s
 """
 
+
     msgTmplt_approvalImplicit = """Dear Depositors,
 
 This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) has been approved. The entry is entitled:
@@ -148,6 +149,7 @@ Thank you for your attention.
 
 %(msg_closing)s
 """
+
 
     msgTmplt_reminder = """Dear Depositors,
 
@@ -167,6 +169,51 @@ Thank you for your attention.
 
 %(msg_closing)s
 """
+
+
+    msgTmplt_reminder_auth_to_rel = """Dear Depositors,
+
+This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) will be released. The entry is entitled:
+
+%(horiz_line)s
+%(title)s
+%(horiz_line)s
+
+Entry authors:
+
+%(entry_authors_newline_list)s
+
+Your entry was deposited with instructions to release immediately. 
+
+As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
+
+Your entry will be marked for release next week if we do not hear from you, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
+
+%(msg_closing)s
+"""
+
+
+    msgTmplt_reminder_auth_to_rel_em = """Dear Depositors,
+
+This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) will be released. The entry is entitled:
+
+%(horiz_line)s
+%(em_title)s
+%(horiz_line)s
+
+Entry authors:
+
+%(em_entry_authors_newline_list)s
+
+Your entry was deposited with instructions to release immediately. 
+
+As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
+
+Your entry will be marked for release next week if we do not hear from you, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy).
+
+%(msg_closing)s
+"""
+
 
     msgTmplt_releaseWthPblctn = """Dear Depositors,
 
@@ -410,7 +457,7 @@ Thank you for your attention.
 
 Please acknowledge receipt of this message.
 
-This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) %(is_are)sstill awaiting your input. The entry is entitled:
+This message is to inform you that your %(accession_ids)s (Deposition ID %(identifier)s) %(is_are)s still awaiting your input. The entry is entitled:
 
 %(horiz_line)s
 %(em_title)s
@@ -418,8 +465,8 @@ This message is to inform you that your %(accession_ids)s (Deposition ID %(ident
 
 We have not heard from you since we sent you the %(vldtn_rprt)sprocessed files on %(outbound_rprt_date_em)s. Please respond to the questions raised in our previous correspondence as soon as possible.
 
-In accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy.html), if we find a publication describing the %(entry_entries_comma)s%(it_they_lcase)swill be released%(caveat_records)s.
-If after %(expire_date_em_map)s (one year from the deposition date) we are unable to find a publication describing%(this_these)s%(entry_entries_comma)s the%(entry_entries)smay be withdrawn if there remain outstanding issues, otherwise the%(entry_entries)swill be released.
+In accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy.html), if we find a publication describing the %(entry_entries_comma)s %(it_they_lcase)s will be released %(caveat_records)s.
+If after %(expire_date_em_map)s (one year from the deposition date) we are unable to find a publication describing %(this_these)s %(entry_entries_comma)s the %(entry_entries)s may be withdrawn if there remain outstanding issues, otherwise the %(entry_entries)s will be released.
 
 Thank you for your attention.
 
