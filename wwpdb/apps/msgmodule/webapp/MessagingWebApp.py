@@ -208,6 +208,7 @@ class MessagingWebAppWorker(object):
         # self.__rltvSessionPath = None
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         # self.__cI = ConfigInfo(self.__siteId)
+        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
         #
         # Added by ZF
         #
@@ -881,8 +882,8 @@ class MessagingWebAppWorker(object):
             self.__reqObj.setValue("groupid", depId)
             return
         #
-        statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
-        groupId = statusApi.getGroupId(depId)
+        # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        groupId = self.statusApi.getGroupId(depId)
         if groupId:
             self.__reqObj.setValue("groupid", groupId)
         #
@@ -1041,16 +1042,16 @@ class MessagingWebAppWorker(object):
             #
             # Added by ZF
             #
-            statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+            # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
             groupId = str(self.__reqObj.getValue("groupid"))
             if groupId:
-                statusApi.runUpdate(table="batch_user_data", where={"dep_set_id": groupId.upper()}, data={"notify": p_status})
-                entryList = statusApi.getEntryIdList(groupId=groupId)
+                self.statusApi.runUpdate(table="batch_user_data", where={"dep_set_id": groupId.upper()}, data={"notify": p_status})
+                entryList = self.statusApi.getEntryIdList(groupId=groupId)
                 for entry in entryList:
-                    statusApi.runUpdate(table="deposition", where={"dep_set_id": entry}, data={"notify": p_status})
+                    self.statusApi.runUpdate(table="deposition", where={"dep_set_id": entry}, data={"notify": p_status})
                 #
             else:
-                statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
+                self.statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
             #
             bSuccess = True
         except:  # noqa: E722 pylint: disable=bare-except
@@ -1221,6 +1222,9 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
+    def _verifyOrConvertId(self, depId):
+        return None
+
     def _propagateMsg(self, actionType):
         """
         :Helpers:
@@ -1229,6 +1233,7 @@ class MessagingWebAppWorker(object):
 
         """
         #
+        logger.info("start _propagateMsg with actionType = %s", actionType)
         #
         self.__getSession()
         # depId = self.__reqObj.getValue("entry_id") # getValue("identifier")
@@ -1278,17 +1283,28 @@ class MessagingWebAppWorker(object):
         #
         # Added by ZF
         #
-        statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+
+        bOk = False
         for depId in depIdLst:
-            self.__reqObj.setValue("identifier", depId)  # setting here for downstream processing
+            logger.warning("start processing %s", depId)
+            depId_2 = self._verifyOrConvertId(depId)
+            logger.warning("verified or converted id %s", depId_2)
+
+            if not depId_2:
+                logger.error("fail to verify or convert the id %s", depId)
+                rtrnDict["success"][depId] = "false"
+                continue
+
+            self.__reqObj.setValue("identifier", depId_2)  # setting here for downstream processing
             #
             # Added by ZF
             #
             groupId = ""
-            if depId.startswith("G_"):
-                groupId = depId
+            if depId_2.startswith("G_"):
+                groupId = depId_2
             else:
-                found_groupId = statusApi.getGroupId(depId)
+                found_groupId = self.statusApi.getGroupId(depId_2)
                 if found_groupId:
                     groupId = found_groupId
                 #
@@ -1299,7 +1315,8 @@ class MessagingWebAppWorker(object):
             msgObj = Message.fromReqObj(self.__reqObj, self.__verbose, self.__lfh)
             #
             if self.__verbose:
-                logger.info("dep_id is: %s", depId)
+                logger.info("original dep_id is: %s", depId)
+                logger.info("verified/converted dep_id is: %s", depId_2)
             #
             bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = msgingIo.processMsg(msgObj)
             #
