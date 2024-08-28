@@ -1233,6 +1233,7 @@ class MessagingWebAppWorker(object):
 
         """
         #
+        logger.info("start _propagateMsg with actionType = %s", actionType)
         #
         self.__getSession()
         # depId = self.__reqObj.getValue("entry_id") # getValue("identifier")
