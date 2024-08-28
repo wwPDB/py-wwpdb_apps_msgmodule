@@ -183,7 +183,7 @@ Entry authors:
 
 %(entry_authors_newline_list)s
 
-Your entry was deposited with instructions to release immediately. 
+Your entry was deposited with instruction to release immediately. 
 
 As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
 
@@ -205,7 +205,7 @@ Entry authors:
 
 %(em_entry_authors_newline_list)s
 
-Your entry was deposited with instructions to release immediately. 
+Your entry was deposited with instruction to release immediately. 
 
 As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
 
