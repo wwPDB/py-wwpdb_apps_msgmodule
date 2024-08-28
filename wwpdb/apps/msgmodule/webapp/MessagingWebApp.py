@@ -1291,7 +1291,7 @@ class MessagingWebAppWorker(object):
             logger.warning("verified or converted id %s", depId_2)
 
             if not depId_2:
-                logger.warning("fail to verify or convert the id %s", depId)
+                logger.error("fail to verify or convert the id %s", depId)
                 # bOk = False
                 rtrnDict["success"][depId] = "false"
                 continue
