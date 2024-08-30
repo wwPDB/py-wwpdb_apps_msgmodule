@@ -1226,7 +1226,7 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
-    def _verifyOrConvertId(self, id):  # CS 2024-08-30
+    def _verifyOrConvertId(self, id_to_check):  # CS 2024-08-30
         """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
         If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert
         such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
@@ -1240,38 +1240,38 @@ class MessagingWebAppWorker(object):
         Returns:
             _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
         """
-        id = id.strip()
-        if not id:
+        id_to_check = id_to_check.strip()
+        if not id_to_check:
             return None
 
-        logger.info("verify or convert id: %s through DA_INTERNAL DB", id)
+        logger.info("verify or convert id: %s through DA_INTERNAL DB", id_to_check)
         db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
-        id = id.upper()
-        if id.startswith("D_"):  # format of deposition id
-            dep_id = id
+        id_to_check = id_to_check.upper()
+        if id_to_check.startswith("D_"):  # format of deposition id
+            dep_id = id_to_check
             if db_da_internal.verifyDepId(dep_id):
-                logger.debug("%s is valid deposition id at this site", id)
+                logger.debug("%s is valid deposition id at this site", id_to_check)
                 return dep_id  # return the input id itself is vefified
             else:
                 return None
-        elif id.startswith("EMD-"):  # format of EMDB ID
-            emdb_id = id
+        elif id_to_check.startswith("EMD-"):  # format of EMDB ID
+            emdb_id = id_to_check
             if db_da_internal.verifyEmdbId(emdb_id):
-                logger.debug("%s is valid EMDB ID, convert it to deposition id", id)
+                logger.debug("%s is valid EMDB ID, convert it to deposition id", id_to_check)
                 return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
-        elif id.startswith("PDB_0000") and len(id) == 12:  # format of extended PDB ID
-            pdb_id = id[-4:]  # truncate the last 4 chars as temporary solution
+        elif id_to_check.startswith("PDB_0000") and len(id_to_check) == 12:  # format of extended PDB ID
+            pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
             if db_da_internal.verifyPdbId(pdb_id):
-                logger.debug("%s is valid extended PDB ID, convert it to deposition id", id)
+                logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
                 return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             else:
                 return None
-        elif len(id) == 4:  # format of PDB ID
-            pdb_id = id
+        elif len(id_to_check) == 4:  # format of PDB ID
+            pdb_id = id_to_check
             if db_da_internal.verifyPdbId(pdb_id):
-                logger.debug("%s is valid PDB ID, convert it to deposition id", id)
+                logger.debug("%s is valid PDB ID, convert it to deposition id", id_to_check)
                 return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             else:
                 return None
