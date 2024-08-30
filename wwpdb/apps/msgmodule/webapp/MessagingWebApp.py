@@ -37,6 +37,7 @@
 # 2016-09-14    ZF     Added __checkGroupDeposition() function to support for group deposition
 # 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
 # 2024-04-04    CS     Add process on context_type/context_value of message-to-depositor recorded by frontend JavaScript and passed here through wsgi message submit URL
+# 2024-08-30    CS     Add MessagingWebAppWorker._verifyOrConvertId() used by _propagateMsg("archive") to archive messages by PDB or EMDB IDs
 ##
 """
 wwPDB Messaging web request and response processing modules.
@@ -209,7 +210,9 @@ class MessagingWebAppWorker(object):
         # self.__rltvSessionPath = None
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         # self.__cI = ConfigInfo(self.__siteId)
-        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+
+        # CS 2024-08-30 create class var for status DB api because such api is used multiple times
+        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)  
         #
         # Added by ZF
         #
@@ -1223,34 +1226,52 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
-    def _verifyOrConvertId(self, id):
-        db_da_internal = DaInternalDb()
+    def _verifyOrConvertId(self, id):  # CS 2024-08-30
+        """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
+        If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert 
+        such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
+        The verification and conversion is site-id specific, and do NOT work cross sites or corss site-ids.
+        Because DA_INTERNAL DB doesn't record pdb extension id at the time this function is created, 
+        extended pdb id is handled by truncate the last 4 characters for temporary use. 
+
+        Args:
+            id (_type_): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
+
+        Returns:
+            _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
+        """
+        logger.info("verify or convert id: %s through DA_INTERNAL DB", id)
+        db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
         id = id.upper()
-        if id.startswith("D_"):
+        if id.startswith("D_"):  # format of deposition id
             dep_id = id
             if db_da_internal.verifyDepId(dep_id):
-                return dep_id
+                logger.debug("%s is valid deposition id at this site", id)
+                return dep_id  # return the input id itself is vefified
             else:
                 return None
-        elif id.startswith("EMD-"):
+        elif id.startswith("EMD-"):  # format of EMDB ID
             emdb_id = id
             if db_da_internal.verifyEmdbId(emdb_id):
-                return db_da_internal.convertEmdbIdToDepId(emdb_id)
+                logger.debug("%s is valid EMDB ID, convert it to deposition id", id)
+                return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
-        elif id.startswith("PDB_0000") and len(id) == 12:
-            pdb_id = id[-4:]
+        elif id.startswith("PDB_0000") and len(id) == 12:  # format of extended PDB ID
+            pdb_id = id[-4:]  # truncate the last 4 chars as temporary solution
             if db_da_internal.verifyPdbId(pdb_id):
-                return db_da_internal.convertPdbIdToDepId(pdb_id)
+                logger.debug("%s is valid extended PDB ID, convert it to deposition id", id)
+                return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             else:
                 return None
-        elif len(id) == 4:
+        elif len(id) == 4:  # format of PDB ID
             pdb_id = id
             if db_da_internal.verifyPdbId(pdb_id):
-                return db_da_internal.convertPdbIdToDepId(pdb_id)
+                logger.debug("%s is valid PDB ID, convert it to deposition id", id)
+                return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             else:
                 return None
-        else:
+        else:  # wrong id input
             return None
 
     def _propagateMsg(self, actionType):
@@ -1313,20 +1334,20 @@ class MessagingWebAppWorker(object):
         #
         # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
-        bOk = False
+        bOk = False  # initiate bOk in case of exit from loop below
         for depId in depIdLst:
-            logger.warning("start processing %s", depId)
-            depId_2 = self._verifyOrConvertId(depId)
-            logger.warning("verified or converted id %s", depId_2)
+            logger.debug("start processing %s", depId)
+            depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
+            logger.debug("verified or converted id %s", depId_2)
 
             if not depId_2:
-                logger.error("fail to verify or convert the id %s", depId)
+                logger.error("fail to verify or convert the input id %s", depId)  # skip unverified id
                 rtrnDict["success"][depId] = "false"
                 continue
 
             self.__reqObj.setValue("identifier", depId_2)  # setting here for downstream processing
             #
-            # Added by ZF
+            # Added by ZF for GroupDep group message
             #
             groupId = ""
             if depId_2.startswith("G_"):
