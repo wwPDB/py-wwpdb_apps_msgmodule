@@ -1240,6 +1240,10 @@ class MessagingWebAppWorker(object):
         Returns:
             _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
         """
+        id = id.strip()
+        if not id:
+            return None
+
         logger.info("verify or convert id: %s through DA_INTERNAL DB", id)
         db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
         id = id.upper()
@@ -1336,6 +1340,7 @@ class MessagingWebAppWorker(object):
 
         bOk = False  # initiate bOk in case of exit from loop below
         for depId in depIdLst:
+            depId = depId.strip()
             logger.debug("start processing %s", depId)
             depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
             logger.debug("verified or converted id %s", depId_2)
