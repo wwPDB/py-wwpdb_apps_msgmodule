@@ -37,6 +37,7 @@
 # 2016-09-14    ZF     Added __checkGroupDeposition() function to support for group deposition
 # 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
 # 2024-04-04    CS     Add process on context_type/context_value of message-to-depositor recorded by frontend JavaScript and passed here through wsgi message submit URL
+# 2024-08-30    CS     Add MessagingWebAppWorker._verifyOrConvertId() used by _propagateMsg("archive") to archive messages by PDB or EMDB IDs
 ##
 """
 wwPDB Messaging web request and response processing modules.
@@ -73,6 +74,7 @@ from wwpdb.apps.msgmodule.depict.MessagingDepict import MessagingDepict
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.models.Message import Message
+from wwpdb.apps.msgmodule.util.DaInternalDb import DaInternalDb
 
 #
 # from wwpdb.apps.msgmodule.utils.WfTracking              import WfTracking
@@ -208,6 +210,9 @@ class MessagingWebAppWorker(object):
         # self.__rltvSessionPath = None
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
         # self.__cI = ConfigInfo(self.__siteId)
+
+        # CS 2024-08-30 create class var for status DB api because such api is used multiple times
+        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
         #
         # Added by ZF
         #
@@ -881,8 +886,8 @@ class MessagingWebAppWorker(object):
             self.__reqObj.setValue("groupid", depId)
             return
         #
-        statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
-        groupId = statusApi.getGroupId(depId)
+        # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        groupId = self.statusApi.getGroupId(depId)
         if groupId:
             self.__reqObj.setValue("groupid", groupId)
         #
@@ -1041,16 +1046,16 @@ class MessagingWebAppWorker(object):
             #
             # Added by ZF
             #
-            statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+            # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
             groupId = str(self.__reqObj.getValue("groupid"))
             if groupId:
-                statusApi.runUpdate(table="batch_user_data", where={"dep_set_id": groupId.upper()}, data={"notify": p_status})
-                entryList = statusApi.getEntryIdList(groupId=groupId)
+                self.statusApi.runUpdate(table="batch_user_data", where={"dep_set_id": groupId.upper()}, data={"notify": p_status})
+                entryList = self.statusApi.getEntryIdList(groupId=groupId)
                 for entry in entryList:
-                    statusApi.runUpdate(table="deposition", where={"dep_set_id": entry}, data={"notify": p_status})
+                    self.statusApi.runUpdate(table="deposition", where={"dep_set_id": entry}, data={"notify": p_status})
                 #
             else:
-                statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
+                self.statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
             #
             bSuccess = True
         except:  # noqa: E722 pylint: disable=bare-except
@@ -1221,6 +1226,58 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
+    def _verifyOrConvertId(self, id_to_check):  # CS 2024-08-30
+        """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
+        If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert
+        such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
+        The verification and conversion is site-id specific, and do NOT work cross sites or corss site-ids.
+        Because DA_INTERNAL DB doesn't record pdb extension id at the time this function is created,
+        extended pdb id is handled by truncate the last 4 characters for temporary use.
+
+        Args:
+            id (_type_): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
+
+        Returns:
+            _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
+        """
+        id_to_check = id_to_check.strip()
+        if not id_to_check:
+            return None
+
+        logger.info("verify or convert id: %s through DA_INTERNAL DB", id_to_check)
+        db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
+        id_to_check = id_to_check.upper()
+        if id_to_check.startswith("D_"):  # format of deposition id
+            dep_id = id_to_check
+            if db_da_internal.verifyDepId(dep_id):
+                logger.debug("%s is valid deposition id at this site", id_to_check)
+                return dep_id  # return the input id itself is vefified
+            else:
+                return None
+        elif id_to_check.startswith("EMD-"):  # format of EMDB ID
+            emdb_id = id_to_check
+            if db_da_internal.verifyEmdbId(emdb_id):
+                logger.debug("%s is valid EMDB ID, convert it to deposition id", id_to_check)
+                return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
+            else:
+                return None
+        elif id_to_check.startswith("PDB_0000") and len(id_to_check) == 12:  # format of extended PDB ID
+            pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
+            if db_da_internal.verifyPdbId(pdb_id):
+                logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
+                return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
+            else:
+                return None
+        elif len(id_to_check) == 4:  # format of PDB ID
+            pdb_id = id_to_check
+            if db_da_internal.verifyPdbId(pdb_id):
+                logger.debug("%s is valid PDB ID, convert it to deposition id", id_to_check)
+                return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
+            else:
+                return None
+        else:  # wrong id input
+            return None
+
     def _propagateMsg(self, actionType):
         """
         :Helpers:
@@ -1229,6 +1286,7 @@ class MessagingWebAppWorker(object):
 
         """
         #
+        logger.info("start _propagateMsg with actionType = %s", actionType)
         #
         self.__getSession()
         # depId = self.__reqObj.getValue("entry_id") # getValue("identifier")
@@ -1278,17 +1336,29 @@ class MessagingWebAppWorker(object):
         #
         # Added by ZF
         #
-        statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+
+        bOk = False  # initiate bOk in case of exit from loop below
         for depId in depIdLst:
-            self.__reqObj.setValue("identifier", depId)  # setting here for downstream processing
+            depId = depId.strip()
+            logger.debug("start processing %s", depId)
+            depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
+            logger.debug("verified or converted id %s", depId_2)
+
+            if not depId_2:
+                logger.error("fail to verify or convert the input id %s", depId)  # skip unverified id
+                rtrnDict["success"][depId] = "false"
+                continue
+
+            self.__reqObj.setValue("identifier", depId_2)  # setting here for downstream processing
             #
-            # Added by ZF
+            # Added by ZF for GroupDep group message
             #
             groupId = ""
-            if depId.startswith("G_"):
-                groupId = depId
+            if depId_2.startswith("G_"):
+                groupId = depId_2
             else:
-                found_groupId = statusApi.getGroupId(depId)
+                found_groupId = self.statusApi.getGroupId(depId_2)
                 if found_groupId:
                     groupId = found_groupId
                 #
@@ -1299,7 +1369,8 @@ class MessagingWebAppWorker(object):
             msgObj = Message.fromReqObj(self.__reqObj, self.__verbose, self.__lfh)
             #
             if self.__verbose:
-                logger.info("dep_id is: %s", depId)
+                logger.info("original dep_id is: %s", depId)
+                logger.info("verified/converted dep_id is: %s", depId_2)
             #
             bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = msgingIo.processMsg(msgObj)
             #
