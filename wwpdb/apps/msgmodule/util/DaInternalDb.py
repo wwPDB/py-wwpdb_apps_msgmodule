@@ -19,20 +19,20 @@ class DaInternalDb(object):
 
     Args:
         object (_type_): object
-    """    
+    """
     def __init__(self, siteId=None):
         """Initiator
 
         Args:
             siteId (_type_, optional): SITE ID. Defaults to None that will use the SITE ID of the current server.
-        """        
+        """
         self.__mydb = None
         self.__siteId = siteId
         self.__open()
 
     def __del__(self):
         """Finalizer. Close DB connection when all references to the object have been deleted.
-        """        
+        """
         self.__close()
 
     def __open(self, resource="DA_INTERNAL"):
@@ -43,7 +43,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: True/False for DB connection
-        """        
+        """
         self.__mydb = MyConnectionBase(siteId=self.__siteId)
         self.__mydb.setResource(resourceName=resource)
         ok = self.__mydb.openConnection()
@@ -56,7 +56,7 @@ class DaInternalDb(object):
 
     def __close(self):
         """Proper DB closure
-        """        
+        """
         if self.__mydb:
             self.__mydb.closeConnection()
             self.__mydb = None
@@ -69,7 +69,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: raw query results as tuple of tuples, e.g. ((1,2),(3,4))
-        """        
+        """
         cur = self.__mydb.getCursor()
         cur.execute(query)
         rows = cur.fetchall()
@@ -84,7 +84,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: True/False
-        """        
+        """
         query = "select structure_id from rcsb_status where structure_id = '%s'" % dep_id
         rows = self.run(query)
         if rows:
@@ -100,7 +100,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: True/False
-        """  
+        """
         query = "select structure_id from rcsb_status where pdb_id = '%s'" % pdb_id
         rows = self.run(query)
         if rows:
@@ -116,7 +116,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: True/False
-        """        
+        """
         query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
         rows = self.run(query)
         if rows:
@@ -132,7 +132,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: valid deposition id at this site, or None
-        """        
+        """
         query = "select structure_id from rcsb_status where pdb_id = '%s'" % pdb_id
         rows = self.run(query)
         if rows:
@@ -148,7 +148,7 @@ class DaInternalDb(object):
 
         Returns:
             _type_: valid deposition id at this site, or None
-        """   
+        """
         query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
         rows = self.run(query)
         if rows:

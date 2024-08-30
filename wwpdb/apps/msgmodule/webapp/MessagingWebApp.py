@@ -212,7 +212,7 @@ class MessagingWebAppWorker(object):
         # self.__cI = ConfigInfo(self.__siteId)
 
         # CS 2024-08-30 create class var for status DB api because such api is used multiple times
-        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)  
+        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
         #
         # Added by ZF
         #
@@ -1228,11 +1228,11 @@ class MessagingWebAppWorker(object):
 
     def _verifyOrConvertId(self, id):  # CS 2024-08-30
         """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
-        If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert 
+        If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert
         such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
         The verification and conversion is site-id specific, and do NOT work cross sites or corss site-ids.
-        Because DA_INTERNAL DB doesn't record pdb extension id at the time this function is created, 
-        extended pdb id is handled by truncate the last 4 characters for temporary use. 
+        Because DA_INTERNAL DB doesn't record pdb extension id at the time this function is created,
+        extended pdb id is handled by truncate the last 4 characters for temporary use.
 
         Args:
             id (_type_): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
