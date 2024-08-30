@@ -73,6 +73,7 @@ from wwpdb.apps.msgmodule.depict.MessagingDepict import MessagingDepict
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.models.Message import Message
+from wwpdb.apps.msgmodule.util.DaInternalDb import DaInternalDb
 
 #
 # from wwpdb.apps.msgmodule.utils.WfTracking              import WfTracking
@@ -1222,8 +1223,35 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
-    def _verifyOrConvertId(self, depId):
-        return None
+    def _verifyOrConvertId(self, id):
+        db_da_internal = DaInternalDb()
+        id = id.upper()
+        if id.startswith("D_"):
+            dep_id = id
+            if db_da_internal.verifyDepId(dep_id):
+                return dep_id
+            else:
+                return None
+        elif id.starswith("EMD-"):
+            emdb_id = id
+            if db_da_internal.verifyEmdbId(emdb_id):
+                return db_da_internal.convertEmdbIdToDepId(emdb_id)
+            else:
+                return None
+        elif id.startswith("PDB_0000") and len(id) == 12:
+            pdb_id = id[-4:]
+            if db_da_internal.verifyPdbId(pdb_id):
+                return db_da_internal.convertPdbIdToDepId(pdb_id)
+            else:
+                return None
+        elif len(id) == 4:
+            pdb_id = id
+            if db_da_internal.verifyPdbId(pdb_id):
+                return db_da_internal.convertPdbIdToDepId(pdb_id)
+            else:
+                return None
+        else:
+            return None
 
     def _propagateMsg(self, actionType):
         """
