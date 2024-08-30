@@ -1232,7 +1232,7 @@ class MessagingWebAppWorker(object):
                 return dep_id
             else:
                 return None
-        elif id.starswith("EMD-"):
+        elif id.startswith("EMD-"):
             emdb_id = id
             if db_da_internal.verifyEmdbId(emdb_id):
                 return db_da_internal.convertEmdbIdToDepId(emdb_id)
