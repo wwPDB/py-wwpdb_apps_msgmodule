@@ -1413,7 +1413,7 @@ class MessagingIo(object):
                 attachFiles = False
                 isNote = True
                 accstr = templateDict["accession_ids"]
-                subject = "ARCHIVED: Impending release of " + accstr
+                subject = "ARCHIVED: Upcoming release of " + accstr
             else:
                 logger.error("Unknown message template %s", p_tmpltType)
                 msgTmplt = "This is an unknown message template."

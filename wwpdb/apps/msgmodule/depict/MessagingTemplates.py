@@ -30,6 +30,7 @@
 #    2022-01-26    CS     update template
 #    2022-02-27    CS     add template for Map-only withdrawn
 #    2023-10-20    CS     add/modify various templates for superseding entry release, EM model-only and map-only
+#    2024-09-09    CS     add templates msgTmplt_reminder_auth_to_rel and msgTmplt_reminder_auth_to_rel_em
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -173,7 +174,7 @@ Thank you for your attention.
 
     msgTmplt_reminder_auth_to_rel = """Dear Depositors,
 
-This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) will be released. The entry is entitled:
+This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) is scheduled for release. The entry is entitled:
 
 %(horiz_line)s
 %(title)s
@@ -183,11 +184,11 @@ Entry authors:
 
 %(entry_authors_newline_list)s
 
-Your entry was deposited with instruction to release immediately. 
+Your entry was deposited with a request for immediate release.
 
-As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
+As we have not heard from you since we sent you the validation report and processed files on %(outbound_rprt_date)s, we consider your entry has been approved.
 
-Your entry will be marked for release next week if we do not hear from you, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
+Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
 
 %(msg_closing)s
 """
@@ -195,7 +196,7 @@ Your entry will be marked for release next week if we do not hear from you, in a
 
     msgTmplt_reminder_auth_to_rel_em = """Dear Depositors,
 
-This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) will be released. The entry is entitled:
+This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) is scheduled for release. The entry is entitled:
 
 %(horiz_line)s
 %(em_title)s
@@ -205,11 +206,11 @@ Entry authors:
 
 %(em_entry_authors_newline_list)s
 
-Your entry was deposited with instruction to release immediately. 
+Your entry was deposited with a request for immediate release.
 
-As we have not heard from you since we sent you the validation report, processed PDB and mmCIF files on %(outbound_rprt_date)s, we consider your entry has been approved. 
+As we have not heard from you since we sent you the validation report and processed files on %(outbound_rprt_date)s, we consider your entry has been approved.
 
-Your entry will be marked for release next week if we do not hear from you, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy).
+Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
 
 %(msg_closing)s
 """
