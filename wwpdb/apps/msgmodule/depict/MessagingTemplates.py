@@ -132,7 +132,6 @@ Thank you for your attention.
 %(msg_closing)s
 """
 
-
     msgTmplt_approvalImplicit = """Dear Depositors,
 
 This message is to inform you that your structure %(accession_ids)s (Deposition ID %(identifier)s) has been approved. The entry is entitled:
@@ -150,7 +149,6 @@ Thank you for your attention.
 
 %(msg_closing)s
 """
-
 
     msgTmplt_reminder = """Dear Depositors,
 
@@ -171,7 +169,6 @@ Thank you for your attention.
 %(msg_closing)s
 """
 
-
     msgTmplt_reminder_auth_to_rel = """Dear Depositors,
 
 This message is to inform you that your entry %(accession_ids)s (Deposition ID %(identifier)s) is scheduled for release. The entry is entitled:
@@ -188,11 +185,10 @@ Your entry was deposited with a request for immediate release.
 
 As we have not heard from you since we sent you the validation report and processed files on %(outbound_rprt_date)s, we consider your entry has been approved.
 
-Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
+Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy).
 
 %(msg_closing)s
 """
-
 
     msgTmplt_reminder_auth_to_rel_em = """Dear Depositors,
 
@@ -210,11 +206,10 @@ Your entry was deposited with a request for immediate release.
 
 As we have not heard from you since we sent you the validation report and processed files on %(outbound_rprt_date)s, we consider your entry has been approved.
 
-Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy). 
+Unless we hear from you otherwise, your entry will be set for release next week, in accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy).
 
 %(msg_closing)s
 """
-
 
     msgTmplt_releaseWthPblctn = """Dear Depositors,
 
