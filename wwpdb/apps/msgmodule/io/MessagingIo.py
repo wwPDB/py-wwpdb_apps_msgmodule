@@ -1408,13 +1408,13 @@ class MessagingIo(object):
                 isNote = True
                 # Need all ids
                 accstr = templateDict["accession_ids"]
-                subject = "ARCHIVED: Still awaiting feedback for " + accstr
+                subject = "REMINDER: Still awaiting feedback for " + accstr
             elif p_tmpltType == "reminder-auth-to-rel":  # CS 2024-09-09 add process to send reminder on AUTH entry deposited as REL
                 msgTmplt = MessagingTemplates.msgTmplt_reminder_auth_to_rel_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder_auth_to_rel
                 attachFiles = False
                 isNote = True
                 accstr = templateDict["accession_ids"]
-                subject = "ARCHIVED: Upcoming release of " + accstr
+                subject = "REMINDER: Upcoming release of " + accstr
             else:
                 logger.error("Unknown message template %s", p_tmpltType)
                 msgTmplt = "This is an unknown message template."
