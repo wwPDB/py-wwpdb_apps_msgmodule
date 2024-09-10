@@ -6,7 +6,7 @@
 #    2023-11-10    CS     Refactor code to add general process to parse message file; Add functions to retrieve datetime of last messages of various type.
 #    2023-11-23    EP     Add getApprovalNoCorrectSubjects() and getPendingDepositorMessages()
 #    2024-04-04    CS     Use context_type and context_value to find target message, and default to subject/title parsing as was used previously.
-#
+#    2024-09-09    CS     Update getLastAutoReminderDatetime() to include search on reminder-auth-to-rel
 ##
 """
 Support for automatic extracting information from send messages
@@ -256,7 +256,7 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType="notes-from-annotator", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"])  # CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder", "reminder-auth-to-rel"])  # CS 2024-09-09 add reminder-auth-to-rel
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:

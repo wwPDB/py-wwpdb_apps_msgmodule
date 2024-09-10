@@ -3,6 +3,8 @@
 # Date:  28-Jun-2019 E. Peisach
 #
 # Update:
+#    2024-09-09    CS     Add function to send reminder on AUTH entry deposited as REL
+##
 """
 Support for automatic scripts to send template drive email messages and archive in normal message stream/notes
 Auto messages are archived in notes-from-annotator
@@ -62,6 +64,10 @@ class AutoMessage(object):
     def sendRemindFeedback(self, depidlist):
         """ Sends a reminder that depositor has not responded to validation report """
         self._sendReminderBulk(depidlist, p_tmplt="reminder")
+
+    def sendRemindAuthToRel(self, depidlist):  # CS 2024-09-09 Add function to send reminder on AUTH entry deposited as REL
+        """ Sends a reminder that depositor has not responded to validation report on AUTH entries deposited as REL """
+        self._sendReminderBulk(depidlist, p_tmplt="reminder-auth-to-rel")
 
     def sendImplicitApproved(self, depidlist):
         self._sendReminderBulk(depidlist, p_tmplt="approval-impl")  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
