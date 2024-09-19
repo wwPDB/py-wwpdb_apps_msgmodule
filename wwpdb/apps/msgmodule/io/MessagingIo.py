@@ -4902,6 +4902,7 @@ class MsgTmpltHlpr(object):
         # CS 2023-11-06 end
 
         # CS 2024-09-18 start change logic again for statusCode on map-only entries
+        statusCode = None
         if self.__emMapOnly and self.__emDeposition:
             statusCode = self.__statusCodeEmMap
         elif self.__postRelStatus and len(self.__postRelStatus) > 1:

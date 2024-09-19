@@ -394,7 +394,7 @@ Thank you for your attention.
 
     msgTmplt_mapOnly_authStatus_em = """Dear Depositors,
 
-Your %(accession_ids)s which corresponds to Deposition ID %(identifier)s has been annotated and the status is now AUTH.
+Your %(accession_ids)s which corresponds to Deposition ID %(identifier)s has been annotated and the status is now %(status_code_em_map)s.
 
 %(horiz_line)s
 %(em_title)s
