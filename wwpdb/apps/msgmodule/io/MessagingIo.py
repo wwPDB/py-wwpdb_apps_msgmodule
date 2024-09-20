@@ -4913,6 +4913,9 @@ class MsgTmpltHlpr(object):
             pass
         # CS 2024-09-18 end
 
+        logger.info("CStrack+++ statusCode = %s", statusCode)
+        logger.info("CStrack+++ self.__emDeposition = %s, self.__emMapOnly = %s", self.__emDeposition, self.__emMapOnly)
+
         if statusCode and len(statusCode) > 1:
             if statusCode == "HPUB" or statusCode == "HOLD":
                 if self.__authApprovalType and len(self.__authApprovalType) > 1:
