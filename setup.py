@@ -42,8 +42,10 @@ setup(
     ],
     #
     install_requires=[
+        "oslo.concurrency",
         "wwpdb.io",
         "wwpdb.utils.config ~= 0.39",
+        "wwpdb.utils.db",
         "wwpdb.utils.session",
         "wwpdb.utils.wf >= 0.8",
         "mmcif",
