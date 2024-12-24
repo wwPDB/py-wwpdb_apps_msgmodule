@@ -1251,14 +1251,14 @@ class MessagingWebAppWorker(object):
         if id_to_check.startswith("D_"):  # format of deposition id
             dep_id = id_to_check
             if db_da_internal.verifyDepId(dep_id):
-                logger.debug("%s is valid deposition id at this site", id_to_check)
+                logger.debug("%s is valid deposition id at this site", dep_id)
                 return dep_id  # return the input id itself is vefified
             else:
                 return None
         elif id_to_check.startswith("EMD-"):  # format of EMDB ID
             emdb_id = id_to_check
             if db_da_internal.verifyEmdbId(emdb_id):
-                logger.debug("%s is valid EMDB ID, convert it to deposition id", id_to_check)
+                logger.debug("%s is valid EMDB ID, convert it to deposition id", emdb_id)
                 return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
@@ -1267,15 +1267,16 @@ class MessagingWebAppWorker(object):
             # if db_da_internal.verifyPdbId(pdb_id):
             #     logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
             #     return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
-            if db_da_internal.verifyExtendedPdbId(id_to_check):
-                logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
-                return db_da_internal.convertExtendedPdbIdToDepId(pdb_id)  # PDB extended->dep conversion
+            pdb_ext_id = id_to_check
+            if db_da_internal.verifyExtendedPdbId(pdb_ext_id):
+                logger.debug("%s is valid extended PDB ID, convert it to deposition id", pdb_ext_id)
+                return db_da_internal.convertExtendedPdbIdToDepId(pdb_ext_id)  # PDB extended->dep conversion
             else:
                 return None
         elif len(id_to_check) == 4:  # format of PDB ID
             pdb_id = id_to_check
             if db_da_internal.verifyPdbId(pdb_id):
-                logger.debug("%s is valid PDB ID, convert it to deposition id", id_to_check)
+                logger.debug("%s is valid PDB ID, convert it to deposition id", pdb_id)
                 return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             else:
                 return None

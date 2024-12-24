@@ -109,16 +109,16 @@ class DaInternalDb(object):
         else:
             return False
 
-    def verifyExtendedPdbId(self, ext_pdb_id):
+    def verifyExtendedPdbId(self, pdb_ext_id):
         """Verify if an id is extended PDB ID
 
         Args:
-            ext_pdb_id (str): presumed extended PDB id input
+            pdb_ext_id (str): presumed extended PDB id input
 
         Returns:
             bool: True/False
         """
-        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % ext_pdb_id
+        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % pdb_ext_id
         rows = self.run(query)
         if rows:
             return True
@@ -157,7 +157,7 @@ class DaInternalDb(object):
         else:
             return None
 
-    def convertExtendedPdbIdToDepId(self, ext_pdb_id):
+    def convertExtendedPdbIdToDepId(self, pdb_ext_id):
         """Convert extended PDB ID to deposition id
 
         Args:
@@ -166,7 +166,7 @@ class DaInternalDb(object):
         Returns:
             str: valid deposition id at this site, or None
         """
-        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % ext_pdb_id
+        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % pdb_ext_id
         rows = self.run(query)
         if rows:
             return rows[0][0]
