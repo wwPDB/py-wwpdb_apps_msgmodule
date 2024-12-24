@@ -38,6 +38,7 @@
 # 2023-11-20    EP     Added __checkAnyApprovalFlags() and set approriate database flags if set
 # 2024-04-04    CS     Add process on context_type/context_value of message-to-depositor recorded by frontend JavaScript and passed here through wsgi message submit URL
 # 2024-08-30    CS     Add MessagingWebAppWorker._verifyOrConvertId() used by _propagateMsg("archive") to archive messages by PDB or EMDB IDs
+# 2024-12-23    CS     Add support on extended PDB ID for _verifyOrConvertId() to convert ID for archiving
 ##
 """
 wwPDB Messaging web request and response processing modules.
@@ -1261,11 +1262,14 @@ class MessagingWebAppWorker(object):
                 return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
-        elif id_to_check.startswith("PDB_0000") and len(id_to_check) == 12:  # format of extended PDB ID
-            pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
-            if db_da_internal.verifyPdbId(pdb_id):
+        elif id_to_check.startswith("PDB_") and len(id_to_check) == 12:  # format of extended PDB ID
+            # pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
+            # if db_da_internal.verifyPdbId(pdb_id):
+            #     logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
+            #     return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
+            if db_da_internal.verifyExtendedPdbId(id_to_check):
                 logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
-                return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
+                return db_da_internal.convertExtendedPdbIdToDepId(pdb_id)  # PDB extended->dep conversion
             else:
                 return None
         elif len(id_to_check) == 4:  # format of PDB ID

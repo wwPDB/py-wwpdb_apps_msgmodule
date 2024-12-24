@@ -2,6 +2,7 @@
 # Author:  Chenghua Shao
 # Date:    2024-08-30
 # Updates:
+# 2024-12-23    CS     Add support on extended PDB ID
 #
 # =============================================================================
 """
@@ -18,13 +19,13 @@ class DaInternalDb(object):
     """DA_INTERNAL DB class for data lookup
 
     Args:
-        object (_type_): object
+        object (obj): object
     """
     def __init__(self, siteId=None):
         """Initiator
 
         Args:
-            siteId (_type_, optional): SITE ID. Defaults to None that will use the SITE ID of the current server.
+            siteId (str, optional): SITE ID. Defaults to None that will use the SITE ID of the current server.
         """
         self.__mydb = None
         self.__siteId = siteId
@@ -42,7 +43,7 @@ class DaInternalDb(object):
             resource (str, optional): DB name. Defaults to "DA_INTERNAL".
 
         Returns:
-            _type_: True/False for DB connection
+            bool: True/False for DB connection
         """
         self.__mydb = MyConnectionBase(siteId=self.__siteId)
         self.__mydb.setResource(resourceName=resource)
@@ -65,10 +66,10 @@ class DaInternalDb(object):
         """Simplified query runner
 
         Args:
-            query (_type_): Full text of a query
+            query (str): Full text of a query
 
         Returns:
-            _type_: raw query results as tuple of tuples, e.g. ((1,2),(3,4))
+            tuple: raw query results as tuple of tuples, e.g. ((1,2),(3,4))
         """
         cur = self.__mydb.getCursor()
         cur.execute(query)
@@ -80,10 +81,10 @@ class DaInternalDb(object):
         """Verify if an id is deposition id
 
         Args:
-            dep_id (_type_): presumed dep id input
+            dep_id (str): presumed dep id input
 
         Returns:
-            _type_: True/False
+            bool: True/False
         """
         query = "select structure_id from rcsb_status where structure_id = '%s'" % dep_id
         rows = self.run(query)
@@ -96,12 +97,28 @@ class DaInternalDb(object):
         """Verify if an id is PDB ID
 
         Args:
-            pdb_id (_type_): presumed PDB id input
+            pdb_id (str): presumed PDB id input
 
         Returns:
-            _type_: True/False
+            bool: True/False
         """
         query = "select structure_id from rcsb_status where pdb_id = '%s'" % pdb_id
+        rows = self.run(query)
+        if rows:
+            return True
+        else:
+            return False
+
+    def verifyExtendedPdbId(self, ext_pdb_id):
+        """Verify if an id is extended PDB ID
+
+        Args:
+            ext_pdb_id (str): presumed extended PDB id input
+
+        Returns:
+            bool: True/False
+        """
+        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % ext_pdb_id
         rows = self.run(query)
         if rows:
             return True
@@ -112,10 +129,10 @@ class DaInternalDb(object):
         """Verify if an id is EMDB ID
 
         Args:
-            emdb_id (_type_): presumed EMDB ID input
+            emdb_id (str): presumed EMDB ID input
 
         Returns:
-            _type_: True/False
+            bool: True/False
         """
         query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
         rows = self.run(query)
@@ -128,12 +145,28 @@ class DaInternalDb(object):
         """Convert PDB ID to deposition id
 
         Args:
-            pdb_id (_type_): presumed PDB ID
+            pdb_id (str): presumed PDB ID
 
         Returns:
-            _type_: valid deposition id at this site, or None
+            str: valid deposition id at this site, or None
         """
         query = "select structure_id from rcsb_status where pdb_id = '%s'" % pdb_id
+        rows = self.run(query)
+        if rows:
+            return rows[0][0]
+        else:
+            return None
+
+    def convertExtendedPdbIdToDepId(self, ext_pdb_id):
+        """Convert extended PDB ID to deposition id
+
+        Args:
+            pdb_id (str): presumed PDB ID
+
+        Returns:
+            str: valid deposition id at this site, or None
+        """
+        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % ext_pdb_id
         rows = self.run(query)
         if rows:
             return rows[0][0]
@@ -144,10 +177,10 @@ class DaInternalDb(object):
         """Convert EMDB ID to deposition id
 
         Args:
-            pdb_id (_type_): presumed EMDB ID
+            pdb_id (str): presumed EMDB ID
 
         Returns:
-            _type_: valid deposition id at this site, or None
+            str: valid deposition id at this site, or None
         """
         query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
         rows = self.run(query)
