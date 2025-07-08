@@ -7,6 +7,7 @@
 #    2023-11-23    EP     Add getApprovalNoCorrectSubjects() and getPendingDepositorMessages()
 #    2024-04-04    CS     Use context_type and context_value to find target message, and default to subject/title parsing as was used previously.
 #    2024-09-09    CS     Update getLastAutoReminderDatetime() to include search on reminder-auth-to-rel
+#    2025-07-08    CS     Update to include _pdbx_deposition_message_info.context_type:maponly-authstatus-em as validation report
 ##
 """
 Support for automatic extracting information from send messages
@@ -195,7 +196,7 @@ class ExtractMessage(object):
                 context_type_recorded = row[idxContextType]
                 context_value_recorded = row[idxContextValue]
 
-                if context_type_recorded == "vldtn":
+                if context_type_recorded in ("vldtn", "maponly-authstatus-em"):  # CS-2025-07-08 update to include map-only validation type
                     if ordinalId > maxOrdId:
                         maxOrdId = ordinalId
                         lastvalid = self.convertStrToDatetime(str(row[idxLastCommDate]))
