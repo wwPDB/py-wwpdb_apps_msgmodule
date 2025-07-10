@@ -24,7 +24,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, project_root)
 
 from wwpdb.apps.msgmodule.io.HybridMessagingIo import (
-    HybridMessagingIo, WriteStrategy, BackendStatus, WriteResult, 
+    HybridMessagingIo, BackendStatus, WriteResult, 
     ConsistencyCheck, PerformanceMetrics, ConsistencyValidator
 )
 from wwpdb.apps.msgmodule.util.FeatureFlagManager import (
@@ -49,26 +49,44 @@ class TestHybridMessagingIo(unittest.TestCase):
         with patch('wwpdb.apps.msgmodule.io.HybridMessagingIo.MessagingIo') as mock_cif_class:
             with patch('wwpdb.apps.msgmodule.io.HybridMessagingIo.MessagingIoDatabase') as mock_db_class:
                 with patch('wwpdb.apps.msgmodule.io.HybridMessagingIo.DatabaseConfig') as mock_config:
-                    # Configure mocks
-                    mock_cif_class.return_value = self.mock_cif_io
-                    mock_db_class.return_value = self.mock_db_io
-                    mock_config.return_value.is_enabled.return_value = True
-                    
-                    self.hybrid_io = HybridMessagingIo(
-                        verbose=True,
-                        site_id="TEST",
-                        write_strategy=WriteStrategy.DUAL_WRITE
+                    with patch('wwpdb.apps.msgmodule.util.FeatureFlagManager.get_feature_flag_manager') as mock_flag_manager:
+                        # Configure mocks
+                        mock_cif_class.return_value = self.mock_cif_io
+                        mock_db_class.return_value = self.mock_db_io
+                        mock_config.return_value.is_enabled.return_value = True
+                        
+                        # Mock feature flag manager for revised plan
+                        self.mock_flag_manager = Mock()
+                        mock_flag_manager.return_value = self.mock_flag_manager
+                        
+                        # Set default feature flag behavior (database writes enabled, dual-write disabled)
+                        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+                        self.mock_flag_manager.is_database_reads_enabled.return_value = False
+                        self.mock_flag_manager.is_dual_write_enabled.return_value = False
+                        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
+                        
+                        self.hybrid_io = HybridMessagingIo(
+                            verbose=True,
+                            site_id="TEST"
                     )
     
     def test_initialization(self):
-        """Test HybridMessagingIo initialization"""
+        """Test HybridMessagingIo initialization with revised approach"""
         self.assertIsNotNone(self.hybrid_io)
-        self.assertEqual(self.hybrid_io._HybridMessagingIo__write_strategy, WriteStrategy.DUAL_WRITE)
         self.assertEqual(self.hybrid_io._HybridMessagingIo__siteId, "TEST")
+        
+        # Check that feature manager is properly initialized
+        self.assertIsNotNone(self.hybrid_io._feature_manager)
+        
+        # Check default feature flag behavior matches revised plan
+        self.assertTrue(self.mock_flag_manager.is_database_writes_enabled.called)
+        self.assertTrue(self.mock_flag_manager.is_database_reads_enabled.called)
     
-    def test_cif_only_write_strategy(self):
-        """Test CIF-only write strategy"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.CIF_ONLY)
+    def test_cif_only_operations(self):
+        """Test CIF-only operations using feature flags"""
+        # Configure for CIF-only operations
+        self.mock_flag_manager.is_database_writes_enabled.return_value = False
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
         
         # Mock successful CIF write
         self.mock_cif_io.addMessage.return_value = True
@@ -83,9 +101,11 @@ class TestHybridMessagingIo(unittest.TestCase):
         self.mock_cif_io.addMessage.assert_called_once()
         self.mock_db_io.addMessage.assert_not_called()
     
-    def test_db_only_write_strategy(self):
-        """Test database-only write strategy"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DB_ONLY)
+    def test_db_only_operations(self):
+        """Test database-only operations using feature flags"""
+        # Configure for database-only operations
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = False
         
         # Mock successful DB write
         self.mock_db_io.addMessage.return_value = True
@@ -100,9 +120,12 @@ class TestHybridMessagingIo(unittest.TestCase):
         self.mock_db_io.addMessage.assert_called_once()
         self.mock_cif_io.addMessage.assert_not_called()
     
-    def test_dual_write_strategy_success(self):
-        """Test successful dual-write strategy"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DUAL_WRITE)
+    def test_dual_write_success(self):
+        """Test successful dual-write operations using feature flags"""
+        # Configure for dual-write operations
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_dual_write_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
         
         # Mock successful writes to both backends
         self.mock_cif_io.addMessage.return_value = True
@@ -118,9 +141,12 @@ class TestHybridMessagingIo(unittest.TestCase):
         self.mock_cif_io.addMessage.assert_called_once()
         self.mock_db_io.addMessage.assert_called_once()
     
-    def test_dual_write_strategy_failure(self):
-        """Test dual-write strategy with one backend failing"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DUAL_WRITE)
+    def test_dual_write_failure(self):
+        """Test dual-write operations with one backend failing"""
+        # Configure for dual-write operations
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_dual_write_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
         
         # Mock CIF success, DB failure
         self.mock_cif_io.addMessage.return_value = True
@@ -139,7 +165,10 @@ class TestHybridMessagingIo(unittest.TestCase):
     
     def test_db_primary_with_fallback_success(self):
         """Test DB primary with CIF fallback - DB succeeds"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DB_PRIMARY_CIF_FALLBACK)
+        # Configure for database primary with fallback
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
+        self.mock_flag_manager.is_dual_write_enabled.return_value = False
         
         # Mock successful DB write
         self.mock_db_io.addMessage.return_value = True
@@ -156,7 +185,10 @@ class TestHybridMessagingIo(unittest.TestCase):
     
     def test_db_primary_with_fallback_failure(self):
         """Test DB primary with CIF fallback - DB fails, CIF succeeds"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DB_PRIMARY_CIF_FALLBACK)
+        # Configure for database primary with fallback
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
+        self.mock_flag_manager.is_dual_write_enabled.return_value = False
         
         # Mock DB failure, CIF success
         self.mock_db_io.addMessage.side_effect = Exception("Database error")
@@ -174,6 +206,9 @@ class TestHybridMessagingIo(unittest.TestCase):
     
     def test_fetch_messages_db_primary(self):
         """Test message fetching with database primary"""
+        # Configure for database reads (required for database fetch)
+        self.mock_flag_manager.is_database_reads_enabled.return_value = True
+        
         # Mock database backend as healthy
         self.hybrid_io._backend_health['database'] = BackendStatus.HEALTHY
         
@@ -192,6 +227,9 @@ class TestHybridMessagingIo(unittest.TestCase):
     
     def test_fetch_messages_fallback_to_cif(self):
         """Test message fetching fallback to CIF on DB failure"""
+        # Configure for database reads (but will fallback to CIF on error)
+        self.mock_flag_manager.is_database_reads_enabled.return_value = True
+        
         # Mock database backend as healthy initially
         self.hybrid_io._backend_health['database'] = BackendStatus.HEALTHY
         self.hybrid_io._backend_health['cif'] = BackendStatus.HEALTHY
@@ -209,7 +247,10 @@ class TestHybridMessagingIo(unittest.TestCase):
     
     def test_performance_metrics_collection(self):
         """Test performance metrics collection"""
-        self.hybrid_io.setWriteStrategy(WriteStrategy.DUAL_WRITE)
+        # Configure for dual-write operations
+        self.mock_flag_manager.is_database_writes_enabled.return_value = True
+        self.mock_flag_manager.is_dual_write_enabled.return_value = True
+        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
         
         # Mock successful writes
         self.mock_cif_io.addMessage.return_value = True
@@ -228,9 +269,8 @@ class TestHybridMessagingIo(unittest.TestCase):
         
         # Verify metrics structure
         self.assertIn('backend_health', metrics)
-        self.assertIn('write_strategy', metrics)
         self.assertIn('feature_flags', metrics)
-        self.assertEqual(metrics['write_strategy'], 'dual_write')
+        # Note: write_strategy removed in revised plan - all via feature flags
     
     def test_backend_health_monitoring(self):
         """Test backend health status monitoring"""
@@ -321,22 +361,55 @@ class TestFeatureFlagManager(unittest.TestCase):
         self.flag_manager = FeatureFlagManager(site_id="TEST")
     
     def test_default_flags_initialization(self):
-        """Test that default flags are properly initialized"""
+        """Test that default flags are properly initialized for revised migration plan"""
         flags = self.flag_manager.get_all_flags()
         
-        # Check that key flags exist
+        # Check that revised migration plan flags exist
         expected_flags = [
-            'hybrid_dual_write',
-            'hybrid_db_primary',
-            'hybrid_db_only',
-            'consistency_checks',
-            'performance_metrics'
+            'database_writes_enabled',
+            'database_reads_enabled', 
+            'cif_fallback_enabled',
+            'dual_write_enabled',
+            'consistency_checks'
         ]
         
         for flag_name in expected_flags:
             self.assertIn(flag_name, flags)
             self.assertIsInstance(flags[flag_name]['enabled'], bool)
+        
+        # Check default values according to revised plan
+        self.assertTrue(flags['database_writes_enabled']['enabled'])  # Default: DB writes
+        self.assertFalse(flags['database_reads_enabled']['enabled'])  # Phase 4: disabled initially
+        self.assertTrue(flags['cif_fallback_enabled']['enabled'])     # Fallback enabled
+        self.assertFalse(flags['dual_write_enabled']['enabled'])      # Dual-write disabled by default
     
+    def test_revised_plan_convenience_methods(self):
+        """Test convenience methods for revised migration plan"""
+        # Test database writes (default: enabled)
+        self.assertTrue(self.flag_manager.is_database_writes_enabled())
+        
+        # Test database reads (default: disabled for Phase 4)
+        self.assertFalse(self.flag_manager.is_database_reads_enabled())
+        
+        # Test CIF fallback (default: enabled)
+        self.assertTrue(self.flag_manager.is_cif_fallback_enabled())
+        
+        # Test dual-write (default: disabled)
+        self.assertFalse(self.flag_manager.is_dual_write_enabled())
+        
+        # Test enabling database reads (migration cutover)
+        self.flag_manager.enable_database_reads()
+        self.assertTrue(self.flag_manager.is_database_reads_enabled())
+        
+        # Test emergency rollback
+        self.flag_manager.disable_database_writes()
+        self.assertFalse(self.flag_manager.is_database_writes_enabled())
+        
+        # Test dual-write for sites that require it
+        self.flag_manager.enable_dual_write_for_site()
+        self.assertTrue(self.flag_manager.is_dual_write_enabled())
+
+
     def test_flag_enabling_and_disabling(self):
         """Test enabling and disabling flags"""
         flag_name = 'hybrid_dual_write'
@@ -368,25 +441,22 @@ class TestFeatureFlagManager(unittest.TestCase):
         self.assertEqual(result1, result2)
     
     def test_recommended_write_strategy(self):
-        """Test recommended write strategy logic"""
-        # Test default strategy (no flags enabled)
+        """Test recommended write strategy logic for revised migration plan"""
+        # Test default strategy (database writes enabled, dual-write disabled)
         strategy = self.flag_manager.get_recommended_write_strategy()
-        self.assertEqual(strategy, 'cif_only')
+        self.assertEqual(strategy, 'cif_only')  # Legacy method still returns cif_only for backward compatibility
         
-        # Test dual write strategy
-        self.flag_manager.set_flag('hybrid_dual_write', True)
-        strategy = self.flag_manager.get_recommended_write_strategy()
-        self.assertEqual(strategy, 'dual_write')
+        # Test current revised plan approach
+        self.assertTrue(self.flag_manager.is_database_writes_enabled())
+        self.assertFalse(self.flag_manager.is_dual_write_enabled())
         
-        # Test DB primary strategy (should override dual write)
-        self.flag_manager.set_flag('hybrid_db_primary', True)
-        strategy = self.flag_manager.get_recommended_write_strategy()
-        self.assertEqual(strategy, 'db_primary_cif_fallback')
+        # Test dual write for sites that require it
+        self.flag_manager.enable_dual_write_for_site()
+        self.assertTrue(self.flag_manager.is_dual_write_enabled())
         
-        # Test DB only strategy (should override all others)
-        self.flag_manager.set_flag('hybrid_db_only', True)
-        strategy = self.flag_manager.get_recommended_write_strategy()
-        self.assertEqual(strategy, 'db_only')
+        # Test emergency rollback
+        self.flag_manager.disable_database_writes()
+        self.assertFalse(self.flag_manager.is_database_writes_enabled())
     
     def test_feature_flag_context(self):
         """Test FeatureFlagContext helper"""
@@ -405,14 +475,19 @@ class TestFeatureFlagManager(unittest.TestCase):
         
         self.assertEqual(context, expected_context)
     
-    @patch.dict(os.environ, {'MSGDB_FLAG_HYBRID_DUAL_WRITE': 'true'})
+    @patch.dict(os.environ, {'MSGDB_FLAG_DUAL_WRITE_ENABLED': 'true'})
     def test_environment_variable_override(self):
-        """Test environment variable override functionality"""
+        """Test environment variable override functionality for revised plan"""
         # Create new manager to pick up environment variables
         flag_manager = FeatureFlagManager(site_id="TEST")
         
         # Check that environment variable overrode default
-        self.assertTrue(flag_manager.is_enabled('hybrid_dual_write'))
+        self.assertTrue(flag_manager.is_enabled('dual_write_enabled'))
+        
+        # Test with database writes disabled via environment
+        with patch.dict(os.environ, {'MSGDB_FLAG_DATABASE_WRITES_ENABLED': 'false'}):
+            flag_manager = FeatureFlagManager(site_id="TEST")
+            self.assertFalse(flag_manager.is_enabled('database_writes_enabled'))
 
 
 class TestCircuitBreaker(unittest.TestCase):
