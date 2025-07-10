@@ -18,7 +18,7 @@ __license__ = "Creative Commons Attribution 3.0 Unported"
 import sys
 import logging
 from wwpdb.utils.config.ConfigInfo import ConfigInfo, getSiteId
-from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
+from wwpdb.apps.msgmodule.io.MessagingFactory import create_messaging_service
 from wwpdb.utils.session.WebRequest import InputRequest
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from wwpdb.io.locator.PathInfo import PathInfo
@@ -55,7 +55,7 @@ class AutoMessage(object):
             reqobj.setValue("filesource", "archive")
         # Session dir
 
-        mio = MessagingIo(reqobj, verbose=self.__verbose, log=self.__log)
+        mio = create_messaging_service(reqobj, verbose=self.__verbose, log=self.__log)
         return mio
 
     def sendRemindUnlocked(self, depidlist):

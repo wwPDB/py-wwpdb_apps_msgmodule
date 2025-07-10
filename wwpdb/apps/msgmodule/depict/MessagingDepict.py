@@ -53,7 +53,7 @@ __version__ = "V0.02"
 import os
 import sys
 import time
-from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
+from wwpdb.apps.msgmodule.io.MessagingFactory import create_messaging_service
 from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
@@ -295,7 +295,7 @@ class MessagingDepict(object):
         #
         # if self.__verbose:
         #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getMsgTmplts()")
-        msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
+        msgingIo = create_messaging_service(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO SUPPORT ALL DOWNSTREAM PROCESSING IN NEED OF DATA PARSED FROM THE COORDINATE FILE
         msgingIo.getMsgTmpltDataItems(strParamDict)
         starterMsgBody = msgingIo.getStarterMsgBody()
@@ -612,7 +612,7 @@ class MessagingDepict(object):
         ############################################################################
         # if self.__verbose:
         #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.doRenderDisplayMsg()")
-        msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
+        msgingIo = create_messaging_service(p_reqObj, self.__verbose, self.__lfh)
         msgingIo.getMsgTmpltDataItems(myD)
 
         if len(p_msgDict["files_referenced"]) > 0:
@@ -731,7 +731,7 @@ class MessagingDepict(object):
         #
         # if self.__verbose:
         #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getDataTableTemplate()")
-        msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
+        msgingIo = create_messaging_service(p_reqObj, self.__verbose, self.__lfh)
         bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
         #
         if bOk:
