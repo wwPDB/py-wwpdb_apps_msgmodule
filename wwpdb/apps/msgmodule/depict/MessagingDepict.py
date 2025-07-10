@@ -119,21 +119,31 @@ class MessagingDepict(object):
         fileFormatExtDict = cI.get("FILE_FORMAT_EXTENSION_DICTIONARY")
         #
         contentType = (
-            initContentType if (contentType is None or len(contentType) < 1) else contentType
+            initContentType
+            if (contentType is None or len(contentType) < 1)
+            else contentType
         )  # if content type not specified then fall back on initial content type requested
         #
-        if contentType is None or len(contentType) < 1:  # if we don't have a requested content type at this point, use "msgs" as default
+        if (
+            contentType is None or len(contentType) < 1
+        ):  # if we don't have a requested content type at this point, use "msgs" as default
             contentType = "msgs"
         #
         # if depId is not None:
         #    depId = self.__formatDepositionDataId(depId, p_bIsWorkflow)
         #
-        self.__expMethodList = (p_reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(p_reqObj.getValue("expmethod").replace('"', "")) > 1) else []
+        self.__expMethodList = (
+            (p_reqObj.getValue("expmethod").replace('"', "")).split(",")
+            if (len(p_reqObj.getValue("expmethod").replace('"', "")) > 1)
+            else []
+        )
         # bEmDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         if self.__verbose:
             logger.info("--------------------------------------------")
-            logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info(
+                "Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
+            )
             logger.info("identifier   %s", depId)
             logger.info("instance     %s", wfInstId)
             logger.info("file source  %s", fileSource)
@@ -149,7 +159,11 @@ class MessagingDepict(object):
         if modelFilePath is not None and os.access(modelFilePath, os.R_OK):
             deposited = True
 
-        annotator = "wwPDB annotator" if (annotator.lower() in ["dep", "unknown"]) else annotator
+        annotator = (
+            "wwPDB annotator"
+            if (annotator.lower() in ["dep", "unknown"])
+            else annotator
+        )
 
         ############################################################################
         # create dictionary of content that will be used to populate HTML template
@@ -160,13 +174,31 @@ class MessagingDepict(object):
         myD["classid"] = classId
         myD["filesource"] = fileSource
         myD["content_type"] = contentType
-        myD["annotator"] = annotator if (annotator is not None and len(annotator) > 1) else "wwPDB annotator"
-        myD["content_type_hdr"] = "Annotator Processing Notes" if contentType == "notes" else "Communications with Depositor"
+        myD["annotator"] = (
+            annotator
+            if (annotator is not None and len(annotator) > 1)
+            else "wwPDB annotator"
+        )
+        myD["content_type_hdr"] = (
+            "Annotator Processing Notes"
+            if contentType == "notes"
+            else "Communications with Depositor"
+        )
         myD["cntnt_type_btnlbl"] = "Notes" if contentType == "notes" else "Messages"
         myD["new_cntnt_type_btnlbl"] = "Note" if contentType == "notes" else "Message"
-        myD["auto_launch_compose"] = autoLaunchCompose if (autoLaunchCompose is not None and len(autoLaunchCompose) > 1 and autoLaunchCompose.lower() == "false") else "true"
+        myD["auto_launch_compose"] = (
+            autoLaunchCompose
+            if (
+                autoLaunchCompose is not None
+                and len(autoLaunchCompose) > 1
+                and autoLaunchCompose.lower() == "false"
+            )
+            else "true"
+        )
         myD["expmethod"] = p_reqObj.getValue("expmethod")
-        myD["display_unlock"] = "" if (allowUnlockDepUI and allowUnlockDepUI == "yes") else "hidden"
+        myD["display_unlock"] = (
+            "" if (allowUnlockDepUI and allowUnlockDepUI == "yes") else "hidden"
+        )
         myD["display_rel_status"] = "" if deposited else "hidden"
         #
         listKnownFileExtensions = list(set(fileFormatExtDict.values()))
@@ -202,9 +234,15 @@ class MessagingDepict(object):
                 myD["display_identifier"] = groupId + "/" + myD["identifier"]
             #
         #
-        tmpltFile = "msging_launch_embed_tmplt.html" if embeddedVw.lower() == "true" else "msging_launch_tmplt.html"
+        tmpltFile = (
+            "msging_launch_embed_tmplt.html"
+            if embeddedVw.lower() == "true"
+            else "msging_launch_tmplt.html"
+        )
 
-        oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
+        oL.append(
+            self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD)
+        )
         logger.info("CStrack+++ use html template of *%s*", tmpltFile)
         #
         return oL
@@ -230,8 +268,19 @@ class MessagingDepict(object):
         #
         depId = str(p_reqObj.getValue("identifier"))
         tmpltPath = p_reqObj.getValue("TemplatePath")
-        self.__expMethodList = (p_reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(p_reqObj.getValue("expmethod").replace('"', "")) > 1) else []
-        b_em = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
+        self.__expMethodList = (
+            (p_reqObj.getValue("expmethod").replace('"', "")).split(",")
+            if (len(p_reqObj.getValue("expmethod").replace('"', "")) > 1)
+            else []
+        )
+        b_em = (
+            True
+            if (
+                "ELECTRON MICROSCOPY" in self.__expMethodList
+                or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList
+            )
+            else False
+        )
         #
         if p_bIsWorkflow:
             strParamDict["identifier"] = depId
@@ -251,15 +300,25 @@ class MessagingDepict(object):
         msgingIo.getMsgTmpltDataItems(strParamDict)
         starterMsgBody = msgingIo.getStarterMsgBody()
         #
-        strParamDict["starter_msg_body"] = starterMsgBody if starterMsgBody is not None else ""
-        strParamDict["msg_tmplt_default"] = (MessagingTemplates.msgTmplt_default_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_default % strParamDict)
+        strParamDict["starter_msg_body"] = (
+            starterMsgBody if starterMsgBody is not None else ""
+        )
+        strParamDict["msg_tmplt_default"] = (
+            (MessagingTemplates.msgTmplt_default_em % strParamDict)
+            if b_em
+            else (MessagingTemplates.msgTmplt_default % strParamDict)
+        )
         # strParamDict["msg_tmplt_approval-expl"] = (
         #     (MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_approvalExplicit % strParamDict)
         # )  # noqa: E501
         # strParamDict["msg_tmplt_approval-impl"] = (
         #     (MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_approvalImplicit % strParamDict)
         # )  # noqa: E501
-        strParamDict["msg_tmplt_reminder"] = (MessagingTemplates.msgTmplt_reminder_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_reminder % strParamDict)
+        strParamDict["msg_tmplt_reminder"] = (
+            (MessagingTemplates.msgTmplt_reminder_em % strParamDict)
+            if b_em
+            else (MessagingTemplates.msgTmplt_reminder % strParamDict)
+        )
 
         # CS 2022-02-27 add map-only withdrawn template;
         # CS 2023-10-20 start, further seperate all scenarios of EM model-map, model-only, and map-only. The selection process needs to be optimized later.
@@ -268,68 +327,147 @@ class MessagingDepict(object):
             logger.info("CStrack+++ EM-ENTRY")
             if strParamDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
                 logger.info("CStrack+++ EM-MAP-ONLY")
-                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict
-                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
-                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
-                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only % strParamDict
-                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only % strParamDict
+                strParamDict["msg_tmplt_withdrawn"] = (
+                    MessagingTemplates.msgTmplt_withdrawn_em_map_only % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-expl"] = (
+                    MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-impl"] = (
+                    MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
+                )
+                strParamDict["msg_tmplt_release-publ"] = (
+                    MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only
+                    % strParamDict
+                )
+                strParamDict["msg_tmplt_release-nopubl"] = (
+                    MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only
+                    % strParamDict
+                )
             elif strParamDict.get("modelonly", "") == "true":  # EM model-only
                 logger.info("CStrack+++ EM-MODEL-ONLY")
-                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
-                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
-                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
-                if strParamDict.get("spr_to_replace_pdb_ids", ''):
-                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede % strParamDict
-                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede % strParamDict
+                strParamDict["msg_tmplt_withdrawn"] = (
+                    MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-expl"] = (
+                    MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-impl"] = (
+                    MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
+                )
+                if strParamDict.get("spr_to_replace_pdb_ids", ""):
+                    strParamDict["msg_tmplt_release-publ"] = (
+                        MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede
+                        % strParamDict
+                    )
+                    strParamDict["msg_tmplt_release-nopubl"] = (
+                        MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede
+                        % strParamDict
+                    )
                 else:
-                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
-                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
+                    strParamDict["msg_tmplt_release-publ"] = (
+                        MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
+                    )
+                    strParamDict["msg_tmplt_release-nopubl"] = (
+                        MessagingTemplates.msgTmplt_releaseWthOutPblctn_em
+                        % strParamDict
+                    )
             else:  # EM model+map
                 logger.info("CStrack+++ EM-MODEL-MAP")
-                strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
-                strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
-                strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
-                if strParamDict.get("spr_to_replace_pdb_ids", ''):
-                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede % strParamDict
-                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede % strParamDict
+                strParamDict["msg_tmplt_withdrawn"] = (
+                    MessagingTemplates.msgTmplt_withdrawn_em % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-expl"] = (
+                    MessagingTemplates.msgTmplt_approvalExplicit_em % strParamDict
+                )
+                strParamDict["msg_tmplt_approval-impl"] = (
+                    MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict
+                )
+                if strParamDict.get("spr_to_replace_pdb_ids", ""):
+                    strParamDict["msg_tmplt_release-publ"] = (
+                        MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede
+                        % strParamDict
+                    )
+                    strParamDict["msg_tmplt_release-nopubl"] = (
+                        MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede
+                        % strParamDict
+                    )
                 else:
-                    strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
-                    strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em % strParamDict
+                    strParamDict["msg_tmplt_release-publ"] = (
+                        MessagingTemplates.msgTmplt_releaseWthPblctn_em % strParamDict
+                    )
+                    strParamDict["msg_tmplt_release-nopubl"] = (
+                        MessagingTemplates.msgTmplt_releaseWthOutPblctn_em
+                        % strParamDict
+                    )
         else:
             logger.info("CStrack+++ NON-EM-ENTRY")
-            strParamDict["msg_tmplt_withdrawn"] = MessagingTemplates.msgTmplt_withdrawn % strParamDict
-            strParamDict["msg_tmplt_approval-expl"] = MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
-            strParamDict["msg_tmplt_approval-impl"] = MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
-            if strParamDict.get("spr_to_replace_pdb_ids", ''):
-                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn_supersede % strParamDict
-                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn_supersede % strParamDict
+            strParamDict["msg_tmplt_withdrawn"] = (
+                MessagingTemplates.msgTmplt_withdrawn % strParamDict
+            )
+            strParamDict["msg_tmplt_approval-expl"] = (
+                MessagingTemplates.msgTmplt_approvalExplicit % strParamDict
+            )
+            strParamDict["msg_tmplt_approval-impl"] = (
+                MessagingTemplates.msgTmplt_approvalImplicit % strParamDict
+            )
+            if strParamDict.get("spr_to_replace_pdb_ids", ""):
+                strParamDict["msg_tmplt_release-publ"] = (
+                    MessagingTemplates.msgTmplt_releaseWthPblctn_supersede
+                    % strParamDict
+                )
+                strParamDict["msg_tmplt_release-nopubl"] = (
+                    MessagingTemplates.msgTmplt_releaseWthOutPblctn_supersede
+                    % strParamDict
+                )
             else:
-                strParamDict["msg_tmplt_release-publ"] = MessagingTemplates.msgTmplt_releaseWthPblctn % strParamDict
-                strParamDict["msg_tmplt_release-nopubl"] = MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict
+                strParamDict["msg_tmplt_release-publ"] = (
+                    MessagingTemplates.msgTmplt_releaseWthPblctn % strParamDict
+                )
+                strParamDict["msg_tmplt_release-nopubl"] = (
+                    MessagingTemplates.msgTmplt_releaseWthOutPblctn % strParamDict
+                )
         # CS 2022-02-27 add map-only withdrawn template;
         # CS 2023-10-20 end
 
-        strParamDict["msg_tmplt_vldtn"] = MessagingTemplates.msgTmplt_vldtn % strParamDict
+        strParamDict["msg_tmplt_vldtn"] = (
+            MessagingTemplates.msgTmplt_vldtn % strParamDict
+        )
 
         statusCode = strParamDict.get("status_code", "???")
-        if statusCode == "REL" and strParamDict.get("pdb_id", "") != "[PDBID NOT AVAIL]":
+        if (
+            statusCode == "REL"
+            and strParamDict.get("pdb_id", "") != "[PDBID NOT AVAIL]"
+        ):
             # Post Release Unlock
-            strParamDict["msg_tmplt_system-unlocked"] = MessagingTemplates.msgTmplt_systemUnlockedPostRel % strParamDict
+            strParamDict["msg_tmplt_system-unlocked"] = (
+                MessagingTemplates.msgTmplt_systemUnlockedPostRel % strParamDict
+            )
         else:
             strParamDict["msg_tmplt_system-unlocked"] = (
-                (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
+                (MessagingTemplates.msgTmplt_systemUnlocked_em % strParamDict)
+                if b_em
+                else (MessagingTemplates.msgTmplt_systemUnlocked % strParamDict)
             )  # noqa: E501
-        strParamDict["msg_tmplt_maponly-authstatus-em"] = (MessagingTemplates.msgTmplt_mapOnly_authStatus_em % strParamDict) if b_em else ""
+        strParamDict["msg_tmplt_maponly-authstatus-em"] = (
+            (MessagingTemplates.msgTmplt_mapOnly_authStatus_em % strParamDict)
+            if b_em
+            else ""
+        )
 
         logger.info("CStrack+++ dump parameter dict for templates")
         logger.info("\n".join(list(strParamDict.keys())))
         # logger.info(strParamDict["msg_tmplt_vldtn"])
         # logger.info(strParamDict["msg_tmplt_approval-expl"])
 
-        oL.append(self.processTemplate(tmpltPth=tmpltPath, fn="msg_tmplts.html", parameterDict=strParamDict))
+        oL.append(
+            self.processTemplate(
+                tmpltPth=tmpltPath, fn="msg_tmplts.html", parameterDict=strParamDict
+            )
+        )
         logger.info("CStrack+++ use html template of *msg_tmplts.html*")
         #
-        logger.info(''.join(oL))
+        logger.info("".join(oL))
 
         return oL
 
@@ -359,7 +497,9 @@ class MessagingDepict(object):
         #
         if self.__verbose:
             logger.info("--------------------------------------------")
-            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info(
+                "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
+            )
             logger.info("identifier   %s", depId)
             logger.info("file source  %s", fileSource)
             logger.info("sessionId    %s", sessionId)
@@ -380,7 +520,9 @@ class MessagingDepict(object):
         tmpltFile = "msging_launch_commhstry_tmplt.html"
         # tmpltFile = "msging_launch_embed_tmplt.previewMsg.html" if embeddedVw.lower() == "true" else "msging_launch_tmplt.previewMsg.20150622.html"
 
-        oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
+        oL.append(
+            self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD)
+        )
         logger.info("CStrack+++ use html template of *%s*", tmpltFile)
         #
         return oL
@@ -413,10 +555,14 @@ class MessagingDepict(object):
         notesHighWatermark = str(p_reqObj.getValue("notes_high_watermark"))
         #
         contentType = (
-            initContentType if (contentType is None or len(contentType) < 1) else contentType
+            initContentType
+            if (contentType is None or len(contentType) < 1)
+            else contentType
         )  # if content type not specified then fall back on initial content type requested
         #
-        if contentType is None or len(contentType) < 1:  # if we don't have a requested content type at this point, use "msgs" as default
+        if (
+            contentType is None or len(contentType) < 1
+        ):  # if we don't have a requested content type at this point, use "msgs" as default
             contentType = "msgs"
         #
         # if depId is not None:
@@ -424,7 +570,9 @@ class MessagingDepict(object):
         #
         if self.__verbose:
             logger.info("--------------------------------------------")
-            logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info(
+                "Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
+            )
             logger.info("identifier   %s", depId)
             logger.info("instance     %s", wfInstId)
             logger.info("file source  %s", fileSource)
@@ -442,7 +590,11 @@ class MessagingDepict(object):
         myD["classid"] = classId
         myD["filesource"] = fileSource
         myD["content_type"] = contentType
-        myD["annotator"] = annotator if (annotator is not None and len(annotator) > 1) else "wwPDB annotator"
+        myD["annotator"] = (
+            annotator
+            if (annotator is not None and len(annotator) > 1)
+            else "wwPDB annotator"
+        )
         myD["cntnt_type_btnlbl"] = "Notes" if contentType == "notes" else "Messages"
         myD["new_cntnt_type_btnlbl"] = "Note" if contentType == "notes" else "Message"
         myD["msgs_high_watermark"] = msgsHighWatermark
@@ -468,8 +620,19 @@ class MessagingDepict(object):
             for fileRef in p_msgDict["files_referenced"]:
                 filePathSplitArr = fileRef["relative_file_url"].split("/")
                 fileName = filePathSplitArr[len(filePathSplitArr) - 1]
-                displayUploadFlName = " (" + fileRef["upload_file_name"] + ")" if len(fileRef["upload_file_name"]) > 1 else ""
-                htmlStr += '<p><span class=""><a href="' + fileRef["relative_file_url"] + '" target="_blank">' + fileName + displayUploadFlName + "</a></span></p>"
+                displayUploadFlName = (
+                    " (" + fileRef["upload_file_name"] + ")"
+                    if len(fileRef["upload_file_name"]) > 1
+                    else ""
+                )
+                htmlStr += (
+                    '<p><span class=""><a href="'
+                    + fileRef["relative_file_url"]
+                    + '" target="_blank">'
+                    + fileName
+                    + displayUploadFlName
+                    + "</a></span></p>"
+                )
 
             myD["files_rfrncd_dsply"] = ""
             myD["files_rfrncd"] = htmlStr
@@ -502,7 +665,9 @@ class MessagingDepict(object):
         logger.info("myD is:  %r", myD)
 
         tmpltFile = "display_msg_tmplt.html"
-        oL.append(self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD))
+        oL.append(
+            self.processTemplate(tmpltPth=tmpltPath, fn=tmpltFile, parameterDict=myD)
+        )
         #
         logger.info("CStrack+++ use html template of *%s*", tmpltFile)
 
@@ -537,7 +702,9 @@ class MessagingDepict(object):
         #
         rtrnDict["sColumns"] = sColumns
 
-        aaDataList = self.__createDataTableAaDataList(p_msgColList, p_msgRcrdList, p_iDisplayStart)
+        aaDataList = self.__createDataTableAaDataList(
+            p_msgColList, p_msgRcrdList, p_iDisplayStart
+        )
         rtrnDict["aaData"] = aaDataList
 
         return rtrnDict
@@ -585,7 +752,9 @@ class MessagingDepict(object):
             # SECOND: generating HTML that serves as markup starter skeleton to be populated by DataTables
             ###############################################################################################
             mrkpList = []
-            srchHdrList = []  # separate list of markup representing <th> elements accommodating individual column search filtering
+            srchHdrList = (
+                []
+            )  # separate list of markup representing <th> elements accommodating individual column search filtering
 
             # Create dictionary of user-friendly labels for columns where desired.
             # The actual cif attribute name serves as the key and corresponding value is the friendlier label
@@ -611,21 +780,33 @@ class MessagingDepict(object):
 
                 mrkpList.append('<th class="cifitemhdr">' + colName + "</th>")
 
-                srchHdrList.append('<th><input type="text" name="search_' + str(idx) + '" placeholder="Search ' + colName + '" class="search_init" /></th>')
+                srchHdrList.append(
+                    '<th><input type="text" name="search_'
+                    + str(idx)
+                    + '" placeholder="Search '
+                    + colName
+                    + '" class="search_init" /></th>'
+                )
 
             mrkpList.append('</tr><tr class="srch_hdrs displaynone">')
             mrkpList.append("".join(srchHdrList))
 
-            mrkpList.append("</tr></thead><tbody></tbody></table>")  # 2015-04-16, RPS removed <tr></tr> as this was causing DataTables 1.10.5 to choke
+            mrkpList.append(
+                "</tr></thead><tbody></tbody></table>"
+            )  # 2015-04-16, RPS removed <tr></tr> as this was causing DataTables 1.10.5 to choke
 
             dtblConfigDict["ORDERED_COLUMN_LIST"] = msgColList
             dtblConfigDict["MSGS_ALREADY_READ"] = msgingIo.getMsgReadList(depId)
-            dtblConfigDict["MSGS_NO_ACTION_REQD"] = msgingIo.getMsgNoActionReqdList(depId)
+            dtblConfigDict["MSGS_NO_ACTION_REQD"] = msgingIo.getMsgNoActionReqdList(
+                depId
+            )
             dtblConfigDict["MSGS_FOR_RELEASE"] = msgingIo.getMsgForReleaseList(depId)
             dtblConfigDict["NOTES_MSG_IDS"] = msgingIo.getNotesList()
 
         else:
-            mrkpList = ["<h3>Problem getting messages for this deposition dataset.</h3>"]
+            mrkpList = [
+                "<h3>Problem getting messages for this deposition dataset.</h3>"
+            ]
         # RETURNing both markup and config dictionary
         return mrkpList, dtblConfigDict
 
@@ -651,7 +832,9 @@ class MessagingDepict(object):
         """
         if self.__verbose:
             logger.info("--------------------------------------------")
-            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+            logger.info(
+                "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
+            )
         rtrnLst = []
 
         for indx, row in enumerate(p_recordList):
@@ -704,7 +887,13 @@ class MessagingDepict(object):
         #
         fileSource = str(p_reqObj.getValue("filesource")).lower()
         #
-        if fileSource in ["archive", "wf-archive", "wf_archive", "wf-instance", "wf_instance"]:
+        if fileSource in [
+            "archive",
+            "wf-archive",
+            "wf_archive",
+            "wf-instance",
+            "wf_instance",
+        ]:
             # if the file source is any of the above then we are in the workflow manager environment
             return True
         else:
