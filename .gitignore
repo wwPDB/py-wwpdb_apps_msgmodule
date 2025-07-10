@@ -128,3 +128,6 @@ debug_*.py
 # Validation scripts (exclude essential ones)
 validate_*.py
 !scripts/validate_phase2_integration.py
+
+# Check scripts (manual compliance/status checks)
+check_*.py
