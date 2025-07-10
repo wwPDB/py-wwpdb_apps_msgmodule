@@ -37,9 +37,18 @@ class Message(object):
         Have to replace any ';' that begin a newline with a ' ;' in order to preserve ; matching required for multiline items
         """
         if sys.version_info[0] < 3:
-            return p_content.encode("ascii", "xmlcharrefreplace").replace("\n;", "\n ;").replace("\\\\xa0", " ")
+            return (
+                p_content.encode("ascii", "xmlcharrefreplace")
+                .replace("\n;", "\n ;")
+                .replace("\\\\xa0", " ")
+            )
         else:
-            return p_content.encode("ascii", "xmlcharrefreplace").decode("ascii").replace("\n;", "\n ;").replace("\\\\xa0", " ")
+            return (
+                p_content.encode("ascii", "xmlcharrefreplace")
+                .decode("ascii")
+                .replace("\n;", "\n ;")
+                .replace("\\\\xa0", " ")
+            )
 
     @staticmethod
     def fromReqObj(p_reqObj, verbose=True, log=sys.stderr):
@@ -59,12 +68,18 @@ class Message(object):
 
         msgDict["deposition_data_set_id"] = p_reqObj.getValue("identifier")
         msgDict["sender"] = p_reqObj.getValue("sender")
-        msgDict["message_subject"] = Message.encodeUtf8ToCif(p_reqObj.getRawValue("subject"))
-        msgDict["message_text"] = Message.encodeUtf8ToCif(p_reqObj.getRawValue("message"))
+        msgDict["message_subject"] = Message.encodeUtf8ToCif(
+            p_reqObj.getRawValue("subject")
+        )
+        msgDict["message_text"] = Message.encodeUtf8ToCif(
+            p_reqObj.getRawValue("message")
+        )
 
         #
         msgType = p_reqObj.getValue("message_type")
-        msgDict["message_type"] = msgType if msgType is not None and len(msgType) > 0 else "text"  # "archive" | "archive_manual" | "archive_flag" | "forward" | "forward_manual"
+        msgDict["message_type"] = (
+            msgType if msgType is not None and len(msgType) > 0 else "text"
+        )  # "archive" | "archive_manual" | "archive_flag" | "forward" | "forward_manual"
 
         # below two fields not currently used but may come into play in future
         msgDict["context_type"] = p_reqObj.getValue("context_type")
@@ -83,16 +98,28 @@ class Message(object):
         if msgDict["message_state"] == "draft" and msgId and len(msgId) > 1:
             msgDict["message_id"] = msgId
 
-        parentMsgId = p_reqObj.getValue("parent_msg_id")  # if this msg was in response to another msg
-        if msgDict["message_state"] == "livemsg" and parentMsgId and len(parentMsgId) > 1:
+        parentMsgId = p_reqObj.getValue(
+            "parent_msg_id"
+        )  # if this msg was in response to another msg
+        if (
+            msgDict["message_state"] == "livemsg"
+            and parentMsgId
+            and len(parentMsgId) > 1
+        ):
             msgDict["parent_message_id"] = parentMsgId
 
         contentType = p_reqObj.getValue("content_type")  # "notes" vs. "msgs"
 
-        fileRefLst = p_reqObj.getValueList("msg_file_references")  # msg_file_references includes file references selected via checkboxes in UI PLUS those references that represent
+        fileRefLst = p_reqObj.getValueList(
+            "msg_file_references"
+        )  # msg_file_references includes file references selected via checkboxes in UI PLUS those references that represent
         # auxiliary file uploads and which are added via processing in  MessingWebApp
 
-        msgCategory = p_reqObj.getValue("msg_category") if p_reqObj.getValue("msg_category") is not None else ""  # in support of "reminder" category of emails
+        msgCategory = (
+            p_reqObj.getValue("msg_category")
+            if p_reqObj.getValue("msg_category") is not None
+            else ""
+        )  # in support of "reminder" category of emails
 
         if contentType == "notes":
             return Note(msgDict, fileRefLst, verbose, log)
@@ -368,7 +395,11 @@ class Message(object):
 
         msgDI = MessagingDataImport(p_reqObj, verbose=self._verbose, log=self._lfh)
 
-        returnFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx") if self._isWorkflow(p_reqObj) else Message.defaultMsgsToDpstrFilePath
+        returnFilePath = (
+            msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+            if self._isWorkflow(p_reqObj)
+            else Message.defaultMsgsToDpstrFilePath
+        )
         logger.info("messages-to-depositor path is: %s", returnFilePath)
 
         return returnFilePath
@@ -382,7 +413,13 @@ class Message(object):
         #
         fileSource = str(p_reqObj.getValue("filesource")).lower()
         #
-        if fileSource and fileSource in ["archive", "wf-archive", "wf_archive", "wf-instance", "wf_instance"]:
+        if fileSource and fileSource in [
+            "archive",
+            "wf-archive",
+            "wf_archive",
+            "wf-instance",
+            "wf_instance",
+        ]:
             # if the file source is any of the above then we are in the workflow manager environment
             return True
         else:
@@ -416,7 +453,9 @@ class AutoMessage(Message):
         Message.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsAutoMsg = True
-        self._msgDict["message_state"] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
+        self._msgDict[
+            "message_state"
+        ] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
 
 
 class ReminderMessage(Message):
@@ -428,7 +467,9 @@ class ReminderMessage(Message):
         Message.__init__(self, p_msgDict, p_fileRefLst, p_verbose, p_log)
         #
         self._bIsReminderMsg = True
-        self._msgDict["message_state"] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
+        self._msgDict[
+            "message_state"
+        ] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
 
 
 class Note(Message):
@@ -449,7 +490,11 @@ class Note(Message):
 
         msgDI = MessagingDataImport(p_reqObj, verbose=self._verbose, log=self._lfh)
 
-        returnFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx") if self._isWorkflow(p_reqObj) else Message.defaultNotesFilePath
+        returnFilePath = (
+            msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
+            if self._isWorkflow(p_reqObj)
+            else Message.defaultNotesFilePath
+        )
         logger.info("-- notes-from-annotator path is: %s", returnFilePath)
 
         return returnFilePath
@@ -466,8 +511,14 @@ class AutoNote(Note):
     Support for optional email sending of message as well
     """
 
-    def __init__(self, p_msgDict, p_fileRefLst=None, p_verbose=True, p_log=sys.stderr, p_email=True):
-
+    def __init__(
+        self,
+        p_msgDict,
+        p_fileRefLst=None,
+        p_verbose=True,
+        p_log=sys.stderr,
+        p_email=True,
+    ):
         if p_fileRefLst is None:
             p_fileRefLst = []
 
@@ -475,5 +526,9 @@ class AutoNote(Note):
         #
         self._bIsAutoMsg = True
         self._bIsNoteEmail = p_email
-        self._msgDict["message_state"] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
-        self._msgDict["message_type"] = "archive_auto_noorig"  # Archive a note, but not original message
+        self._msgDict[
+            "message_state"
+        ] = "livemsg"  # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
+        self._msgDict[
+            "message_type"
+        ] = "archive_auto_noorig"  # Archive a note, but not original message
