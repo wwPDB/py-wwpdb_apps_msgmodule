@@ -72,7 +72,10 @@ logger = logging.getLogger(__name__)
 
 
 class WriteStrategy(Enum):
-    """Defines the write strategy for hybrid operations"""
+    """
+    DEPRECATED: Write strategies - replaced by feature flags in revised migration plan.
+    Kept for backward compatibility only.
+    """
     CIF_ONLY = "cif_only"
     DB_ONLY = "db_only"
     DUAL_WRITE = "dual_write"
@@ -265,21 +268,27 @@ class HybridMessagingIo:
     def __init__(self, 
                  verbose: bool = False,
                  log: Optional[Any] = None,
-                 site_id: str = "RCSB",
-                 write_strategy: WriteStrategy = WriteStrategy.DUAL_WRITE):
+                 site_id: str = "RCSB"):
         """
-        Initialize hybrid messaging I/O.
+        Initialize hybrid messaging I/O with revised migration plan approach.
         
         Args:
             verbose: Enable verbose logging
             log: Logger instance
             site_id: Site identifier
-            write_strategy: Strategy for write operations
         """
         self.__verbose = verbose
         self.__lfh = log if log else logging.getLogger(__name__)
         self.__siteId = site_id
-        self.__write_strategy = write_strategy
+        
+        # Initialize feature flag manager for revised plan
+        try:
+            from wwpdb.apps.msgmodule.util.FeatureFlagManager import get_feature_flag_manager
+            self._feature_manager = get_feature_flag_manager(site_id)
+        except ImportError:
+            # Fallback to environment variables
+            self._feature_manager = None
+            self.__lfh.warning("FeatureFlagManager not available, using environment fallback")
         
         # Backend health tracking
         self._backend_health = {
@@ -292,17 +301,29 @@ class HybridMessagingIo:
         
         # Initialize components
         self._metrics = PerformanceMetrics()
-        self._consistency_validator = ConsistencyValidator(self._cif_io, self._db_io)
+        if self._cif_io and self._db_io:
+            self._consistency_validator = ConsistencyValidator(self._cif_io, self._db_io)
+        else:
+            self._consistency_validator = None
         
-        # Feature flags (environment-based)
-        self._feature_flags = {
-            'enable_consistency_checks': os.getenv('MSGDB_CONSISTENCY_CHECKS', 'true').lower() == 'true',
-            'enable_metrics': os.getenv('MSGDB_METRICS', 'true').lower() == 'true',
-            'failover_threshold_ms': int(os.getenv('MSGDB_FAILOVER_THRESHOLD', '5000')),
-            'consistency_check_interval': int(os.getenv('MSGDB_CONSISTENCY_INTERVAL', '100'))
-        }
-        
-        self.__lfh.info(f"Initialized HybridMessagingIo with strategy: {write_strategy.value}")
+        # Log current configuration
+        self._log_configuration()
+    
+    def _log_configuration(self):
+        """Log current feature flag configuration"""
+        if self._feature_manager:
+            db_writes = self._feature_manager.is_database_writes_enabled()
+            db_reads = self._feature_manager.is_database_reads_enabled()
+            dual_write = self._feature_manager.is_dual_write_enabled()
+            cif_fallback = self._feature_manager.is_cif_fallback_enabled()
+            
+            self.__lfh.info(f"Messaging configuration - DB writes: {db_writes}, DB reads: {db_reads}, "
+                           f"Dual-write: {dual_write}, CIF fallback: {cif_fallback}")
+        else:
+            # Fallback to environment
+            db_writes = os.getenv('MSGDB_WRITES_ENABLED', 'true').lower() == 'true'
+            db_reads = os.getenv('MSGDB_READS_ENABLED', 'false').lower() == 'true'
+            self.__lfh.info(f"Messaging configuration (env) - DB writes: {db_writes}, DB reads: {db_reads}")
     
     def _initialize_backends(self):
         """Initialize CIF and database backends"""
@@ -359,9 +380,8 @@ class HybridMessagingIo:
             result = write_func(*args, **kwargs)
             duration_ms = (time.time() - start_time) * 1000
             
-            # Record metrics
-            if self._feature_flags['enable_metrics']:
-                self._metrics.record_write(backend_name, duration_ms, True)
+            # Record metrics (always enabled in revised plan)
+            self._metrics.record_write(backend_name, duration_ms, True)
             
             return WriteResult(
                 backend=backend_name,
@@ -373,9 +393,8 @@ class HybridMessagingIo:
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
             
-            # Record metrics
-            if self._feature_flags['enable_metrics']:
-                self._metrics.record_write(backend_name, duration_ms, False)
+            # Record metrics (always enabled in revised plan)
+            self._metrics.record_write(backend_name, duration_ms, False)
             
             self.__lfh.error(f"{backend_name} write failed: {e}")
             return WriteResult(
@@ -391,7 +410,7 @@ class HybridMessagingIo:
                    messageSubject: str = "",
                    **kwargs) -> bool:
         """
-        Add a message using hybrid write strategy.
+        Add a message using revised migration plan approach.
         
         Args:
             depositionDataSetId: Deposition dataset ID
@@ -400,23 +419,32 @@ class HybridMessagingIo:
             **kwargs: Additional message parameters
             
         Returns:
-            bool: True if write successful according to strategy
+            bool: True if write successful
         """
-        if self.__write_strategy == WriteStrategy.CIF_ONLY:
-            return self._write_cif_only(depositionDataSetId, messageText, messageSubject, **kwargs)
-        
-        elif self.__write_strategy == WriteStrategy.DB_ONLY:
-            return self._write_db_only(depositionDataSetId, messageText, messageSubject, **kwargs)
-        
-        elif self.__write_strategy == WriteStrategy.DUAL_WRITE:
-            return self._write_dual(depositionDataSetId, messageText, messageSubject, **kwargs)
-        
-        elif self.__write_strategy == WriteStrategy.DB_PRIMARY_CIF_FALLBACK:
-            return self._write_db_primary_with_fallback(depositionDataSetId, messageText, messageSubject, **kwargs)
-        
+        # Determine write strategy based on feature flags
+        if self._feature_manager:
+            dual_write_enabled = self._feature_manager.is_dual_write_enabled()
+            db_writes_enabled = self._feature_manager.is_database_writes_enabled()
+            cif_fallback_enabled = self._feature_manager.is_cif_fallback_enabled()
         else:
-            self.__lfh.error(f"Unknown write strategy: {self.__write_strategy}")
-            return False
+            # Fallback to environment variables
+            dual_write_enabled = os.getenv('MSGDB_DUAL_WRITE', 'false').lower() == 'true'
+            db_writes_enabled = os.getenv('MSGDB_WRITES_ENABLED', 'true').lower() == 'true'
+            cif_fallback_enabled = os.getenv('MSGDB_CIF_FALLBACK', 'true').lower() == 'true'
+        
+        # Execute write strategy according to revised plan
+        if dual_write_enabled:
+            # Legacy dual-write for sites that require it
+            return self._write_dual(depositionDataSetId, messageText, messageSubject, **kwargs)
+        elif db_writes_enabled:
+            # Default: database-only with optional CIF fallback
+            if cif_fallback_enabled:
+                return self._write_db_with_cif_fallback(depositionDataSetId, messageText, messageSubject, **kwargs)
+            else:
+                return self._write_db_only(depositionDataSetId, messageText, messageSubject, **kwargs)
+        else:
+            # Rollback mode: CIF-only
+            return self._write_cif_only(depositionDataSetId, messageText, messageSubject, **kwargs)
     
     def _write_cif_only(self, depositionDataSetId: str, messageText: str, messageSubject: str, **kwargs) -> bool:
         """Write to CIF backend only"""
@@ -482,8 +510,8 @@ class HybridMessagingIo:
         total_duration = (time.time() - start_time) * 1000
         dual_success = (cif_result and cif_result.success) and (db_result and db_result.success)
         
-        if self._feature_flags['enable_metrics']:
-            self._metrics.record_write('dual', total_duration, dual_success)
+        # Record dual write timing (always enabled in revised plan)
+        self._metrics.record_write('dual', total_duration, dual_success)
         
         # Log results
         if cif_result and not cif_result.success:
@@ -495,8 +523,8 @@ class HybridMessagingIo:
         # For dual write, we require both to succeed
         return dual_success
     
-    def _write_db_primary_with_fallback(self, depositionDataSetId: str, messageText: str, messageSubject: str, **kwargs) -> bool:
-        """Write to database with CIF fallback on failure"""
+    def _write_db_with_cif_fallback(self, depositionDataSetId: str, messageText: str, messageSubject: str, **kwargs) -> bool:
+        """Write to database with CIF fallback on failure (revised plan approach)"""
         # Try database first
         if self._db_io:
             db_result = self._execute_write_with_timing(
@@ -511,9 +539,8 @@ class HybridMessagingIo:
             if db_result.success:
                 return True
             
-            # Check if we should fallback based on error type or timing
-            if db_result.duration_ms > self._feature_flags['failover_threshold_ms']:
-                self.__lfh.warning(f"Database write exceeded threshold ({db_result.duration_ms}ms), falling back to CIF")
+            # Log database failure and prepare for fallback
+            self.__lfh.warning(f"Database write failed: {db_result.error}, falling back to CIF")
         
         # Fallback to CIF
         self.__lfh.info("Falling back to CIF backend")
@@ -528,11 +555,12 @@ class HybridMessagingIo:
             )
             return cif_result.success
         
+        self.__lfh.error("Both database and CIF backends failed")
         return False
     
     def fetchMessages(self, depositionDataSetId: str, **kwargs) -> List[Dict]:
         """
-        Fetch messages using the primary backend based on strategy.
+        Fetch messages using revised migration plan approach.
         
         Args:
             depositionDataSetId: Deposition dataset ID
@@ -541,13 +569,21 @@ class HybridMessagingIo:
         Returns:
             List[Dict]: List of messages
         """
-        # For reads, prefer database if available, otherwise CIF
-        if self._db_io and self._backend_health['database'] == BackendStatus.HEALTHY:
+        # Determine read strategy based on feature flags
+        if self._feature_manager:
+            db_reads_enabled = self._feature_manager.is_database_reads_enabled()
+        else:
+            # Fallback to environment variables
+            db_reads_enabled = os.getenv('MSGDB_READS_ENABLED', 'false').lower() == 'true'
+        
+        # Execute read strategy according to revised plan
+        if db_reads_enabled and self._db_io and self._backend_health['database'] == BackendStatus.HEALTHY:
             try:
                 return self._db_io.fetchMessages(depositionDataSetId, **kwargs)
             except Exception as e:
                 self.__lfh.warning(f"Database read failed, falling back to CIF: {e}")
         
+        # Default or fallback: read from CIF
         if self._cif_io and self._backend_health['cif'] == BackendStatus.HEALTHY:
             return self._cif_io.fetchMessages(depositionDataSetId, **kwargs)
         
@@ -556,7 +592,12 @@ class HybridMessagingIo:
     
     def validateConsistency(self, depositionDataSetId: str) -> ConsistencyCheck:
         """Validate data consistency between backends"""
-        if not self._feature_flags['enable_consistency_checks']:
+        # Check if consistency checks are enabled via feature manager
+        consistency_enabled = True
+        if self._feature_manager:
+            consistency_enabled = self._feature_manager.is_enabled('consistency_checks')
+        
+        if not consistency_enabled:
             return ConsistencyCheck(
                 deposition_id=depositionDataSetId,
                 cif_count=0,
@@ -568,8 +609,8 @@ class HybridMessagingIo:
         
         result = self._consistency_validator.validate_deposition(depositionDataSetId)
         
-        if self._feature_flags['enable_metrics']:
-            self._metrics.record_consistency_check(result.consistent)
+        # Record consistency check metrics (always enabled in revised plan)
+        self._metrics.record_consistency_check(result.consistent)
         
         return result
     
@@ -577,15 +618,49 @@ class HybridMessagingIo:
         """Get performance metrics summary"""
         metrics = self._metrics.get_summary()
         metrics['backend_health'] = dict(self._backend_health)
-        metrics['write_strategy'] = self.__write_strategy.value
-        metrics['feature_flags'] = dict(self._feature_flags)
+        
+        # Include current feature flag status
+        if self._feature_manager:
+            metrics['feature_flags'] = {
+                'database_writes_enabled': self._feature_manager.is_database_writes_enabled(),
+                'database_reads_enabled': self._feature_manager.is_database_reads_enabled(),
+                'dual_write_enabled': self._feature_manager.is_dual_write_enabled(),
+                'cif_fallback_enabled': self._feature_manager.is_cif_fallback_enabled()
+            }
+        else:
+            # Fallback to environment
+            metrics['feature_flags'] = {
+                'database_writes_enabled': os.getenv('MSGDB_WRITES_ENABLED', 'true').lower() == 'true',
+                'database_reads_enabled': os.getenv('MSGDB_READS_ENABLED', 'false').lower() == 'true',
+                'dual_write_enabled': os.getenv('MSGDB_DUAL_WRITE', 'false').lower() == 'true'
+            }
+        
         return metrics
     
     def setWriteStrategy(self, strategy: WriteStrategy):
-        """Change the write strategy at runtime"""
-        old_strategy = self.__write_strategy
-        self.__write_strategy = strategy
-        self.__lfh.info(f"Write strategy changed from {old_strategy.value} to {strategy.value}")
+        """
+        DEPRECATED: Change the write strategy at runtime.
+        Use feature flags instead in revised migration plan.
+        """
+        self.__lfh.warning("setWriteStrategy is deprecated. Use feature flags for write control.")
+        
+        # Map legacy strategy to feature flags for backward compatibility
+        if self._feature_manager:
+            if strategy == WriteStrategy.CIF_ONLY:
+                self._feature_manager.disable_flag('database_writes_enabled')
+                self._feature_manager.disable_flag('dual_write_enabled')
+            elif strategy == WriteStrategy.DB_ONLY:
+                self._feature_manager.enable_flag('database_writes_enabled')
+                self._feature_manager.disable_flag('dual_write_enabled')
+                self._feature_manager.disable_flag('cif_fallback_enabled')
+            elif strategy == WriteStrategy.DUAL_WRITE:
+                self._feature_manager.enable_flag('dual_write_enabled')
+            elif strategy == WriteStrategy.DB_PRIMARY_CIF_FALLBACK:
+                self._feature_manager.enable_flag('database_writes_enabled')
+                self._feature_manager.enable_flag('cif_fallback_enabled')
+                self._feature_manager.disable_flag('dual_write_enabled')
+        
+        self.__lfh.info(f"Mapped legacy write strategy {strategy.value} to feature flags")
     
     def getBackendHealth(self) -> Dict[str, str]:
         """Get current backend health status"""
