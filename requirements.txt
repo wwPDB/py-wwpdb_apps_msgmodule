@@ -10,7 +10,18 @@ wwpdb.apps.wf_engine
 wwpdb.utils.nmr
 
 # Database connectivity for message storage migration
-mysql-connector-python >= 8.0.32
+# Compatible with MySQL 5.7 or newer
+mysql-connector-python >= 8.0.12
+PyMySQL >= 1.0.0  # Pure Python MySQL client (MySQLdb replacement)
+
+# Additional NMR processing dependencies
+pynmrstar >= 3.3.0
+antlr4-python3-runtime ~= 4.13.0
+rmsd
+striprtf
+
+# Note: wwpdb.utils.align has CMake < 3.5 compatibility issues on modern systems
+# and cannot be installed without package maintainer fixes
 
 # For testing python 2
 mock; python_version < '3'
