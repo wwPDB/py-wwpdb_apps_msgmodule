@@ -21,6 +21,7 @@ class DaInternalDb(object):
     Args:
         object (obj): object
     """
+
     def __init__(self, siteId=None):
         """Initiator
 
@@ -32,8 +33,7 @@ class DaInternalDb(object):
         self.__open()
 
     def __del__(self):
-        """Finalizer. Close DB connection when all references to the object have been deleted.
-        """
+        """Finalizer. Close DB connection when all references to the object have been deleted."""
         self.__close()
 
     def __open(self, resource="DA_INTERNAL"):
@@ -56,8 +56,7 @@ class DaInternalDb(object):
         return True
 
     def __close(self):
-        """Proper DB closure
-        """
+        """Proper DB closure"""
         if self.__mydb:
             self.__mydb.closeConnection()
             self.__mydb = None
@@ -86,7 +85,9 @@ class DaInternalDb(object):
         Returns:
             bool: True/False
         """
-        query = "select structure_id from rcsb_status where structure_id = '%s'" % dep_id
+        query = (
+            "select structure_id from rcsb_status where structure_id = '%s'" % dep_id
+        )
         rows = self.run(query)
         if rows:
             return True
@@ -118,7 +119,10 @@ class DaInternalDb(object):
         Returns:
             bool: True/False
         """
-        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % pdb_ext_id
+        query = (
+            "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'"
+            % pdb_ext_id
+        )
         rows = self.run(query)
         if rows:
             return True
@@ -134,7 +138,10 @@ class DaInternalDb(object):
         Returns:
             bool: True/False
         """
-        query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
+        query = (
+            "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'"
+            % emdb_id
+        )
         rows = self.run(query)
         if rows:
             return True
@@ -166,7 +173,10 @@ class DaInternalDb(object):
         Returns:
             str: valid deposition id at this site, or None
         """
-        query = "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'" % pdb_ext_id
+        query = (
+            "select structure_id from database_2 where database_id = 'PDB' and pdbx_database_accession = '%s'"
+            % pdb_ext_id
+        )
         rows = self.run(query)
         if rows:
             return rows[0][0]
@@ -182,7 +192,10 @@ class DaInternalDb(object):
         Returns:
             str: valid deposition id at this site, or None
         """
-        query = "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'" % emdb_id
+        query = (
+            "select structure_id from database_2 where database_id = 'EMDB' and database_code = '%s'"
+            % emdb_id
+        )
         rows = self.run(query)
         if rows:
             return rows[0][0]
