@@ -14,7 +14,9 @@ if __package__ is None or __package__ == "":
     from os import path
 
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT  # noqa:  F401 pylint: disable=import-error,unused-import
+    from commonsetup import (
+        TESTOUTPUT,
+    )  # noqa:  F401 pylint: disable=import-error,unused-import
 else:
     from .commonsetup import TESTOUTPUT  # noqa: F401
 
@@ -22,7 +24,11 @@ from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 from wwpdb.utils.session.WebRequest import InputRequest
 
 # Need to use force due to pynmrstar setting up logging when it should not
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s]-%(module)s.%(funcName)s: %(message)s", force=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s]-%(module)s.%(funcName)s: %(message)s",
+    force=True,
+)
 logger = logging.getLogger()
 logger.setLevel(logging.ERROR)
 l2 = logging.getLogger("wwpdb.apps.msgmodule.io.MessagingDataImport")
@@ -41,7 +47,6 @@ class TestSignatures(unittest.TestCase):
         pass
 
     def __createTemplate(self, siteid, fName, emEntry, haveModel):
-
         if emEntry:
             if haveModel:
                 rqstdacc = "EMDB,PDB"
@@ -108,7 +113,11 @@ class TestSignatures(unittest.TestCase):
                 fName = os.path.join(fPath, "%s_model_P1.cif.V1" % depid)
                 self.__createTemplate(siteid, fName, ementry, model)
 
-                paramDict = {"filesource": ["archive"], "TopSessionPath": [TESTOUTPUT], "identifier": [depid]}
+                paramDict = {
+                    "filesource": ["archive"],
+                    "TopSessionPath": [TESTOUTPUT],
+                    "identifier": [depid],
+                }
                 if ementry:
                     paramDict["expmethod"] = ["ELECTRON MICROSCOPY"]
                 else:

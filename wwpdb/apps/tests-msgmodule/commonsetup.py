@@ -18,10 +18,17 @@ except ImportError:
 configInfo = {
     "SITE_REFDATA_PROJ_NAME_CC": "ligand-dict-v3",
     "REFERENCE_PATH": os.path.join(HERE, "data"),
-    "RO_RESOURCE_PATH": os.path.join(HERE, os.pardir, os.pardir, "mock-data", "da_top", "resources_ro"),
+    "RO_RESOURCE_PATH": os.path.join(
+        HERE, os.pardir, os.pardir, "mock-data", "da_top", "resources_ro"
+    ),
     "SITE_ARCHIVE_STORAGE_PATH": os.path.join(TESTOUTPUT, "data"),
     "SITE_WEB_APPS_TOP_PATH": TESTOUTPUT,
-    "FILE_FORMAT_EXTENSION_DICTIONARY": {"pdbx": "cif", "pdb": "pdb", "nmr-star": "str", "txt": "txt"},
+    "FILE_FORMAT_EXTENSION_DICTIONARY": {
+        "pdbx": "cif",
+        "pdb": "pdb",
+        "nmr-star": "str",
+        "txt": "txt",
+    },
     "CONTENT_TYPE_DICTIONARY": {
         "model": (["pdbx", "pdb", "pdbml", "cifeps"], "model"),
         "messages-from-depositor": (["pdbx"], "messages-from-depositor"),
@@ -46,5 +53,9 @@ sys.modules["wwpdb.utils.config.ConfigInfo"] = Mock(ConfigInfo=configMock)
 #  brainPageContactList = ss.runSelectNQ(table="user_data", select=["email", "role", "last_name"], where={"dep_set_id": self.__depId, "role": roleFilter})
 # The only place that dbAPI is used is to get the contact author
 dbAPIMock = MagicMock()
-dbAPIMock.dbAPI.runSelectNQ.return_value = ["someone@unknown.com", "principal investigator/group leader", "One"]
+dbAPIMock.dbAPI.runSelectNQ.return_value = [
+    "someone@unknown.com",
+    "principal investigator/group leader",
+    "One",
+]
 sys.modules["wwpdb.utils.wf.dbapi.dbAPI"] = dbAPIMock
