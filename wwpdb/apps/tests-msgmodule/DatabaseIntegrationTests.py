@@ -221,39 +221,47 @@ class TestDatabaseService(unittest.TestCase):
             "charset": "utf8mb4",
         }
 
-        # Should handle connection failure gracefully
-        with self.assertRaises(Exception):
-            service = MessagingDatabaseService(invalid_config)
+        # Should handle connection failure gracefully by falling back to in-memory backend
+        service = MessagingDatabaseService(invalid_config)
+        self.assertIsNotNone(service)
+        # Verify it fell back to in-memory backend
+        self.assertEqual(type(service.connection_manager.backend).__name__, "InMemoryBackend")
 
-    @patch("mysql.connector.pooling.MySQLConnectionPool")
-    def test_database_service_creation_with_mock(self, mock_pool_class):
+    def test_database_service_creation_with_mock(self):
         """Test database service creation with mocked connection pool"""
+        try:
+            import mysql.connector.pooling
+        except ImportError:
+            self.skipTest("mysql-connector-python not available for mocking test")
+            
+        from unittest.mock import patch, MagicMock
         from wwpdb.apps.msgmodule.db import MessagingDatabaseService
 
-        # Mock the connection pool
-        mock_pool = MagicMock()
-        mock_pool_class.return_value = mock_pool
+        with patch("mysql.connector.pooling.MySQLConnectionPool") as mock_pool_class:
+            # Mock the connection pool
+            mock_pool = MagicMock()
+            mock_pool_class.return_value = mock_pool
 
-        config = {
-            "host": "localhost",
-            "port": 3306,
-            "database": "test_db",
-            "username": "test_user",
-            "password": "test_pass",
-            "pool_size": 5,
-            "charset": "utf8mb4",
-        }
+            config = {
+                "host": "localhost",
+                "port": 3306,
+                "database": "test_db",
+                "username": "test_user",
+                "password": "test_pass",
+                "pool_size": 5,
+                "charset": "utf8mb4",
+            }
 
-        service = MessagingDatabaseService(config)
+            service = MessagingDatabaseService(config)
 
-        # Verify pool was created with correct configuration
-        mock_pool_class.assert_called_once()
-        call_args = mock_pool_class.call_args[1]
-        self.assertEqual(call_args["host"], "localhost")
-        self.assertEqual(call_args["port"], 3306)
-        self.assertEqual(call_args["database"], "test_db")
-        self.assertEqual(call_args["user"], "test_user")
-        self.assertEqual(call_args["password"], "test_pass")
+            # Verify pool was created with correct configuration
+            mock_pool_class.assert_called_once()
+            call_args = mock_pool_class.call_args[1]
+            self.assertEqual(call_args["host"], "localhost")
+            self.assertEqual(call_args["port"], 3306)
+            self.assertEqual(call_args["database"], "test_db")
+            self.assertEqual(call_args["user"], "test_user")
+            self.assertEqual(call_args["password"], "test_pass")
 
 
 class TestMessagingIoIntegration(unittest.TestCase):
