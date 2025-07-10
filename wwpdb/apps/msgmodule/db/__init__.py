@@ -8,7 +8,7 @@ migration from CIF file-based storage to relational database storage.
 from .config import (
     MessagingDatabaseConfig,
     get_messaging_database_config,
-    is_messaging_database_enabled
+    is_messaging_database_enabled,
 )
 
 from .messaging_dal import (
@@ -16,16 +16,16 @@ from .messaging_dal import (
     MessageRecord,
     MessageFileReference,
     MessageStatus,
-    DatabaseConnectionManager
+    DatabaseConnectionManager,
 )
 
 __all__ = [
-    'MessagingDatabaseConfig',
-    'get_messaging_database_config', 
-    'is_messaging_database_enabled',
-    'MessagingDatabaseService',
-    'MessageRecord',
-    'MessageFileReference',
-    'MessageStatus',
-    'DatabaseConnectionManager'
+    "MessagingDatabaseConfig",
+    "get_messaging_database_config",
+    "is_messaging_database_enabled",
+    "MessagingDatabaseService",
+    "MessageRecord",
+    "MessageFileReference",
+    "MessageStatus",
+    "DatabaseConnectionManager",
 ]
