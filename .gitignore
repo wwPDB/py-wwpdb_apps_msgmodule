@@ -124,3 +124,6 @@ workflow_test_report.json
 
 # Debugging scripts
 debug_*.py
+
+# Validation scripts
+validate_*.py

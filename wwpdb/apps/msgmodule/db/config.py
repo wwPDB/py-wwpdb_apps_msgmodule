@@ -8,9 +8,59 @@ fallback mechanisms for development and testing.
 
 import os
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, List, Any
 
 logger = logging.getLogger(__name__)
+
+
+class DatabaseConfig:
+    """Simple database configuration class for Phase 2 compatibility"""
+    
+    def __init__(self):
+        """Initialize database configuration"""
+        self.config = self._load_config()
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from environment variables"""
+        return {
+            'enabled': os.getenv('MSGDB_ENABLED', 'false').lower() == 'true',
+            'host': os.getenv('MSGDB_HOST', 'localhost'),
+            'port': int(os.getenv('MSGDB_PORT', '3306')),
+            'database': os.getenv('MSGDB_NAME', 'wwpdb_messaging'),
+            'user': os.getenv('MSGDB_USER', 'msgdb_user'),
+            'password': os.getenv('MSGDB_PASS', ''),
+            'pool_size': int(os.getenv('MSGDB_POOL_SIZE', '10')),
+            'pool_recycle': int(os.getenv('MSGDB_POOL_RECYCLE', '3600')),
+            'autocommit': True,
+            'charset': 'utf8mb4'
+        }
+    
+    def is_enabled(self) -> bool:
+        """Check if database is enabled"""
+        return self.config.get('enabled', False)
+    
+    def get_config(self) -> Dict[str, Any]:
+        """Get the complete configuration"""
+        return dict(self.config)
+    
+    def validate(self) -> Tuple[bool, List[str]]:
+        """Validate the configuration"""
+        errors = []
+        
+        if self.is_enabled():
+            if not self.config.get('host'):
+                errors.append("Missing required database configuration: host")
+            
+            if not self.config.get('database'):
+                errors.append("Missing required database configuration: database")
+            
+            if not self.config.get('user'):
+                errors.append("Missing required database configuration: user")
+            
+            if not isinstance(self.config.get('port'), int) or self.config.get('port') <= 0:
+                errors.append("Database port must be a positive integer")
+        
+        return len(errors) == 0, errors
 
 
 class MessagingDatabaseConfig:
