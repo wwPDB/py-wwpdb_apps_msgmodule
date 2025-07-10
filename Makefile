@@ -1,7 +1,7 @@
-# wwPDB Communication Module - Phase 2 Hybrid Operations Makefile
+# wwPDB Communication Module - Phase 2 Database Operations Makefile
 # Automates build, test, validate, deploy, and documentation tasks
 
-.PHONY: help clean install build test test-unit test-integration test-hybrid validate validate-phase2 \
+.PHONY: help clean install build test test-unit test-integration test-database validate validate-phase2 \
         lint format check-format security docs serve-docs deploy deploy-dev deploy-production \
         backup restore monitor status health feature-flags
 
@@ -36,7 +36,7 @@ NC := \033[0m # No Color
 
 # Default target
 help: ## Show this help message
-	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Hybrid Operations$(NC)"
+	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Database Operations$(NC)"
 	@echo "$(YELLOW)Available targets:$(NC)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -121,10 +121,10 @@ test: test-phase2 ## Run all available tests
 test-unit: ## Run unit tests
 	@echo "$(GREEN)Running unit tests...$(NC)"
 	@if [ -d "$(TESTS_DIR)" ]; then \
-		TEST_FILES=$$(find $(TESTS_DIR) -name "*Tests.py" ! -name "HybridOperationsTests.py" 2>/dev/null | head -1); \
+		TEST_FILES=$$(find $(TESTS_DIR) -name "*Tests.py" ! -name "DatabaseOperationsTests.py" 2>/dev/null | head -1); \
 		if [ -n "$$TEST_FILES" ]; then \
 			$(PYTEST) $(TESTS_DIR) -v --tb=short \
-				--ignore=$(TESTS_DIR)/HybridOperationsTests.py \
+				--ignore=$(TESTS_DIR)/DatabaseOperationsTests.py \
 				--cov=$(SOURCE_DIR) --cov-report=term-missing; \
 		else \
 			echo "$(YELLOW)No unit test files found in $(TESTS_DIR)$(NC)"; \
@@ -143,18 +143,18 @@ test-integration: ## Run integration tests
 		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
 	fi
 
-test-hybrid: ## Run Phase 2 hybrid operations tests
-	@echo "$(GREEN)Running Phase 2 hybrid operations tests...$(NC)"
-	@if [ -f "$(TESTS_DIR)/HybridOperationsTests.py" ]; then \
-		$(PYTEST) $(TESTS_DIR)/HybridOperationsTests.py -v --tb=short \
-			--cov=$(SOURCE_DIR) --cov-report=html || echo "$(YELLOW)Some hybrid tests failed$(NC)"; \
+test-database: ## Run Phase 2 database operations tests
+	@echo "$(GREEN)Running Phase 2 database operations tests...$(NC)"
+	@if [ -f "$(TESTS_DIR)/DatabaseOperationsTests.py" ]; then \
+		$(PYTEST) $(TESTS_DIR)/DatabaseOperationsTests.py -v --tb=short \
+			--cov=$(SOURCE_DIR) --cov-report=html || echo "$(YELLOW)Some database tests failed$(NC)"; \
 	else \
-		echo "$(YELLOW)Hybrid operations test file not found$(NC)"; \
+		echo "$(YELLOW)Database operations test file not found$(NC)"; \
 	fi
 
 test-phase2: ## Run Phase 2 specific tests and validation
 	@echo "$(GREEN)Running Phase 2 tests and validation...$(NC)"
-	@$(MAKE) test-hybrid
+	@$(MAKE) test-database
 	@$(MAKE) validate-phase2
 
 test-coverage: ## Generate detailed test coverage report
@@ -180,7 +180,7 @@ validate-phase2: ## Validate Phase 2 implementation
 
 validate-config: ## Validate configuration files
 	@echo "$(GREEN)Validating configuration...$(NC)"
-	@$(PYTHON) -c "from wwpdb.apps.msgmodule.db.config import DatabaseConfig; DatabaseConfig.validate_environment()"
+	@$(PYTHON) -c "from wwpdb.apps.msgmodule.db.config import DatabaseConfig; config = DatabaseConfig(); is_valid, errors = config.validate(); print('Valid:', is_valid); print('Errors:', errors)"
 	@echo "$(GREEN)Configuration validation complete!$(NC)"
 
 # Code Quality Tasks
@@ -304,12 +304,12 @@ dev-setup: install-dev ## Setup complete development environment
 
 dev-test: ## Quick development test cycle
 	@echo "$(GREEN)Running development test cycle...$(NC)"
-	@$(MAKE) test-hybrid
+	@$(MAKE) test-database
 	@$(MAKE) validate-phase2
 
 dev-commit: ## Run checks before committing
 	@echo "$(GREEN)Running pre-commit checks...$(NC)"
-	@$(MAKE) check-format lint test-hybrid
+	@$(MAKE) check-format lint test-database
 	@echo "$(GREEN)Ready to commit!$(NC)"
 
 # CI/CD Integration
@@ -352,7 +352,7 @@ version: ## Show version information
 	@echo "Environment: $(ENV)"
 
 info: ## Show project information
-	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Hybrid Operations$(NC)"
+	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Database Operations$(NC)"
 	@echo "Package: $(PACKAGE_NAME)"
 	@echo "Source: $(SOURCE_DIR)"
 	@echo "Tests: $(TESTS_DIR)"
@@ -360,7 +360,7 @@ info: ## Show project information
 	@echo "Scripts: $(SCRIPTS_DIR)"
 	@echo ""
 	@echo "$(YELLOW)Key Features:$(NC)"
-	@echo "  - Dual-write hybrid backend (CIF + DB)"
+	@echo "  - Database-primary operations with CIF fallback"
 	@echo "  - Automatic failover and circuit breaker protection"
 	@echo "  - Dynamic feature flag management"
 	@echo "  - Comprehensive validation and testing"
