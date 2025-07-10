@@ -281,18 +281,18 @@ class HybridMessagingIo:
         self.__siteId = site_id
         self.__write_strategy = write_strategy
         
+        # Backend health tracking
+        self._backend_health = {
+            'cif': BackendStatus.UNKNOWN,
+            'database': BackendStatus.UNKNOWN
+        }
+        
         # Initialize backends
         self._initialize_backends()
         
         # Initialize components
         self._metrics = PerformanceMetrics()
         self._consistency_validator = ConsistencyValidator(self._cif_io, self._db_io)
-        
-        # Backend health tracking
-        self._backend_health = {
-            'cif': BackendStatus.UNKNOWN,
-            'database': BackendStatus.UNKNOWN
-        }
         
         # Feature flags (environment-based)
         self._feature_flags = {
