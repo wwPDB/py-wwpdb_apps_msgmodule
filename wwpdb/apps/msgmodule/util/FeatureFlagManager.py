@@ -328,6 +328,25 @@ class FeatureFlagManager:
             )
             self.logger.info(f"Created new dynamic flag {flag_name}: enabled={enabled}, rollout={rollout_percentage}%")
     
+    def enable_flag(self, flag_name: str, rollout_percentage: float = 100.0):
+        """
+        Enable a feature flag.
+        
+        Args:
+            flag_name: Name of the feature flag
+            rollout_percentage: Percentage rollout (0-100)
+        """
+        self.set_flag(flag_name, True, rollout_percentage)
+    
+    def disable_flag(self, flag_name: str):
+        """
+        Disable a feature flag.
+        
+        Args:
+            flag_name: Name of the feature flag
+        """
+        self.set_flag(flag_name, False, 0.0)
+    
     def get_all_flags(self) -> Dict[str, Dict[str, Any]]:
         """Get all feature flags and their current status"""
         return {name: asdict(flag) for name, flag in self._flags.items()}
