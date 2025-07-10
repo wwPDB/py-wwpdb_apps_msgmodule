@@ -125,5 +125,6 @@ workflow_test_report.json
 # Debugging scripts
 debug_*.py
 
-# Validation scripts
+# Validation scripts (exclude essential ones)
 validate_*.py
+!scripts/validate_phase2_integration.py
