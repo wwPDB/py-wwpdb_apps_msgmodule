@@ -131,3 +131,4 @@ validate_*.py
 
 # Check scripts (manual compliance/status checks)
 check_*.py
+*_report.py
