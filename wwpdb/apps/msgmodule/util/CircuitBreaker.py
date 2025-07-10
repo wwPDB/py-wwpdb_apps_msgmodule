@@ -287,6 +287,9 @@ class CircuitBreaker:
         with self._lock:
             self.logger.warning(f"Circuit breaker '{self.name}' manually forced open")
             self._open_circuit()
+            # Set last failure time to current time to prevent immediate reset
+            self._last_failure_time = time.time()
+            self.metrics.last_failure_time = datetime.now()
     
     def force_close(self):
         """Manually force circuit breaker closed"""
