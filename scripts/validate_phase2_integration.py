@@ -27,43 +27,35 @@ def setup_logging():
     )
 
 def test_hybrid_io_integration():
-    """Test HybridMessagingIo integration with all strategies"""
+    """Test HybridMessagingIo integration with revised feature flag approach"""
     try:
-        from wwpdb.apps.msgmodule.io.HybridMessagingIo import HybridMessagingIo, WriteStrategy
+        from wwpdb.apps.msgmodule.io.HybridMessagingIo import HybridMessagingIo
+        from wwpdb.apps.msgmodule.util.FeatureFlagManager import FeatureFlagManager
         
-        # Test with all strategies
-        strategies = [
-            WriteStrategy.CIF_ONLY,
-            WriteStrategy.DB_ONLY, 
-            WriteStrategy.DUAL_WRITE,
-            WriteStrategy.DB_PRIMARY_CIF_FALLBACK
-        ]
+        # Test default configuration (database writes enabled, dual-write disabled)
+        hybrid_io = HybridMessagingIo(
+            verbose=True,
+            site_id="INTEGRATION_TEST"
+        )
         
-        for strategy in strategies:
-            hybrid_io = HybridMessagingIo(
-                verbose=True,
-                site_id="INTEGRATION_TEST",
-                write_strategy=strategy
-            )
-            
-            # Test basic operations
-            result = hybrid_io.addMessage(
-                depositionDataSetId="D_TEST_001",
-                messageText="Integration test message",
-                messageSubject="Integration Test"
-            )
-            
-            # Test metrics
-            metrics = hybrid_io.getPerformanceMetrics()
-            assert 'backend_health' in metrics
-            assert 'write_strategy' in metrics
-            
-            # Test health monitoring
-            health = hybrid_io.getBackendHealth()
-            assert 'cif' in health
-            assert 'database' in health
-            
-            print(f"✅ Strategy {strategy.value}: Hybrid I/O integration working")
+        # Test basic operations with default settings
+        result = hybrid_io.addMessage(
+            depositionDataSetId="D_TEST_001",
+            messageText="Integration test message",
+            messageSubject="Integration Test"
+        )
+        
+        # Test metrics
+        metrics = hybrid_io.getPerformanceMetrics()
+        assert 'backend_health' in metrics
+        assert 'feature_flags' in metrics
+        
+        # Test health monitoring
+        health = hybrid_io.getBackendHealth()
+        assert 'cif' in health
+        assert 'database' in health
+        
+        print("✅ Revised approach: Hybrid I/O integration working")
         
         return True
         
@@ -93,9 +85,11 @@ def test_feature_flags_integration():
                   .with_user('test_user')
                   .build())
         
-        # Test strategy recommendation
-        strategy = manager.get_recommended_write_strategy(context)
-        assert strategy in ['cif_only', 'dual_write', 'db_primary_cif_fallback', 'db_only']
+        # Test revised plan convenience methods
+        assert manager.is_database_writes_enabled() == True  # Default in revised plan
+        assert manager.is_database_reads_enabled() == False  # Phase 4
+        assert manager.is_cif_fallback_enabled() == True    # Fallback enabled
+        assert manager.is_dual_write_enabled() == False     # Disabled by default
         
         print("✅ Feature flags integration working")
         return True
@@ -173,9 +167,9 @@ def run_test_suite():
         # Create test suite
         suite = unittest.TestSuite()
         
-        # Add key tests
+        # Add key tests (updated for revised plan)
         suite.addTest(TestHybridMessagingIo('test_initialization'))
-        suite.addTest(TestHybridMessagingIo('test_dual_write_strategy_success'))
+        suite.addTest(TestHybridMessagingIo('test_dual_write_success'))  # Updated method name
         suite.addTest(TestFeatureFlagManager('test_default_flags_initialization'))
         suite.addTest(TestCircuitBreaker('test_circuit_breaker_closed_state'))
         
