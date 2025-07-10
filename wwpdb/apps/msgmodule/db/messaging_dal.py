@@ -79,7 +79,7 @@ class DatabaseConnectionManager:
                 'host': self.config['host'],
                 'port': self.config['port'],
                 'database': self.config['database'],
-                'user': self.config['username'],
+                'user': self.config['user'],
                 'password': self.config['password'],
                 'charset': self.config.get('charset', 'utf8mb4'),
                 'pool_name': 'msgmodule_pool',
