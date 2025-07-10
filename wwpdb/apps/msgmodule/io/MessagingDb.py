@@ -31,7 +31,7 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 logger = logging.getLogger(__name__)
 
 
-class MessagingIoDatabase:
+class MessagingDb:
     """
     Enhanced MessagingIo class that uses database storage instead of CIF files.
 

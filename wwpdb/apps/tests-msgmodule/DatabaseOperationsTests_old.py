@@ -77,56 +77,68 @@ class TestMessagingDb(unittest.TestCase):
                 # Verify database service is None when disabled
                 self.assertIsNone(messaging_db._MessagingDb__db_service)
 
-    def test_process_message_interface(self):
-        """Test message processing interface"""
-        # Mock message object with proper attributes needed by MessagingDb
+    def test_process_message_with_database(self):
+        """Test message processing with database enabled"""
+        # Mock message object
         mock_msg_obj = Mock()
         mock_msg_obj.getDepositionDataSetId.return_value = "D_000001"
         mock_msg_obj.getMessageType.return_value = "to-depositor"
-        mock_msg_obj.getMessageText.return_value = "Test message"
-        mock_msg_obj.getMessageSubject.return_value = "Test subject"
-        mock_msg_obj.getSender.return_value = "test@example.com"
-        mock_msg_obj.getTimestamp.return_value = "2024-01-01T00:00:00"
-        mock_msg_obj.getAllMessages.return_value = []
+        
+        # Mock database service methods
+        self.mock_db_service.store_message.return_value = True
         
         # Process the message
         result = self.messaging_db.processMsg(mock_msg_obj)
         
-        # MessagingDb.processMsg returns a tuple (success, success, list)
-        self.assertIsInstance(result, tuple)
-        self.assertEqual(len(result), 3)
+        # Verify the result and that database service was called
+        self.assertTrue(result)
+        self.mock_db_service.store_message.assert_called_once()
 
-    def test_get_message_list_interface(self):
-        """Test the getMsgRowList interface method"""
-        # Test that the method exists and can be called
-        result = self.messaging_db.getMsgRowList("D_000001", "to-depositor")
+    def test_add_message_interface(self):
+        """Test the addMessage interface method"""
+        # Mock the underlying database service
+        self.mock_db_service.create_message.return_value = {"message_id": "test-id"}
         
-        # Should return a dictionary with RECORD_LIST and TOTAL_COUNT
-        self.assertIsInstance(result, dict)
-        self.assertIn('RECORD_LIST', result)
-        self.assertIn('TOTAL_COUNT', result)
+        result = self.messaging_db.addMessage(
+            depositionDataSetId="D_000001",
+            messageText="Test message",
+            messageSubject="Test subject"
+        )
+        
+        self.assertTrue(result)
 
-    def test_mark_message_as_read_interface(self):
-        """Test the markMsgAsRead interface method"""
-        # Test with a mock status dictionary
-        mock_status_dict = {"message_id": "test-123", "read_status": "Y"}
+    def test_fetch_messages_interface(self):
+        """Test the fetchMessages interface method"""
+        # Mock the database service response
+        mock_messages = [
+            {
+                "message_id": "msg-1",
+                "message_text": "Test message 1",
+                "message_subject": "Subject 1",
+                "created_timestamp": "2024-01-01T00:00:00"
+            }
+        ]
+        self.mock_db_service.get_messages.return_value = mock_messages
         
-        # Should not raise an exception
-        try:
-            result = self.messaging_db.markMsgAsRead(mock_status_dict)
-            # Method exists and can be called
-            self.assertTrue(True)
-        except Exception as e:
-            self.fail(f"markMsgAsRead should not raise exception: {e}")
+        result = self.messaging_db.fetchMessages("D_000001", "to-depositor")
+        
+        self.assertIsNotNone(result)
+        self.mock_db_service.get_messages.assert_called_once()
 
-    def test_get_message_interface(self):
-        """Test the getMsg interface method"""
-        # Test that the method exists and can be called
-        result = self.messaging_db.getMsg("msg-123", "D_000001")
+    def test_error_handling_database_failure(self):
+        """Test error handling when database operations fail"""
+        # Mock database service to raise an exception
+        self.mock_db_service.store_message.side_effect = Exception("Database error")
         
-        # Should return something (even if None when database service fails)
-        # The method should exist and be callable
-        self.assertTrue(hasattr(self.messaging_db, 'getMsg'))
+        mock_msg_obj = Mock()
+        mock_msg_obj.getDepositionDataSetId.return_value = "D_000001"
+        mock_msg_obj.getMessageType.return_value = "to-depositor"
+        
+        # Should handle the exception gracefully
+        result = self.messaging_db.processMsg(mock_msg_obj)
+        
+        # The result should indicate failure
+        self.assertFalse(result)
 
 
 class TestMessagingDbIntegration(unittest.TestCase):
@@ -153,20 +165,6 @@ class TestMessagingDbIntegration(unittest.TestCase):
             # Should fallback gracefully when database is not available
         except Exception as e:
             self.fail(f"MessagingDb creation should not fail: {e}")
-
-    def test_interface_compatibility(self):
-        """Test that MessagingDb has the same interface as MessagingIo"""
-        try:
-            messaging_db = MessagingDb(self.mock_req_obj, verbose=False)
-            
-            # Test that key methods exist
-            self.assertTrue(hasattr(messaging_db, 'processMsg'))
-            self.assertTrue(hasattr(messaging_db, 'getMsgRowList'))
-            self.assertTrue(hasattr(messaging_db, 'markMsgAsRead'))
-            self.assertTrue(hasattr(messaging_db, 'getMsg'))
-            
-        except Exception as e:
-            self.fail(f"Interface compatibility test failed: {e}")
 
 
 if __name__ == "__main__":

@@ -294,17 +294,17 @@ class TestMessagingIoIntegration(unittest.TestCase):
 
         return MockRequest(self.temp_dir)
 
-    def test_messaging_io_database_creation(self):
-        """Test MessagingIoDatabase creation"""
+    def test_messaging_db_creation(self):
+        """Test MessagingDb creation"""
         # This will fail due to missing dependencies, but we test the import and basic structure
         try:
-            from wwpdb.apps.msgmodule.io.MessagingIoDatabase import MessagingIoDatabase
+            from wwpdb.apps.msgmodule.io.MessagingDb import MessagingDb
 
             req_obj = self.create_mock_request_object()
 
             # This may fail due to missing dependencies, which is expected
             try:
-                msgIo = MessagingIoDatabase(req_obj, verbose=False)
+                msgIo = MessagingDb(req_obj, verbose=False)
                 # If creation succeeds, verify it has the expected interface
                 self.assertTrue(hasattr(msgIo, "processMsg"))
             except ImportError:
