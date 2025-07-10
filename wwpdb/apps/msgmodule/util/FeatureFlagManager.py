@@ -73,51 +73,53 @@ class FeatureFlagManager:
         self.logger.info(f"FeatureFlagManager initialized with {len(self._flags)} flags")
     
     def _initialize_default_flags(self) -> Dict[str, FeatureFlag]:
-        """Initialize default feature flags for hybrid messaging"""
+        """Initialize default feature flags for revised migration plan"""
         flags = {}
         
-        # Write strategy flags
-        flags['hybrid_dual_write'] = FeatureFlag(
-            name='hybrid_dual_write',
-            enabled=False,
+        # Simplified write/read path flags as per revised plan
+        flags['database_writes_enabled'] = FeatureFlag(
+            name='database_writes_enabled',
+            enabled=True,  # Default: database-only writes
             scope=FeatureFlagScope.GLOBAL,
-            description='Enable dual-write to both CIF and database',
+            description='Enable database writes (default mode)',
+            default_value=True,
+            rollout_percentage=100.0
+        )
+        
+        flags['database_reads_enabled'] = FeatureFlag(
+            name='database_reads_enabled',
+            enabled=False,  # Will be enabled after migration
+            scope=FeatureFlagScope.GLOBAL,
+            description='Enable database reads (migration Phase 4)',
             default_value=False,
             rollout_percentage=0.0
         )
         
-        flags['hybrid_db_primary'] = FeatureFlag(
-            name='hybrid_db_primary',
+        flags['cif_fallback_enabled'] = FeatureFlag(
+            name='cif_fallback_enabled',
+            enabled=True,  # Fallback on DB errors
+            scope=FeatureFlagScope.GLOBAL,
+            description='Enable CIF fallback on database failures',
+            default_value=True,
+            rollout_percentage=100.0
+        )
+        
+        # Legacy dual-write support (disabled by default, for sites that require it)
+        flags['dual_write_enabled'] = FeatureFlag(
+            name='dual_write_enabled',
             enabled=False,
             scope=FeatureFlagScope.GLOBAL,
-            description='Use database as primary with CIF fallback',
+            description='Enable dual-write (only if required by site)',
             default_value=False,
             rollout_percentage=0.0
         )
         
-        flags['hybrid_db_only'] = FeatureFlag(
-            name='hybrid_db_only',
-            enabled=False,
-            scope=FeatureFlagScope.GLOBAL,
-            description='Write to database only (no CIF)',
-            default_value=False,
-            rollout_percentage=0.0
-        )
-        
-        # Validation and monitoring flags
+        # Basic operational flags
         flags['consistency_checks'] = FeatureFlag(
             name='consistency_checks',
             enabled=True,
             scope=FeatureFlagScope.GLOBAL,
-            description='Enable data consistency validation between backends',
-            default_value=True
-        )
-        
-        flags['performance_metrics'] = FeatureFlag(
-            name='performance_metrics',
-            enabled=True,
-            scope=FeatureFlagScope.GLOBAL,
-            description='Enable performance metrics collection',
+            description='Enable data consistency validation',
             default_value=True
         )
         
@@ -129,20 +131,12 @@ class FeatureFlagManager:
             default_value=False
         )
         
-        # Circuit breaker and resilience flags
+        # Circuit breaker for database reliability
         flags['circuit_breaker'] = FeatureFlag(
             name='circuit_breaker',
             enabled=True,
             scope=FeatureFlagScope.GLOBAL,
             description='Enable circuit breaker for database operations',
-            default_value=True
-        )
-        
-        flags['auto_failover'] = FeatureFlag(
-            name='auto_failover',
-            enabled=True,
-            scope=FeatureFlagScope.GLOBAL,
-            description='Enable automatic failover to CIF on database failures',
             default_value=True
         )
         
@@ -399,6 +393,48 @@ class FeatureFlagManager:
             return 'dual_write'
         else:
             return 'cif_only'
+    
+    # Convenience methods for revised migration plan
+    def is_database_writes_enabled(self) -> bool:
+        """Check if database writes are enabled (default mode in revised plan)"""
+        return self.is_enabled('database_writes_enabled')
+    
+    def is_database_reads_enabled(self) -> bool:
+        """Check if database reads are enabled (Phase 4 migration)"""
+        return self.is_enabled('database_reads_enabled')
+    
+    def is_cif_fallback_enabled(self) -> bool:
+        """Check if CIF fallback is enabled on database failures"""
+        return self.is_enabled('cif_fallback_enabled')
+    
+    def is_dual_write_enabled(self) -> bool:
+        """Check if dual-write is enabled (only for sites that require it)"""
+        return self.is_enabled('dual_write_enabled')
+    
+    def enable_database_writes(self):
+        """Enable database writes (default mode)"""
+        self.enable_flag('database_writes_enabled')
+        self.logger.info("Enabled database writes")
+    
+    def enable_database_reads(self):
+        """Enable database reads (migration cutover)"""
+        self.enable_flag('database_reads_enabled')
+        self.logger.info("Enabled database reads - migration cutover complete")
+    
+    def enable_dual_write_for_site(self):
+        """Enable dual-write for sites that require it"""
+        self.enable_flag('dual_write_enabled')
+        self.logger.warning("Enabled dual-write mode - increases complexity")
+    
+    def disable_database_writes(self):
+        """Disable database writes (emergency rollback)"""
+        self.disable_flag('database_writes_enabled')
+        self.logger.warning("Disabled database writes - rolled back to CIF-only")
+    
+    def disable_database_reads(self):
+        """Disable database reads (emergency rollback)"""
+        self.disable_flag('database_reads_enabled')
+        self.logger.warning("Disabled database reads - rolled back to CIF reads")
 
 
 class FeatureFlagContext:
