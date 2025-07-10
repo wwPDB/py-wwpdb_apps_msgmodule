@@ -68,15 +68,41 @@ def disable_feature_flag(flag_name):
 def check_health():
     """Check system health"""
     try:
+        from wwpdb.apps.msgmodule.util.FeatureFlagManager import FeatureFlagManager
+        
         print("System Health Check:")
-        print("  Feature Flags: OK")
-        print("  Circuit Breaker: OK")
-        print("  Database Operations: OK")
+        
+        # Check feature flags
+        try:
+            fm = FeatureFlagManager()
+            flags = fm.get_all_flags()
+            print(f"  Feature Flags: OK ({len(flags)} flags active)")
+        except Exception as e:
+            print(f"  Feature Flags: ERROR - {e}")
+            return False
+        
+        # Check circuit breaker
+        try:
+            from wwpdb.apps.msgmodule.util.CircuitBreaker import get_database_circuit_breaker
+            breaker = get_database_circuit_breaker()
+            print(f"  Circuit Breaker: OK (state: {breaker.state.name})")
+        except Exception as e:
+            print(f"  Circuit Breaker: ERROR - {e}")
+            return False
+        
+        # Check database connection if possible
+        try:
+            from wwpdb.apps.msgmodule.db import is_messaging_database_enabled
+            db_enabled = is_messaging_database_enabled()
+            print(f"  Database: {'OK' if db_enabled else 'Disabled'}")
+        except Exception as e:
+            print(f"  Database: WARNING - {e}")
+        
+        return True
 
     except Exception as e:
         print(f"Health check failed: {e}")
         return False
-    return True
 
 
 if __name__ == "__main__":
