@@ -9,5 +9,8 @@ wwpdb.utils.emdb ~= 0.17
 wwpdb.apps.wf_engine
 wwpdb.utils.nmr
 
+# Database connectivity for message storage migration
+mysql-connector-python >= 8.0.32
+
 # For testing python 2
 mock; python_version < '3'

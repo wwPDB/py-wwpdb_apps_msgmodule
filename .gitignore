@@ -110,3 +110,17 @@ test-output/
 
 # emacs
 *~
+
+# Documentation files (exclude README.md)
+*.md
+!README.md
+
+# Example and demo scripts
+*_example.py
+*_demo.py
+
+# Migration implementation files
+workflow_test_report.json
+
+# Debugging scripts
+debug_*.py
