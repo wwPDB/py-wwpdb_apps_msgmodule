@@ -27,11 +27,6 @@ sys.path.insert(0, project_root)
 
 from wwpdb.apps.msgmodule.io.DbMessagingIo import (
     DbMessagingIo,
-    BackendStatus,
-    WriteResult,
-    ConsistencyCheck,
-    PerformanceMetrics,
-    ConsistencyValidator,
 )
 from wwpdb.apps.msgmodule.util.FeatureFlagManager import (
     FeatureFlagManager,
@@ -94,7 +89,7 @@ class TestDbMessagingIo(unittest.TestCase):
                         mock_config.return_value.is_enabled.return_value = True
 
                         # Mock feature flag manager for revised plan
-                        self.mock_flag_manager = Mock()
+                        self.mock_flag_manager = Mock(spec=['is_database_writes_enabled', 'is_database_reads_enabled', 'is_dual_write_enabled', 'is_cif_fallback_enabled'])
                         mock_flag_manager.return_value = self.mock_flag_manager
 
                         # Set default feature flag behavior (database writes enabled, dual-write disabled)
@@ -163,15 +158,12 @@ class TestDbMessagingIo(unittest.TestCase):
         self.mock_db_io.addMessage.assert_called_once()
         self.mock_cif_io.addMessage.assert_not_called()
 
-    def test_dual_write_success(self):
-        """Test successful dual-write operations using feature flags"""
-        # Configure for dual-write operations
+    def test_database_write_success(self):
+        """Test successful database write operations using feature flags"""
+        # Configure for database writes
         self.mock_flag_manager.is_database_writes_enabled.return_value = True
-        self.mock_flag_manager.is_dual_write_enabled.return_value = True
-        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
 
-        # Mock successful writes to both backends
-        self.mock_cif_io.addMessage.return_value = True
+        # Mock successful database write
         self.mock_db_io.addMessage.return_value = True
 
         result = self.db_io.addMessage(
@@ -181,18 +173,16 @@ class TestDbMessagingIo(unittest.TestCase):
         )
 
         self.assertTrue(result)
-        self.mock_cif_io.addMessage.assert_called_once()
         self.mock_db_io.addMessage.assert_called_once()
+        # CIF should not be called when database is enabled
+        self.mock_cif_io.addMessage.assert_not_called()
 
-    def test_dual_write_failure(self):
-        """Test dual-write operations with one backend failing"""
-        # Configure for dual-write operations
+    def test_database_write_failure_graceful(self):
+        """Test database write with graceful failure handling"""
+        # Configure for database writes
         self.mock_flag_manager.is_database_writes_enabled.return_value = True
-        self.mock_flag_manager.is_dual_write_enabled.return_value = True
-        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
 
-        # Mock CIF success, DB failure
-        self.mock_cif_io.addMessage.return_value = True
+        # Mock DB failure
         self.mock_db_io.addMessage.side_effect = Exception("Database error")
 
         result = self.db_io.addMessage(
@@ -201,10 +191,10 @@ class TestDbMessagingIo(unittest.TestCase):
             messageSubject="Test subject",
         )
 
-        # Dual write requires both to succeed
+        # Should fail gracefully, no dual write
         self.assertFalse(result)
-        self.mock_cif_io.addMessage.assert_called_once()
         self.mock_db_io.addMessage.assert_called_once()
+        self.mock_cif_io.addMessage.assert_not_called()
 
     def test_db_primary_with_fallback_success(self):
         """Test DB primary with CIF fallback - DB succeeds"""
@@ -226,16 +216,13 @@ class TestDbMessagingIo(unittest.TestCase):
         self.mock_db_io.addMessage.assert_called_once()
         self.mock_cif_io.addMessage.assert_not_called()  # Should not fallback
 
-    def test_db_primary_with_fallback_failure(self):
-        """Test DB primary with CIF fallback - DB fails, CIF succeeds"""
-        # Configure for database primary with fallback
+    def test_db_primary_graceful_failure(self):
+        """Test DB primary with graceful failure handling - no fallback"""
+        # Configure for database primary
         self.mock_flag_manager.is_database_writes_enabled.return_value = True
-        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
-        self.mock_flag_manager.is_dual_write_enabled.return_value = False
 
-        # Mock DB failure, CIF success
+        # Mock DB failure
         self.mock_db_io.addMessage.side_effect = Exception("Database error")
-        self.mock_cif_io.addMessage.return_value = True
 
         result = self.db_io.addMessage(
             depositionDataSetId="D_000001",
@@ -243,17 +230,15 @@ class TestDbMessagingIo(unittest.TestCase):
             messageSubject="Test subject",
         )
 
-        self.assertTrue(result)
+        # Should return False and not attempt CIF fallback
+        self.assertFalse(result)
         self.mock_db_io.addMessage.assert_called_once()
-        self.mock_cif_io.addMessage.assert_called_once()  # Should fallback
+        self.mock_cif_io.addMessage.assert_not_called()  # Should fallback
 
     def test_fetch_messages_db_primary(self):
         """Test message fetching with database primary"""
         # Configure for database reads (required for database fetch)
         self.mock_flag_manager.is_database_reads_enabled.return_value = True
-
-        # Mock database backend as healthy
-        self.db_io._backend_health["database"] = BackendStatus.HEALTHY
 
         # Mock successful DB fetch
         expected_messages = [
@@ -268,56 +253,46 @@ class TestDbMessagingIo(unittest.TestCase):
         self.mock_db_io.fetchMessages.assert_called_once_with("D_000001")
         self.mock_cif_io.fetchMessages.assert_not_called()
 
-    def test_fetch_messages_fallback_to_cif(self):
-        """Test message fetching fallback to CIF on DB failure"""
-        # Configure for database reads (but will fallback to CIF on error)
+    def test_fetch_messages_database_failure_graceful(self):
+        """Test message fetching graceful failure when database fails"""
+        # Configure for database reads (but database will fail)
         self.mock_flag_manager.is_database_reads_enabled.return_value = True
 
-        # Mock database backend as healthy initially
-        self.db_io._backend_health["database"] = BackendStatus.HEALTHY
-        self.db_io._backend_health["cif"] = BackendStatus.HEALTHY
-
-        # Mock DB failure, CIF success
+        # Mock DB failure
         self.mock_db_io.fetchMessages.side_effect = Exception("Database error")
-        expected_messages = [{"messageId": "1", "messageText": "Test 1"}]
-        self.mock_cif_io.fetchMessages.return_value = expected_messages
 
         result = self.db_io.fetchMessages(depositionDataSetId="D_000001")
 
-        self.assertEqual(result, expected_messages)
+        # Should return empty list on failure (graceful handling)
+        self.assertEqual(result, [])
         self.mock_db_io.fetchMessages.assert_called_once()
-        self.mock_cif_io.fetchMessages.assert_called_once()
+        # CIF should not be called since we only use one backend
+        self.mock_cif_io.fetchMessages.assert_not_called()
 
-    def test_performance_metrics_collection(self):
-        """Test performance metrics collection"""
-        # Configure for dual-write operations
+    def test_multiple_operations_success(self):
+        """Test multiple operations work correctly with simplified approach"""
+        # Configure for database writes
         self.mock_flag_manager.is_database_writes_enabled.return_value = True
-        self.mock_flag_manager.is_dual_write_enabled.return_value = True
-        self.mock_flag_manager.is_cif_fallback_enabled.return_value = True
 
         # Mock successful writes
-        self.mock_cif_io.addMessage.return_value = True
         self.mock_db_io.addMessage.return_value = True
 
         # Perform multiple operations
         for i in range(3):
-            self.db_io.addMessage(
+            result = self.db_io.addMessage(
                 depositionDataSetId=f"D_00000{i}",
                 messageText=f"Test message {i}",
                 messageSubject=f"Test subject {i}",
             )
+            self.assertTrue(result)
 
-        # Get metrics
-        metrics = self.db_io.getPerformanceMetrics()
-
-        # Verify metrics structure
-        self.assertIn("backend_health", metrics)
-        self.assertIn("feature_flags", metrics)
-        # Note: write_strategy removed in revised plan - all via feature flags
+        # Verify all calls were made to database backend
+        self.assertEqual(self.mock_db_io.addMessage.call_count, 3)
+        self.mock_cif_io.addMessage.assert_not_called()
 
     def test_backend_health_monitoring(self):
         """Test backend health status monitoring"""
-        health = self.db_io.getBackendHealth()
+        health = self.db_io.getBackendStatus()
 
         self.assertIn("cif", health)
         self.assertIn("database", health)
