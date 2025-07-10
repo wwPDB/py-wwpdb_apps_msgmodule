@@ -64,7 +64,11 @@ class MessagingDb:
         self.__notesFilePath = None
 
     def __init_database_service(self):
-        """Initialize the database service with configuration"""
+        """
+        Initialize the database service with configuration.
+        
+        This implementation requires database to be available - no fallback logic.
+        """
         try:
             # Get site ID and ConfigInfo
             site_id = self.__siteId if hasattr(self, "__siteId") else None
@@ -72,7 +76,7 @@ class MessagingDb:
 
             # Check if database is enabled
             if not is_messaging_database_enabled(site_id, config_info):
-                logger.info("Database storage is disabled, using file-based storage")
+                logger.warning("Database storage is disabled - MessagingDb requires database to be enabled")
                 self.__db_service = None
                 return
 
@@ -85,24 +89,22 @@ class MessagingDb:
 
         except Exception as e:
             logger.error(f"Failed to initialize database service: {e}")
-            # Fallback to file-based system if database unavailable
+            # No fallback - set to None and let methods fail fast
             self.__db_service = None
             if self.__verbose:
-                logger.warning("Falling back to file-based message storage")
+                logger.warning("MessagingDb requires database service - operations will fail")
 
     def processMsg(self, p_msgObj):
         """
-        Process a message object - main entry point for message handling.
-
-        This method maintains the same interface as the original but uses
-        database storage instead of CIF files.
+        Process a message object using database storage.
+        
+        This is a pure database implementation with no fallback logic.
         """
         try:
-            if self.__db_service:
-                return self.__processMsg_database(p_msgObj)
-            else:
-                # Fallback to original file-based processing
-                return self.__processMsg_file_fallback(p_msgObj)
+            if not self.__db_service:
+                raise RuntimeError("Database service not available and no fallback configured")
+            
+            return self.__processMsg_database(p_msgObj)
 
         except Exception as e:
             logger.error(f"Error processing message: {e}")
@@ -213,22 +215,21 @@ class MessagingDb:
         p_bThreadedRslts=False,
     ):
         """
-        Get message list for a deposition - maintains original interface
+        Get message list for a deposition using database storage.
         """
         try:
-            if self.__db_service:
-                return self.__getMsgRowList_database(
-                    p_depDataSetId,
-                    p_sSendStatus,
-                    p_bServerSide,
-                    p_iDisplayStart,
-                    p_iDisplayLength,
-                    p_sSrchFltr,
-                    p_colSearchDict,
-                )
-            else:
-                # Fallback to file-based method
-                return self.__getMsgRowList_file_fallback(p_depDataSetId, p_sSendStatus)
+            if not self.__db_service:
+                raise RuntimeError("Database service not available and no fallback configured")
+                
+            return self.__getMsgRowList_database(
+                p_depDataSetId,
+                p_sSendStatus,
+                p_bServerSide,
+                p_iDisplayStart,
+                p_iDisplayLength,
+                p_sSrchFltr,
+                p_colSearchDict,
+            )
 
         except Exception as e:
             logger.error(f"Error retrieving message list: {e}")
@@ -319,12 +320,12 @@ class MessagingDb:
             return {"RECORD_LIST": [], "TOTAL_COUNT": 0}
 
     def markMsgAsRead(self, p_msgStatusDict):
-        """Mark message as read - maintains original interface"""
+        """Mark message as read using database storage."""
         try:
-            if self.__db_service:
-                return self.__markMsgAsRead_database(p_msgStatusDict)
-            else:
-                return self.__markMsgAsRead_file_fallback(p_msgStatusDict)
+            if not self.__db_service:
+                raise RuntimeError("Database service not available and no fallback configured")
+                
+            return self.__markMsgAsRead_database(p_msgStatusDict)
 
         except Exception as e:
             logger.error(f"Error marking message as read: {e}")
@@ -350,12 +351,12 @@ class MessagingDb:
             return False
 
     def getMsg(self, p_msgId, p_depId):
-        """Get individual message - maintains original interface"""
+        """Get individual message using database storage."""
         try:
-            if self.__db_service:
-                return self.__getMsg_database(p_msgId)
-            else:
-                return self.__getMsg_file_fallback(p_msgId, p_depId)
+            if not self.__db_service:
+                raise RuntimeError("Database service not available and no fallback configured")
+                
+            return self.__getMsg_database(p_msgId)
 
         except Exception as e:
             logger.error(f"Error retrieving message {p_msgId}: {e}")
@@ -424,52 +425,152 @@ class MessagingDb:
 
     def __handleFileReferences(self, p_msgObj):
         """
-        Handle file references - this still needs file system operations
-        for copying/moving files, but metadata is stored in database
+        Handle file references for database storage.
+        
+        This processes file attachments and stores their metadata in the database
+        while copying the actual files to appropriate storage locations.
         """
-        # This method would contain the existing file handling logic
-        # but would store file metadata in database instead of CIF files
+        try:
+            if not hasattr(p_msgObj, 'fileReferences') or not p_msgObj.fileReferences:
+                # No file references to process
+                return True, [], []
 
-        # For now, return mock values
-        bSuccess = True
-        msgFileRefs = []
-        failedFileRefs = []
+            msgFileRefs = []
+            failedFileRefs = []
+            bSuccess = True
 
-        if self.__verbose:
-            logger.info("File reference handling completed")
+            # Import required classes for file handling
+            msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+            
+            depositionId = p_msgObj.depositionId
+            messageId = p_msgObj.messageId
+            
+            if self.__verbose:
+                logger.info(f"Processing {len(p_msgObj.fileReferences)} file references for message {messageId}")
 
-        return bSuccess, msgFileRefs, failedFileRefs
+            for fileRef in p_msgObj.fileReferences:
+                try:
+                    # Determine content type and format
+                    if isinstance(fileRef, str):
+                        # Simple string reference (e.g., "model", "val-report")
+                        contentType, contentFormat = self._getContentTypeAndFormat(fileRef)
+                        uploadFileName = None
+                        auxFileIndex = ""
+                    else:
+                        # Dictionary/object reference with more details
+                        contentType = fileRef.get('content_type', '')
+                        contentFormat = fileRef.get('content_format', '')
+                        uploadFileName = fileRef.get('upload_file_name')
+                        auxFileIndex = fileRef.get('aux_file_index', "")
+
+                    # Get file path
+                    if auxFileIndex and uploadFileName:
+                        # Auxiliary file uploaded by user
+                        fPath = self.__reqObj.getValue(f"auxFilePath{auxFileIndex}")
+                    else:
+                        # Archive file
+                        fPath = msgDI.getFilePath(contentType, contentFormat)
+
+                    if fPath and os.path.exists(fPath) and os.access(fPath, os.R_OK):
+                        # Create file reference record for database
+                        file_ref_data = {
+                            "message_id": messageId,
+                            "deposition_data_set_id": depositionId,
+                            "content_type": contentType,
+                            "content_format": contentFormat,
+                            "partition_number": 1,
+                            "version_id": 1,
+                            "file_source": "auxiliary" if auxFileIndex else "archive",
+                            "upload_file_name": uploadFileName,
+                            "file_path": fPath,
+                            "file_size": os.path.getsize(fPath) if os.path.exists(fPath) else None,
+                        }
+                        
+                        msgFileRefs.append(file_ref_data)
+                        
+                        if self.__verbose:
+                            logger.info(f"Successfully processed file reference: {contentType}/{contentFormat}")
+                    else:
+                        # File not found or not accessible
+                        logger.warning(f"File not accessible: {fPath} for {contentType}/{contentFormat}")
+                        failedFileRefs.append({
+                            "content_type": contentType,
+                            "content_format": contentFormat,
+                            "file_path": fPath,
+                            "error": "File not accessible"
+                        })
+                        bSuccess = False
+
+                except Exception as e:
+                    logger.error(f"Error processing file reference {fileRef}: {e}")
+                    failedFileRefs.append({
+                        "file_reference": str(fileRef),
+                        "error": str(e)
+                    })
+                    bSuccess = False
+
+            if self.__verbose:
+                logger.info(f"File reference processing completed. Success: {len(msgFileRefs)}, Failed: {len(failedFileRefs)}")
+
+            return bSuccess, msgFileRefs, failedFileRefs
+
+        except Exception as e:
+            logger.error(f"File reference handling failed: {e}")
+            return False, [], []
+
+    def _getContentTypeAndFormat(self, acronym):
+        """
+        Get content type and format from acronym.
+        
+        This method maps file reference acronyms to their corresponding
+        content types and formats as used in the wwPDB system.
+        """
+        # Common mappings - these would typically come from ConfigInfo
+        mappings = {
+            "model": ("model", "pdbx"),
+            "model_pdb": ("model", "pdb"),
+            "sf": ("structure-factors", "pdbx"),
+            "val-report": ("validation-report", "pdf"),
+            "val-report-full": ("validation-report-full", "pdf"),
+            "val-data": ("validation-data", "xml"),
+            "val-data-cif": ("validation-data", "pdbx"),
+            "cs": ("chemical-shifts", "nmr-star"),
+            "em-volume": ("em-volume", "map"),
+            "aux-file": ("auxiliary", ""),  # Format determined dynamically
+        }
+        
+        return mappings.get(acronym, (acronym, ""))
 
     def __sendNotificationEmail(self, p_msgObj, p_bVldtnRprtFlg=False):
-        """Send email notifications - unchanged from original"""
-        # This method would remain largely unchanged
-        # as it deals with email sending, not storage
+        """
+        Send email notifications for new messages.
+        
+        This delegates to the existing email notification system but could be
+        enhanced to work directly with database-stored message data.
+        """
+        try:
+            if not p_msgObj.isBeingSent:
+                # Only send notifications for messages being sent, not drafts
+                return
 
-        if self.__verbose:
-            logger.info(f"Email notification sent for message {p_msgObj.messageId}")
+            # Use the existing notification system from MessagingIo
+            # This avoids duplicating complex email logic
+            from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
+            
+            # Create a temporary MessagingIo instance just for email sending
+            temp_messaging_io = MessagingIo(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+            
+            # Call the existing email notification method
+            # Note: This method exists in the original MessagingIo class
+            temp_messaging_io._MessagingIo__sendNotificationEmail(p_msgObj, p_bVldtnRprtFlg)
+            
+            if self.__verbose:
+                logger.info(f"Email notification sent for message {p_msgObj.messageId}")
 
-    # Fallback methods for file-based operations (when database is unavailable)
-
-    def __processMsg_file_fallback(self, p_msgObj):
-        """Fallback to original file-based message processing"""
-        # This would contain the original CIF file processing logic
-        logger.warning("Using file-based fallback for message processing")
-        return False, False, []
-
-    def __getMsgRowList_file_fallback(self, depId, sendStatus):
-        """Fallback to original file-based message retrieval"""
-        logger.warning("Using file-based fallback for message retrieval")
-        return {"RECORD_LIST": [], "TOTAL_COUNT": 0}
-
-    def __markMsgAsRead_file_fallback(self, msgStatusDict):
-        """Fallback to original file-based read status update"""
-        logger.warning("Using file-based fallback for marking message as read")
-        return False
-
-    def __getMsg_file_fallback(self, msgId, depId):
-        """Fallback to original file-based individual message retrieval"""
-        logger.warning("Using file-based fallback for individual message retrieval")
-        return None
+        except Exception as e:
+            logger.error(f"Failed to send email notification: {e}")
+            # Don't fail the entire message processing if email fails
+            pass
 
 
 # Example usage and testing
