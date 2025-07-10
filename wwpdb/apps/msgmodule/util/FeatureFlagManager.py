@@ -77,13 +77,13 @@ class FeatureFlagManager:
         )
 
     def _initialize_default_flags(self) -> Dict[str, FeatureFlag]:
-        """Initialize default feature flags for revised migration plan"""
+        """Initialize essential feature flags only - no placeholders"""
         flags = {}
 
-        # Simplified write/read path flags as per revised plan
+        # Backend selection flags
         flags["database_writes_enabled"] = FeatureFlag(
             name="database_writes_enabled",
-            enabled=True,  # Default: database-only writes
+            enabled=True,
             scope=FeatureFlagScope.GLOBAL,
             description="Enable database writes (default mode)",
             default_value=True,
@@ -92,50 +92,14 @@ class FeatureFlagManager:
 
         flags["database_reads_enabled"] = FeatureFlag(
             name="database_reads_enabled",
-            enabled=False,  # Will be enabled after migration
+            enabled=True,
             scope=FeatureFlagScope.GLOBAL,
-            description="Enable database reads (migration Phase 4)",
-            default_value=False,
-            rollout_percentage=0.0,
-        )
-
-        flags["cif_fallback_enabled"] = FeatureFlag(
-            name="cif_fallback_enabled",
-            enabled=True,  # Fallback on DB errors
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable CIF fallback on database failures",
+            description="Enable database reads (MessagingDb implementation)",
             default_value=True,
             rollout_percentage=100.0,
         )
 
-        # Legacy dual-write support (disabled by default, for sites that require it)
-        flags["dual_write_enabled"] = FeatureFlag(
-            name="dual_write_enabled",
-            enabled=False,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable dual-write (only if required by site)",
-            default_value=False,
-            rollout_percentage=0.0,
-        )
-
-        # Basic operational flags
-        flags["consistency_checks"] = FeatureFlag(
-            name="consistency_checks",
-            enabled=True,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable data consistency validation",
-            default_value=True,
-        )
-
-        flags["detailed_logging"] = FeatureFlag(
-            name="detailed_logging",
-            enabled=False,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable detailed operation logging",
-            default_value=False,
-        )
-
-        # Circuit breaker for database reliability
+        # Circuit breaker for database reliability (actually implemented)
         flags["circuit_breaker"] = FeatureFlag(
             name="circuit_breaker",
             enabled=True,
@@ -144,33 +108,7 @@ class FeatureFlagManager:
             default_value=True,
         )
 
-        # Migration-specific flags
-        flags["migration_mode"] = FeatureFlag(
-            name="migration_mode",
-            enabled=False,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable migration mode for data transition",
-            default_value=False,
-        )
-
-        flags["read_from_db"] = FeatureFlag(
-            name="read_from_db",
-            enabled=False,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Read messages from database instead of CIF",
-            default_value=False,
-            rollout_percentage=0.0,
-        )
-
-        # Performance tuning flags
-        flags["batch_operations"] = FeatureFlag(
-            name="batch_operations",
-            enabled=True,
-            scope=FeatureFlagScope.GLOBAL,
-            description="Enable batch operations for better performance",
-            default_value=True,
-        )
-
+        # Database connection pooling (actually implemented)
         flags["connection_pooling"] = FeatureFlag(
             name="connection_pooling",
             enabled=True,
