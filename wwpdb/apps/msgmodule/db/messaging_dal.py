@@ -208,7 +208,7 @@ class MySQLBackend(DatabaseBackend):
             return MySQLdb.connect(
                 host=config.get('host', 'localhost'),
                 port=config.get('port', 3306),
-                user=config.get('user', 'root'),
+                user=config.get('user', config.get('username', 'root')),
                 passwd=config.get('password', ''),
                 db=config.get('database', 'messages'),
                 charset=config.get('charset', 'utf8mb4')
@@ -323,7 +323,7 @@ class BaseDAO:
         cursor = None
         try:
             connection = self.connection_manager.get_connection()
-            cursor = connection.cursor(dictionary=True)
+            cursor = connection.cursor()
 
             cursor.execute(query, params or ())
 
@@ -331,9 +331,19 @@ class BaseDAO:
                 connection.commit()
                 return cursor.lastrowid
             elif fetch_one:
-                return cursor.fetchone()
+                # Convert row to dictionary for PyMySQL compatibility
+                row = cursor.fetchone()
+                if row and cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    return dict(zip(columns, row))
+                return row
             elif fetch_all:
-                return cursor.fetchall()
+                # Convert rows to dictionaries for PyMySQL compatibility
+                rows = cursor.fetchall()
+                if rows and cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    return [dict(zip(columns, row)) for row in rows]
+                return rows
             else:
                 return cursor.rowcount
 
