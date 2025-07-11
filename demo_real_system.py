@@ -222,7 +222,17 @@ def test_database_backend_real(env_info):
     os.environ["MSGDB_USER"] = "demo_user"
     os.environ["MSGDB_PASS"] = "demo_pass"
     os.environ["MSGDB_PORT"] = "3306"
-    os.environ["MSGDB_SQLITE_PATH"] = env_info["db_path"]
+    
+    # Also set required environment variables for the database configuration
+    os.environ["MSGDB_CHARSET"] = "utf8mb4"
+    os.environ["MSGDB_POOL_SIZE"] = "5"
+    os.environ["MSGDB_TIMEOUT"] = "30"
+    
+    # Debug: Print what we actually set
+    logger.info(f"   🔧 Database config set: {os.environ.get('MSGDB_HOST')}:{os.environ.get('MSGDB_PORT')}")
+    logger.info(f"   🔧 Database name: {os.environ.get('MSGDB_NAME')}")
+    logger.info(f"   🔧 Database user: {os.environ.get('MSGDB_USER')}")
+    logger.info(f"   🔧 Database pass: {'***' if os.environ.get('MSGDB_PASS') else 'None'}")
     
     try:
         logger.info("📦 Step 1: Import messaging factory")
@@ -277,6 +287,13 @@ def test_backend_info():
         os.environ["MSGDB_READS_ENABLED"] = "true"
         os.environ["MSGCIF_WRITES_ENABLED"] = "false"
         os.environ["MSGCIF_READS_ENABLED"] = "false"
+        
+        # Set the same database configuration
+        os.environ["MSGDB_HOST"] = "localhost"
+        os.environ["MSGDB_NAME"] = "messaging_demo"
+        os.environ["MSGDB_USER"] = "demo_user"
+        os.environ["MSGDB_PASS"] = "demo_pass"
+        os.environ["MSGDB_PORT"] = "3306"
         
         info = MessagingFactory.get_backend_info(req_obj=None)
         
