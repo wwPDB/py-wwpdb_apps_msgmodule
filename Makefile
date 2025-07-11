@@ -1,7 +1,7 @@
-# wwPDB Communication Module - Phase 2 Database Operations Makefile
+# wwPDB Communication Module - Database Operations Makefile
 # Automates build, test, validate, deploy, and documentation tasks
 
-.PHONY: help clean install build test test-unit test-integration test-database validate validate-phase2 \
+.PHONY: help clean install build test test-unit test-integration test-database validate validate-integration \
         lint format check-format security docs serve-docs deploy deploy-dev deploy-production \
         backup restore monitor status health feature-flags
 
@@ -36,7 +36,7 @@ NC := \033[0m # No Color
 
 # Default target
 help: ## Show this help message
-	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Database Operations$(NC)"
+	@echo "$(GREEN)wwPDB Communication Module - Database Operations$(NC)"
 	@echo "$(YELLOW)Available targets:$(NC)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -116,7 +116,7 @@ clean: ## Clean build artifacts and cache files
 	@echo "$(GREEN)Clean complete!$(NC)"
 
 # Testing Tasks
-test: test-phase2 ## Run all available tests
+test: test-database-full ## Run all available tests
 
 test-unit: ## Run unit tests
 	@echo "$(GREEN)Running unit tests...$(NC)"
@@ -143,8 +143,8 @@ test-integration: ## Run integration tests
 		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
 	fi
 
-test-database: ## Run Phase 2 database operations tests
-	@echo "$(GREEN)Running Phase 2 database operations tests...$(NC)"
+test-database: ## Run database operations tests
+	@echo "$(GREEN)Running database operations tests...$(NC)"
 	@if [ -f "$(TESTS_DIR)/DatabaseOperationsTests.py" ]; then \
 		$(PYTEST) $(TESTS_DIR)/DatabaseOperationsTests.py -v --tb=short \
 			--cov=$(SOURCE_DIR) --cov-report=html || echo "$(YELLOW)Some database tests failed$(NC)"; \
@@ -152,10 +152,10 @@ test-database: ## Run Phase 2 database operations tests
 		echo "$(YELLOW)Database operations test file not found$(NC)"; \
 	fi
 
-test-phase2: ## Run Phase 2 specific tests and validation
-	@echo "$(GREEN)Running Phase 2 tests and validation...$(NC)"
+test-database-full: ## Run database tests and validation
+	@echo "$(GREEN)Running database tests and validation...$(NC)"
 	@$(MAKE) test-database
-	@$(MAKE) validate-phase2
+	@$(MAKE) validate-integration
 
 test-coverage: ## Generate detailed test coverage report
 	@echo "$(GREEN)Generating coverage report...$(NC)"
@@ -171,12 +171,12 @@ test-tox: ## Run tests across multiple Python versions with tox
 	$(TOX)
 
 # Validation Tasks
-validate: validate-phase2 lint security ## Run all validation checks
+validate: validate-integration lint security ## Run all validation checks
 
-validate-phase2: ## Validate Phase 2 implementation
-	@echo "$(GREEN)Validating Phase 2 implementation...$(NC)"
-	$(PYTHON) $(SCRIPTS_DIR)/validate_phase2_integration.py
-	@echo "$(GREEN)Phase 2 validation complete!$(NC)"
+validate-integration: ## Validate database integration
+	@echo "$(GREEN)Validating database integration...$(NC)"
+	$(PYTHON) $(SCRIPTS_DIR)/validate_integration.py
+	@echo "$(GREEN)Integration validation complete!$(NC)"
 
 validate-config: ## Validate configuration files
 	@echo "$(GREEN)Validating configuration...$(NC)"
@@ -235,7 +235,7 @@ endif
 deploy-dev: ## Deploy to development environment
 	@echo "$(GREEN)Deploying to development environment...$(NC)"
 	@echo "$(YELLOW)Running pre-deployment validation...$(NC)"
-	@$(MAKE) validate-phase2
+	@$(MAKE) validate-integration
 	@echo "$(GREEN)Development deployment complete!$(NC)"
 
 deploy-staging: ## Deploy to staging environment
@@ -305,7 +305,7 @@ dev-setup: install-dev ## Setup complete development environment
 dev-test: ## Quick development test cycle
 	@echo "$(GREEN)Running development test cycle...$(NC)"
 	@$(MAKE) test-database
-	@$(MAKE) validate-phase2
+	@$(MAKE) validate-integration
 
 dev-commit: ## Run checks before committing
 	@echo "$(GREEN)Running pre-commit checks...$(NC)"
