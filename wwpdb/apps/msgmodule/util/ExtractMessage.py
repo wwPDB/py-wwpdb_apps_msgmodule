@@ -196,10 +196,7 @@ class ExtractMessage(object):
                 context_type_recorded = row[idxContextType]
                 context_value_recorded = row[idxContextValue]
 
-                if context_type_recorded in (
-                    "vldtn",
-                    "maponly-authstatus-em",
-                ):  # CS-2025-07-08 update to include map-only validation type
+                if context_type_recorded in ("vldtn", "maponly-authstatus-em"):  # CS-2025-07-08 update to include map-only validation type
                     if ordinalId > maxOrdId:
                         maxOrdId = ordinalId
                         lastvalid = self.convertStrToDatetime(str(row[idxLastCommDate]))
