@@ -34,24 +34,20 @@ logger = logging.getLogger(__name__)
 
 
 class ExtractMessage(object):
-    """Class to read message files and extract message date and contents"""
-
+    """Class to read message files and extract message date and contents
+    """
     def __init__(self, siteId=None, verbose=False, log=sys.stderr):
         self.__siteId = siteId
         self.__verbose = verbose
         self.__log = log
-        self.__pI = PathInfo(
-            siteId=self.__siteId, verbose=self.__verbose, log=self.__log
-        )
+        self.__pI = PathInfo(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
         # Parameters to tune lock file management --
         self.__timeoutSeconds = 10
         self.__retrySeconds = 0.2
 
         self.__depid = None  # deposition id is stored as cached class variable, see __readMsgFile() for re-use cached data
         self.__contentType = None  # contentType is stored as cached class variable
-        self.__lc = (
-            []
-        )  # list of data containers for the message file as cached class variable
+        self.__lc = []  # list of data containers for the message file as cached class variable
 
     def __getMsgFilePath(self, depid, contentType, test_folder=None):
         """Returns message filepath in the archive
@@ -61,22 +57,12 @@ class ExtractMessage(object):
         notes-from-annotator
         """
         if test_folder:
-            logger.info(
-                "look for message file for %s in author-provided folder %s",
-                depid,
-                test_folder,
-            )
-            filename_msg = depid + "_" + contentType + "_P1.cif.V1"
+            logger.info("look for message file for %s in author-provided folder %s", depid, test_folder)
+            filename_msg = depid + '_' + contentType + '_P1.cif.V1'
             filepath_msg = os.path.join(test_folder, filename_msg)
         else:
             logger.info("look for message file for %s in the archive", depid)
-            filepath_msg = self.__pI.getFilePath(
-                depid,
-                contentType=contentType,
-                formatType="pdbx",
-                fileSource="archive",
-                versionId="1",
-            )
+            filepath_msg = self.__pI.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
 
         if not os.path.exists(filepath_msg):
             logger.warning("cannot find message file for %s", depid)
@@ -88,38 +74,22 @@ class ExtractMessage(object):
         """Parse message file to data in self.__lc.
         Message file can be either messages-from-depositor, messages-to-depositor, or notes-from-annotator
         """
-        if (
-            b_use_cache
-            and self.__depid == depid
-            and self.__contentType == contentType
-            and self.__lc
-        ):
-            logger.info(
-                "use cached message data in self.__lc for %s, ignore new contents",
-                depid,
-            )
+        if b_use_cache and self.__depid == depid and self.__contentType == contentType and self.__lc:
+            logger.info("use cached message data in self.__lc for %s, ignore new contents", depid)
             # If the same message file was just read and parsed, use the cached data in self.__lc, in order to avoid parsing
             # the same file multiple times with different functions since each function uses depid as argument.
             # This should be used for read-only functions. Be mindful of the consequence of ignoring new data written into the
             # message file while the program is running
         else:
-            self.__lc = (
-                []
-            )  # must reset so that parsed data from the previous message file is not mixed with current
+            self.__lc = []  # must reset so that parsed data from the previous message file is not mixed with current
             filepath_msg = self.__getMsgFilePath(depid, contentType, test_folder)
             if not filepath_msg:
                 return None
             logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
-                with LockFile(
-                    filepath_msg,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__log,
-                ):
-                    with open(filepath_msg, "r") as file:
+                with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__log):
+                    with open(filepath_msg, 'r') as file:
                         cif_parser = PdbxReader(file)
                         cif_parser.read(self.__lc)
             except FileExistsError as e:
@@ -133,10 +103,7 @@ class ExtractMessage(object):
         dc0 = self.__lc[0]
         catObj = dc0.getObj("pdbx_deposition_message_info")
         if catObj is None:
-            logger.warning(
-                "cannot find pdbx_deposition_message_info category in the message file for %s",
-                self.__depid,
-            )
+            logger.warning("cannot find pdbx_deposition_message_info category in the message file for %s", self.__depid)
             return None
         else:
             itDict = {}
@@ -160,14 +127,12 @@ class ExtractMessage(object):
                             ret = self.convertStrToDatetime(str(row[idxLastCommDate]))
 
                 except Exception as e:
-                    logger.error(
-                        "Error processing message file for %s, %s", self.__depid, e
-                    )
+                    logger.error("Error processing message file for %s, %s", self.__depid, e)
         return ret
 
     # CS 2024-04-04 add search below by context_type
     def __selectLastMsgByContextType(self, l_context_type_to_search):
-        """return datetime of the lastest message based on context type
+        """ return datetime of the lastest message based on context type
 
         input: arg l_context_type_to_search is a list of the context types to search for.
         list is used because some searches invole multiple context_type, e.g. ["release-publ", "release-nopubl"]
@@ -252,27 +217,17 @@ class ExtractMessage(object):
     def convertStrToDatetime(self, s_datetime):
         return datetime.datetime.strptime(str(s_datetime), "%Y-%m-%d %H:%M:%S")
 
-    def getLastMsgDatetime(
-        self, depid, to_from="both", b_use_cache=True, test_folder=None
-    ):
+    def getLastMsgDatetime(self, depid, to_from="both", b_use_cache=True, test_folder=None):
         """Return last message date as python datetime, either to or from depositor.
         System-sent messages in archived notes file are not counted.
         """
         if to_from == "to":
-            return self.getLastSentMessageDate(
-                depid, True, b_use_cache=b_use_cache, test_folder=test_folder
-            )
+            return self.getLastSentMessageDate(depid, True, b_use_cache=b_use_cache, test_folder=test_folder)
         elif to_from == "from":
-            return self.getLastSentMessageDate(
-                depid, False, b_use_cache=b_use_cache, test_folder=test_folder
-            )
+            return self.getLastSentMessageDate(depid, False, b_use_cache=b_use_cache, test_folder=test_folder)
         elif to_from == "both":
-            datetime_to = self.getLastSentMessageDate(
-                depid, True, b_use_cache=b_use_cache, test_folder=test_folder
-            )
-            datetime_from = self.getLastSentMessageDate(
-                depid, False, b_use_cache=b_use_cache, test_folder=test_folder
-            )
+            datetime_to = self.getLastSentMessageDate(depid, True, b_use_cache=b_use_cache, test_folder=test_folder)
+            datetime_from = self.getLastSentMessageDate(depid, False, b_use_cache=b_use_cache, test_folder=test_folder)
 
             if not datetime_from:
                 return datetime_to
@@ -288,40 +243,28 @@ class ExtractMessage(object):
             return None
 
     def getLastReceivedMsgDatetime(self, depid, b_use_cache=True, test_folder=None):
-        """Return date of last message from depositor as python datetime."""
-        return self.getLastSentMessageDate(
-            depid, False, b_use_cache=b_use_cache, test_folder=test_folder
-        )
+        """Return date of last message from depositor as python datetime.
+        """
+        return self.getLastSentMessageDate(depid, False, b_use_cache=b_use_cache, test_folder=test_folder)
 
     def getLastSentMsgDatetime(self, depid, b_use_cache=True, test_folder=None):
         """Return date of last message to depositor as python datetime.
         System-sent messages in archived notes file are not counted.
         """
-        return self.getLastSentMessageDate(
-            depid, True, b_use_cache=b_use_cache, test_folder=test_folder
-        )
+        return self.getLastSentMessageDate(depid, True, b_use_cache=b_use_cache, test_folder=test_folder)
 
     def getLastAutoReminderDatetime(self, depid, b_use_cache=True, test_folder=None):
-        """Return date of last reminder in notes as python datetime.
+        """ Return date of last reminder in notes as python datetime.
         Notes only records automatically-sent messages unless annotators specifically archived a message.
         """
         ret = None
-        self.__readMsgFile(
-            depid,
-            contentType="notes-from-annotator",
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType="notes-from-annotator", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(
-                ["reminder", "reminder-auth-to-rel"]
-            )  # CS 2024-09-09 add reminder-auth-to-rel
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder", "reminder-auth-to-rel"])  # CS 2024-09-09 add reminder-auth-to-rel
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
-                ret = self.__selectLastMsgByTitlePhrase(
-                    phrase="Still awaiting feedback for"
-                )
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
 
@@ -332,44 +275,29 @@ class ExtractMessage(object):
         System-sent messages in archived notes file are not counted.
         """
         ret = None
-        self.__readMsgFile(
-            depid,
-            contentType="messages-to-depositor",
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(
-                ["reminder"]
-            )  # CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["reminder"])  # CS 2024-04-04 search by context_type first
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
-                ret = self.__selectLastMsgByTitlePhrase(
-                    phrase="Still awaiting feedback for"
-                )
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Still awaiting feedback for')
         else:
             logger.info("Deposition %s empty message file", depid)
 
         return ret
 
     def getLastReleaseNoticeDatetime(self, depid, b_use_cache=True, test_folder=None):
-        """Return date of last release notice to depositor as python datetime."""
+        """Return date of last release notice to depositor as python datetime.
+        """
         ret = None
-        self.__readMsgFile(
-            depid,
-            contentType="messages-to-depositor",
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
         if len(self.__lc) >= 1:
-            ret_by_context_type = self.__selectLastMsgByContextType(
-                ["release-publ", "release-nopubl"]
-            )  # CS 2024-04-04 search by context_type first
+            ret_by_context_type = self.__selectLastMsgByContextType(["release-publ", "release-nopubl"])  # CS 2024-04-04 search by context_type first
             if ret_by_context_type:
                 ret = ret_by_context_type
             else:
-                ret = self.__selectLastMsgByTitlePhrase(phrase="Release of")
+                ret = self.__selectLastMsgByTitlePhrase(phrase='Release of')
         else:
             logger.info("Deposition %s empty message file", depid)
 
@@ -379,9 +307,7 @@ class ExtractMessage(object):
         """Return date of last unlock message to depositor as python datetime.
         alias function of getLastUnlocked to standardize return type and name style for function calls
         """
-        s_datetime = self.getLastUnlocked(
-            depid, b_use_cache=b_use_cache, test_folder=test_folder
-        )
+        s_datetime = self.getLastUnlocked(depid, b_use_cache=b_use_cache, test_folder=test_folder)
         if s_datetime:
             return self.convertStrToDatetime(s_datetime)
         else:
@@ -410,20 +336,13 @@ class ExtractMessage(object):
         #     c0 = myContainerList[0]
 
         ret = None
-        self.__readMsgFile(
-            depid,
-            contentType="messages-to-depositor",
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
 
         if len(self.__lc) >= 1:
             c0 = self.__lc[0]
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug(
-                    "Deposition %s no pdbx_deposition_message_info category", depid
-                )
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
             else:
                 #
@@ -446,10 +365,7 @@ class ExtractMessage(object):
                         msgsubj = row[idxMsgSubj]
                         context_type_recorded = row[idxContextType]
 
-                        if (
-                            context_type_recorded == "system-unlocked"
-                            or msgsubj == "System Unlocked"
-                        ):
+                        if context_type_recorded == "system-unlocked" or msgsubj == "System Unlocked":
                             if ordinalId > maxUnlockOrdId:
                                 maxUnlockOrdId = ordinalId
                                 ret = str(row[idxLastCommDate])
@@ -489,39 +405,21 @@ class ExtractMessage(object):
         lastvalid = None
         major = None
 
-        self.__readMsgFile(
-            depid,
-            contentType="messages-to-depositor",
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType="messages-to-depositor", b_use_cache=b_use_cache, test_folder=test_folder)
 
         if len(self.__lc) >= 1:
             logger.info("start searching for last validation letter by context_type")
-            (
-                lastvalid,
-                major,
-            ) = (
-                self.__getLastValidationByContextType()
-            )  # CS 2024-04-04 first search by context_type/context_value
+            (lastvalid, major) = self.__getLastValidationByContextType()  # CS 2024-04-04 first search by context_type/context_value
             if lastvalid:
                 logger.info("found last validation letter by context_type")
-                return (
-                    lastvalid,
-                    major,
-                )  # return if find message by context_type/context_value
+                return (lastvalid, major)  # return if find message by context_type/context_value
 
-            logger.info(
-                "fail to find last validation letter by context_type, default to search by subject/text parsing"
-            )
+            logger.info("fail to find last validation letter by context_type, default to search by subject/text parsing")
 
             c0 = self.__lc[0]
             catObj = c0.getObj("pdbx_deposition_message_file_reference")
             if catObj is None:
-                logger.debug(
-                    "Deposition %s no pdbx_deposition_message_file_reference category",
-                    depid,
-                )
+                logger.debug("Deposition %s no pdbx_deposition_message_file_reference category", depid)
                 return (None, None)
 
             # Get list of msgids of validtion report
@@ -536,9 +434,7 @@ class ExtractMessage(object):
                 itDict[str(itName).lower()] = idxIt
 
             idxMsgId = itDict["_pdbx_deposition_message_file_reference.message_id"]
-            idxContentType = itDict[
-                "_pdbx_deposition_message_file_reference.content_type"
-            ]
+            idxContentType = itDict["_pdbx_deposition_message_file_reference.content_type"]
 
             for row in catObj.getRowList():
                 try:
@@ -562,9 +458,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug(
-                    "Deposition %s no pdbx_deposition_message_info category", depid
-                )
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return (None, None)
 
             #
@@ -583,20 +477,14 @@ class ExtractMessage(object):
 
             for row in catObj.getRowList():
                 try:
-                    timeStamp = datetime.datetime.strptime(
-                        str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S"
-                    )
+                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S")
                     msgId = str(row[idxMsgId])
                     status = str(row[idxSendStatus])
                     msgText = str(row[idxMsgText])
                     msgSubject = str(row[idxMsgSubject])
 
                     if status == "Y" and msgId in msgids:
-                        if re.search(
-                            "processed files are ready for your review",
-                            msgSubject,
-                            re.IGNORECASE,
-                        ):  # check subject subject to confirm validation letter
+                        if re.search("processed files are ready for your review", msgSubject, re.IGNORECASE):  # check subject subject to confirm validation letter
                             if lastvalid:
                                 if timeStamp > lastvalid:
                                     # logger.debug("Updating lastvalid %s %s", lastvalid, timeStamp)
@@ -614,9 +502,7 @@ class ExtractMessage(object):
         else:
             logger.debug("Deposition %s empty message file", depid)
 
-        logger.info(
-            "finished searching for last validation letter by subject/text parsing"
-        )
+        logger.info("finished searching for last validation letter by subject/text parsing")
         logger.info("Returning (%s, %s)", lastvalid, major)
         return (lastvalid, major)
 
@@ -630,16 +516,12 @@ class ExtractMessage(object):
         # logger.debug("Major validation %s", ret)
         return ret
 
-    def getLastSentMessageDate(
-        self, depid, msgtodepositor, b_use_cache=True, test_folder=None
-    ):
+    def getLastSentMessageDate(self, depid, msgtodepositor, b_use_cache=True, test_folder=None):
         """Returns datetime  of the ast message sent.  Will return None if no messages sent.
         msgtodepositor is boolean indicating which direction message sent
         """
 
-        logger.info(
-            "Starting for deposition %s msgtodepositor %s", depid, msgtodepositor
-        )
+        logger.info("Starting for deposition %s msgtodepositor %s", depid, msgtodepositor)
 
         if msgtodepositor:
             msg_content = "messages-to-depositor"
@@ -662,12 +544,7 @@ class ExtractMessage(object):
         #     c0 = myContainerList[0]
 
         ret = None
-        self.__readMsgFile(
-            depid,
-            contentType=msg_content,
-            b_use_cache=b_use_cache,
-            test_folder=test_folder,
-        )
+        self.__readMsgFile(depid, contentType=msg_content, b_use_cache=b_use_cache, test_folder=test_folder)
 
         if len(self.__lc) >= 1:
             c0 = self.__lc[0]
@@ -675,9 +552,7 @@ class ExtractMessage(object):
 
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug(
-                    "Deposition %s no pdbx_deposition_message_info category", depid
-                )
+                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
                 return None
 
             #
@@ -695,9 +570,7 @@ class ExtractMessage(object):
 
             for row in catObj.getRowList():
                 try:
-                    timeStamp = datetime.datetime.strptime(
-                        str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S"
-                    )
+                    timeStamp = datetime.datetime.strptime(str(row[idxTimeStamp]), "%Y-%m-%d %H:%M:%S")
                     status = str(row[idxSendStatus])
 
                     if status == "Y":
@@ -721,19 +594,13 @@ class ExtractMessage(object):
 
         return ret
 
-    def getPendingDepositorMessages(
-        self, depid, b_use_cache=True, test_folder=None
-    ):  # pylint: disable=unused-argument
+    def getPendingDepositorMessages(self, depid, b_use_cache=True, test_folder=None):  # pylint: disable=unused-argument
         """Returns list of messages that have been sent by depositor and pending action present"""
 
         logger.info("Starting for deposition %s", depid)
 
-        dep_fpath = self.__getMsgFilePath(
-            depid, "messages-from-depositor", test_folder=None
-        )
-        bio_fpath = self.__getMsgFilePath(
-            depid, "messages-to-depositor", test_folder=None
-        )
+        dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
+        bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
 
         pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_frmDpstr.read(dep_fpath)
@@ -750,7 +617,9 @@ class ExtractMessage(object):
             # Assume all messages unacknowledged
             return depRecordSetLst
 
-        bioStatusSetLst = pdbxMsgIo_toDpstr.getMsgStatusInfo()
+        bioStatusSetLst = (
+            pdbxMsgIo_toDpstr.getMsgStatusInfo()
+        )
 
         ret = []
         for dep in depRecordSetLst:

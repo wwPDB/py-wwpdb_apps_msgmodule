@@ -154,12 +154,7 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
-from mmcif_utils.message.PdbxMessage import (
-    PdbxMessageInfo,
-    PdbxMessageFileReference,
-    PdbxMessageOrigCommReference,
-    PdbxMessageStatus,
-)
+from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
 from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 
@@ -257,12 +252,8 @@ class MessagingIo(object):
         self.__cIA = ConfigInfoAppEm(self.__siteId)
         self.__emdDialectMappingFile = self.__cIA.get_emd_mapping_file_path()
         self.__contentTypeDict = self.__cI.get("CONTENT_TYPE_DICTIONARY")
-        self.__release_message_subjects = self.__cI.get(
-            "COMMUNICATION_RELEASE_MESSAGE_SUBJECTS"
-        )
-        self.__approval_no_correct_message_subjects = self.__cI.get(
-            "COMMUNICATION_APPROVAL_WITHOUT_CHANGES_MESSAGE_SUBJECTS"
-        )
+        self.__release_message_subjects = self.__cI.get("COMMUNICATION_RELEASE_MESSAGE_SUBJECTS")
+        self.__approval_no_correct_message_subjects = self.__cI.get("COMMUNICATION_APPROVAL_WITHOUT_CHANGES_MESSAGE_SUBJECTS")
         #
         self.__dbFilePath = os.path.join(self.__sessionPath, "modelFileData.db")
         #
@@ -289,9 +280,7 @@ class MessagingIo(object):
 
         if self.__isWorkflow():
             logger.info("--------------------------------------------")
-            logger.info(
-                "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-            )
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
 
             dirp = os.path.dirname(self.__dbFilePath)
 
@@ -300,12 +289,8 @@ class MessagingIo(object):
                 if not os.access(self.__dbFilePath, os.R_OK):
                     logger.debug("DB File not present %s", self.__dbFilePath)
 
-                    msgDI = MessagingDataImport(
-                        self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                    )
-                    modelFilePath = msgDI.getFilePath(
-                        contentType="model", format="pdbx"
-                    )
+                    msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                    modelFilePath = msgDI.getFilePath(contentType="model", format="pdbx")
                     logger.info("CStrack+++ read modelFilePath = %s", modelFilePath)
 
                     # parse info from model file
@@ -317,30 +302,19 @@ class MessagingIo(object):
                             # parse model cif file and verify blockname
                             #########################################################################################################
                             pdbxReader = IoAdapterCore(self.__verbose, self.__lfh)
-                            containerList = pdbxReader.readFile(
-                                inputFilePath=modelFilePath,
-                                selectList=MessagingIo.ctgrsReqrdFrmModelFile,
-                            )
+                            containerList = pdbxReader.readFile(inputFilePath=modelFilePath, selectList=MessagingIo.ctgrsReqrdFrmModelFile)
 
                             if len(containerList) > 1:
                                 # Jetison the extra data blocks
                                 containerList = containerList[0:1]
 
                             dataBlockName = containerList[0].getName().encode("utf-8")
-                            logger.debug(
-                                "--------------------------------------------\n"
-                            )
-                            logger.debug(
-                                "identified datablock name %s in sample pdbx data file at: %s",
-                                dataBlockName,
-                                modelFilePath,
-                            )
+                            logger.debug("--------------------------------------------\n")
+                            logger.debug("identified datablock name %s in sample pdbx data file at: %s", dataBlockName, modelFilePath)
                             #
                             #
                         except Exception as _e:  # noqa: F841
-                            logger.exception(
-                                "problem processing pdbx data file: %s", modelFilePath
-                            )
+                            logger.exception("problem processing pdbx data file: %s", modelFilePath)
 
                         try:
                             myPersist = PdbxPersist(self.__verbose, self.__lfh)
@@ -353,14 +327,9 @@ class MessagingIo(object):
                             logger.exception("Failed to shelve cif data")
 
                     else:
-                        logger.debug(
-                            "pdbx data file not found/accessible at: %s", modelFilePath
-                        )
+                        logger.debug("pdbx data file not found/accessible at: %s", modelFilePath)
                 else:
-                    logger.info(
-                        "skipping creation of database file b/c already exists at: %s",
-                        self.__dbFilePath,
-                    )
+                    logger.info("skipping creation of database file b/c already exists at: %s", self.__dbFilePath)
 
             # #### End of initdb definition - execute
 
@@ -384,27 +353,15 @@ class MessagingIo(object):
         dbname = containerNameList[0][0]
 
         if self.__verbose:
-            logger.info(
-                "successfully obtained datablock name as: %s, from %s",
-                dbname,
-                self.__dbFilePath,
-            )
+            logger.info("successfully obtained datablock name as: %s, from %s", dbname, self.__dbFilePath)
         catObj = persist.fetchOneObject(self.__dbFilePath, dbname, p_ctgryNm)
 
         if catObj is None:
             if self.__verbose:
-                logger.info(
-                    "Unable to find '%s' category in db file: %s",
-                    p_ctgryNm,
-                    self.__dbFilePath,
-                )
+                logger.info("Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         else:
             if self.__verbose:
-                logger.info(
-                    "Successfully found '%s' category in db file: %s",
-                    p_ctgryNm,
-                    self.__dbFilePath,
-                )
+                logger.info("Successfully found '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         return catObj
 
     def __getFormatCompat(self):
@@ -413,11 +370,7 @@ class MessagingIo(object):
         ctgryNm = "pdbx_database_status"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -429,9 +382,7 @@ class MessagingIo(object):
                 for idxIt, itName in enumerate(itNameList):
                     itDict[str(itName).lower()] = idxIt
                     #
-                idxCompat = itDict.get(
-                    "_pdbx_database_status.pdb_format_compatible", None
-                )
+                idxCompat = itDict.get("_pdbx_database_status.pdb_format_compatible", None)
 
                 for row in catObj.getRowList():
                     try:
@@ -451,36 +402,21 @@ class MessagingIo(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.error(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.error("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Error retrieving format compatiblilty")
 
     def getMsgColList(self, p_bCommHstryRqstd=False):
         """Retrieval of list of attributes (i.e. columns) for message data"""
         logger.info("--------------------------------------------\n")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         rtrnList = []
         bSuccess = False
 
-        commHistoryAttributesLst = [
-            "orig_message_id",
-            "orig_deposition_data_set_id",
-            "orig_timestamp",
-            "orig_sender",
-            "orig_recipient",
-            "orig_message_subject",
-            "orig_attachments",
-        ]
+        commHistoryAttributesLst = ["orig_message_id", "orig_deposition_data_set_id", "orig_timestamp", "orig_sender", "orig_recipient", "orig_message_subject", "orig_attachments"]
         # [12,13,14,15,16,17,18]
         try:
             messageStyleObj = PdbxMessageCategoryStyle()
-            rtrnList = messageStyleObj.getAttributeNameList(
-                "pdbx_deposition_message_info"
-            )
+            rtrnList = messageStyleObj.getAttributeNameList("pdbx_deposition_message_info")
             # ['ordinal_id', 'message_id', 'deposition_data_set_id', 'timestamp', 'sender', 'context_type',
             #  'context_value', 'parent_message_id', 'message_subject', 'message_text', 'message_type', 'send_status']
 
@@ -491,9 +427,7 @@ class MessagingIo(object):
                 bSuccess = True
                 #
                 if self.__verbose:
-                    logger.info(
-                        "Column list for message info returned as: %s", rtrnList
-                    )
+                    logger.info("Column list for message info returned as: %s", rtrnList)
                 #
 
         #
@@ -517,9 +451,7 @@ class MessagingIo(object):
 
         """
         logger.info("--------------------------------------------\n")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         contentType = self.__reqObj.getValue("content_type")
         logger.info("contentType is: %s", contentType)
         bCommHstryRqstd = True if (contentType == "commhstry") else False
@@ -536,48 +468,28 @@ class MessagingIo(object):
         try:
             if self.__isWorkflow():
                 # determine path(s) to cif datafiles that contain the data we are seeking
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 if contentType == "msgs" or bCommHstryRqstd:
-                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(
-                        contentType="messages-from-depositor", format="pdbx"
-                    )
-                    self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                        contentType="messages-to-depositor", format="pdbx"
-                    )
+                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
+                    self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 if contentType == "notes" or bCommHstryRqstd:
-                    self.__notesFilePath = msgDI.getFilePath(
-                        contentType="notes-from-annotator", format="pdbx"
-                    )
+                    self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
 
             # obtain data from relevant datafiles based on contentType requested
             if contentType == "msgs" or bCommHstryRqstd:
-                logger.info(
-                    "self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-                if self.__msgsFrmDpstrFilePath is not None and os.access(
-                    self.__msgsFrmDpstrFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
                     if ok:
                         recordSetLst = (
                             pdbxMsgIo_frmDpstr.getMessageInfo()
                         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-                if self.__msgsToDpstrFilePath is not None and os.access(
-                    self.__msgsToDpstrFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
                     if ok:
                         recordSetLst.extend(
@@ -587,12 +499,8 @@ class MessagingIo(object):
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-                if self.__notesFilePath is not None and os.access(
-                    self.__notesFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_notes = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
+                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_notes.read(self.__notesFilePath)
 
                     if ok:
@@ -602,19 +510,14 @@ class MessagingIo(object):
                             )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                         elif bCommHstryRqstd:
                             fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [
-                                record
-                                for record in fullNotesLst
-                                if ("archive" in record["message_type"])
-                            ]
+                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
                             recordSetLst.extend(onlyArchvdCommsLst)
 
             for record in recordSetLst:
+
                 if record["message_id"] == p_msgId:
                     msgType = record["message_type"]
-                    record["timestamp"] = self.__convertToLocalTimeZone(
-                        record["timestamp"]
-                    )
+                    record["timestamp"] = self.__convertToLocalTimeZone(record["timestamp"])
 
                     msgText = self.__decodeCifToUtf8(record["message_text"])
                     if msgType not in ["archive_manual", "forward_manual"]:
@@ -623,9 +526,7 @@ class MessagingIo(object):
 
                     msgSubj = self.__decodeCifToUtf8(record["message_subject"])
                     if msgType not in ["archive_manual", "forward_manual"]:
-                        msgSubj = self.__protectLineBreaks(
-                            self.__protectAngleBrackets(msgSubj)
-                        )
+                        msgSubj = self.__protectLineBreaks(self.__protectAngleBrackets(msgSubj))
                     record["message_subject"] = msgSubj
 
                     record["sender"] = self.__protectAngleBrackets(record["sender"])
@@ -681,36 +582,20 @@ class MessagingIo(object):
         try:
             if self.__isWorkflow():
                 # determine path(s) to cif datafiles that contain the data we are seeking
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 if contentType == "msgs" or bCommHstryRqstd:
-                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(
-                        contentType="messages-from-depositor", format="pdbx"
-                    )
-                    self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                        contentType="messages-to-depositor", format="pdbx"
-                    )
+                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
+                    self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 if contentType == "notes" or bCommHstryRqstd:
-                    self.__notesFilePath = msgDI.getFilePath(
-                        contentType="notes-from-annotator", format="pdbx"
-                    )
+                    self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
 
             # obtain data from relevant datafiles based on contentType requested
             if contentType == "msgs" or bCommHstryRqstd:
-                logger.info(
-                    "self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-                if self.__msgsFrmDpstrFilePath is not None and os.access(
-                    self.__msgsFrmDpstrFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
                     if ok:
                         recordSetLst = (
@@ -718,28 +603,18 @@ class MessagingIo(object):
                         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
                         if bCommHstryRqstd:
-                            origCommsLst.extend(
-                                pdbxMsgIo_frmDpstr.getOrigCommReferenceInfo()
-                            )
+                            origCommsLst.extend(pdbxMsgIo_frmDpstr.getOrigCommReferenceInfo())
 
-                if self.__msgsToDpstrFilePath is not None and os.access(
-                    self.__msgsToDpstrFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
                     if ok:
                         msgsToDpstrLst = pdbxMsgIo_toDpstr.getMessageInfo()
                         rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = len(msgsToDpstrLst)
-                        recordSetLst.extend(
-                            msgsToDpstrLst
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                        recordSetLst.extend(msgsToDpstrLst)  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
                         if bCommHstryRqstd:
-                            origCommsLst.extend(
-                                pdbxMsgIo_toDpstr.getOrigCommReferenceInfo()
-                            )
+                            origCommsLst.extend(pdbxMsgIo_toDpstr.getOrigCommReferenceInfo())
 
                     else:
                         # no messages content created yet
@@ -753,12 +628,8 @@ class MessagingIo(object):
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-                if self.__notesFilePath is not None and os.access(
-                    self.__notesFilePath, os.R_OK
-                ):
-                    pdbxMsgIo_notes = PdbxMessageIo(
-                        verbose=self.__verbose, log=self.__lfh
-                    )
+                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
+                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_notes.read(self.__notesFilePath)
 
                     if ok:
@@ -769,30 +640,16 @@ class MessagingIo(object):
                             rtrnDict["CURRENT_NUM_NOTES"] = len(recordSetLst)
                         elif bCommHstryRqstd:
                             fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [
-                                record
-                                for record in fullNotesLst
-                                if ("archive" in record["message_type"])
-                            ]
+                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
                             recordSetLst.extend(onlyArchvdCommsLst)
-                            origCommsLst.extend(
-                                pdbxMsgIo_notes.getOrigCommReferenceInfo()
-                            )
+                            origCommsLst.extend(pdbxMsgIo_notes.getOrigCommReferenceInfo())
                     else:
                         # no notes content created yet
                         rtrnDict["CURRENT_NUM_NOTES"] = 0
             #
-            recordSetLst = [
-                record
-                for record in recordSetLst
-                if (record["send_status"] == p_sSendStatus)
-            ]
+            recordSetLst = [record for record in recordSetLst if (record["send_status"] == p_sSendStatus)]
             # Need to sort by datetime using e.g.:   aDateTime = datetime.strptime('2013-08-14 15:41:52', '%Y-%m-%d %H:%M:%S')
-            recordSetLst.sort(
-                key=lambda record: datetime.strptime(
-                    record["timestamp"], "%Y-%m-%d %H:%M:%S"
-                )
-            )
+            recordSetLst.sort(key=lambda record: datetime.strptime(record["timestamp"], "%Y-%m-%d %H:%M:%S"))
             #
             if bCommHstryRqstd:
                 if self.__verbose and self.__debug and self.__debugLvl2:
@@ -802,18 +659,14 @@ class MessagingIo(object):
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    logger.debug(
-                        "before processing for threading -- row[%s]: %r", idx, row
-                    )
+                    logger.debug("before processing for threading -- row[%s]: %r", idx, row)
             #
             if p_bThreadedRslts:
                 self.__doThreadedHandling(recordSetLst, rtrnDict)
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
-                    logger.debug(
-                        "after processing for threading -- row[%s]: %r", idx, row
-                    )
+                    logger.debug("after processing for threading -- row[%s]: %r", idx, row)
             #
             fullRsltSet = self.__trnsfrmMsgDictToLst(recordSetLst, bCommHstryRqstd)
             #
@@ -833,18 +686,12 @@ class MessagingIo(object):
                     if self.__debug:
                         logger.debug("p_sSrchFltr is: %r", p_sSrchFltr)
 
-                    filteredRsltSet = self.__filterRsltSet(
-                        fullRsltSet, p_sGlobalSrchFilter=p_sSrchFltr
-                    )
+                    filteredRsltSet = self.__filterRsltSet(fullRsltSet, p_sGlobalSrchFilter=p_sSrchFltr)
                     iTotalDisplayRecords = len(filteredRsltSet)
                     rtrnList = filteredRsltSet
 
-                elif (
-                    len(p_colSearchDict) > 0
-                ):  # applying column specific filtering here
-                    fltrdRsltSet = self.__filterRsltSet(
-                        fullRsltSet, p_dictColSrchFilter=p_colSearchDict
-                    )
+                elif len(p_colSearchDict) > 0:  # applying column specific filtering here
+                    fltrdRsltSet = self.__filterRsltSet(fullRsltSet, p_dictColSrchFilter=p_colSearchDict)
                     iTotalDisplayRecords = len(fltrdRsltSet)
                     rtrnList = fltrdRsltSet
                 else:
@@ -857,48 +704,23 @@ class MessagingIo(object):
                 ##################################################################
 
                 # number of columns selected for sorting --
-                iSortingCols = (
-                    int(self.__reqObj.getValue("iSortingCols"))
-                    if self.__reqObj.getValue("iSortingCols")
-                    else 0
-                )
+                iSortingCols = int(self.__reqObj.getValue("iSortingCols")) if self.__reqObj.getValue("iSortingCols") else 0
                 #
                 ordL = []
                 descL = []
                 for i in range(iSortingCols):
                     iS = str(i)
-                    idxCol = (
-                        int(self.__reqObj.getValue("iSortCol_" + iS))
-                        if self.__reqObj.getValue("iSortCol_" + iS)
-                        else 0
-                    )
-                    sortFlag = (
-                        self.__reqObj.getValue("bSortable_" + iS)
-                        if self.__reqObj.getValue("bSortable_" + iS)
-                        else "false"
-                    )
-                    sortOrder = (
-                        self.__reqObj.getValue("sSortDir_" + iS)
-                        if self.__reqObj.getValue("sSortDir_" + iS)
-                        else "asc"
-                    )
+                    idxCol = int(self.__reqObj.getValue("iSortCol_" + iS)) if self.__reqObj.getValue("iSortCol_" + iS) else 0
+                    sortFlag = self.__reqObj.getValue("bSortable_" + iS) if self.__reqObj.getValue("bSortable_" + iS) else "false"
+                    sortOrder = self.__reqObj.getValue("sSortDir_" + iS) if self.__reqObj.getValue("sSortDir_" + iS) else "asc"
                     if sortFlag == "true":
                         # idxCol at this point reflects display order and not necessarily the true index of the column as it sits in persistent storage
                         # so can reference "mDataProp_[idxCol]" parameter sent by DataTables which will give true name of the column being sorted
-                        colName = (
-                            self.__reqObj.getValue("mDataProp_" + str(idxCol))
-                            if self.__reqObj.getValue("mDataProp_" + str(idxCol))
-                            else ""
-                        )
+                        colName = self.__reqObj.getValue("mDataProp_" + str(idxCol)) if self.__reqObj.getValue("mDataProp_" + str(idxCol)) else ""
                         colIndx = columnList.index(colName)
                         #
                         if self.__verbose:
-                            logger.info(
-                                "colIndx for %s is %s as derived from columnList is %r",
-                                colName,
-                                colIndx,
-                                columnList,
-                            )
+                            logger.info("colIndx for %s is %s as derived from columnList is %r", colName, colIndx, columnList)
                         #
                         ordL.append(colIndx)
                         if sortOrder == "desc":
@@ -907,28 +729,18 @@ class MessagingIo(object):
                 if len(ordL) > 0:
                     if self.__verbose and self.__debug and self.__debugLvl2:
                         for idx, row in enumerate(rtrnList):
-                            logger.debug(
-                                "+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r",
-                                idx,
-                                row,
-                            )
+                            logger.debug("+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r", idx, row)
                     rtrnList = self.__orderBy(rtrnList, ordL, descL)
 
                 if self.__verbose:
-                    logger.info(
-                        "p_iDisplayStart is %s and p_iDisplayLength is %s",
-                        p_iDisplayStart,
-                        p_iDisplayLength,
-                    )
+                    logger.info("p_iDisplayStart is %s and p_iDisplayLength is %s", p_iDisplayStart, p_iDisplayLength)
                     #
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting message row")
         #
         if p_bServerSide:
             if p_iDisplayLength > 0:
-                rtrnDict["RECORD_LIST"] = rtrnList[
-                    (p_iDisplayStart) : (p_iDisplayStart + p_iDisplayLength)
-                ]
+                rtrnDict["RECORD_LIST"] = rtrnList[(p_iDisplayStart) : (p_iDisplayStart + p_iDisplayLength)]
             else:
                 rtrnDict["RECORD_LIST"] = rtrnList
             rtrnDict["TOTAL_RECORDS"] = iTotalRecords
@@ -945,9 +757,7 @@ class MessagingIo(object):
 
         """
         logger.debug("--------------------------------------------")
-        logger.debug(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.debug("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         rtrnList = []
 
@@ -975,9 +785,7 @@ class MessagingIo(object):
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 for token, contentFormat in fileCheckCatalog.items():
                     contentType = self.__getContentType(token)
                     fPath = msgDI.getFilePath(contentType, contentFormat)
@@ -1009,79 +817,47 @@ class MessagingIo(object):
 
         return rtrnList
 
-    def getFilesRfrncd(
-        self, p_depDataSetId, p_msgIdFilter=None
-    ):  # pylint: disable=unused-argument
+    def getFilesRfrncd(self, p_depDataSetId, p_msgIdFilter=None):  # pylint: disable=unused-argument
         """Retrieve list of files referenced by any messages for this dataset ID
 
         :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
 
         """
         logger.info("--------------------------------------------")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         recordSetLst = []
         rtrnDict = {}
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsFrmDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-from-depositor", format="pdbx"
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-            if self.__msgsFrmDpstrFilePath is not None and os.access(
-                self.__msgsFrmDpstrFilePath, os.R_OK
-            ):
+            if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
-                    self.__msgsFrmDpstrFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
-                ) as _lf, FileSizeLogger(
-                    self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-                ) as _fsl:
+                    self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
+                ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
                     pid = os.getpid()
                     ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
                 if ok:
-                    recordSetLst = (
-                        mIIo.getFileReferenceInfo()
-                    )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-            if self.__msgsToDpstrFilePath is not None and os.access(
-                self.__msgsToDpstrFilePath, os.R_OK
-            ):
+            if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
-                    self.__msgsToDpstrFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
+                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
                     ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
                 if ok:
-                    recordSetLst.extend(
-                        mIIo2.getFileReferenceInfo()
-                    )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    recordSetLst.extend(mIIo2.getFileReferenceInfo())  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
@@ -1101,9 +877,7 @@ class MessagingIo(object):
 
         """
         logger.info("--------------------------------------------")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         return self.__getMsgsByStatus("read_status", "Y")
 
@@ -1114,9 +888,7 @@ class MessagingIo(object):
 
         """
         logger.info("--------------------------------------------\n")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         return self.__getMsgsByStatus("action_reqd", "N")
 
@@ -1132,36 +904,27 @@ class MessagingIo(object):
         return self.__getMsgsByStatus("for_release", "Y")
 
     def getNotesList(self):
+
         rtrnList = []
         recordSetLst = []
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__notesFilePath = msgDI.getFilePath(
-                    contentType="notes-from-annotator", format="pdbx"
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
             if os.access(self.__notesFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
-                    self.__notesFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
+                    self.__notesFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__notesFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
                     ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid))
                 if ok:
-                    recordSetLst = (
-                        mIIo.getMessageInfo()
-                    )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    recordSetLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 #
                 for row in recordSetLst:
                     if self.__verbose and self.__debug:
@@ -1187,9 +950,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         bPdbxMdlFlUpdtd = False
@@ -1200,57 +961,36 @@ class MessagingIo(object):
         try:
             if self.__verbose and self.__debug:
                 logger.info("p_msgObj.isLive is: %r", p_msgObj.isLive)
-            if (
-                p_msgObj.isLive
-            ):  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
+            if p_msgObj.isLive:  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
                 mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
                 mI.set(p_msgObj.getMsgDict())
                 if self.__verbose and self.__debug:
                     logger.info("p_msgObj.getMsgDict() is: %r", p_msgObj.getMsgDict())
             #
-            outputFilePth = p_msgObj.getOutputFileTarget(
-                self.__reqObj
-            )  # determine which datafile needs to be updated
+            outputFilePth = p_msgObj.getOutputFileTarget(self.__reqObj)  # determine which datafile needs to be updated
             if self.__verbose and self.__debug:
                 logger.info("outputFilePth is: %s", outputFilePth)
             #
             if p_msgObj.contentType == "msgs" and self.__isWorkflow():
                 # in workflow environment we need to know path of messaging data file in deposit storage area
                 # b/c this needs to be kept in sync as well for any updates
-                msgDE = MessagingDataExport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                depUiMsgsToDpstrFilePath = msgDE.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
+                msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                depUiMsgsToDpstrFilePath = msgDE.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 if self.__verbose:
-                    logger.info(
-                        "depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath
-                    )
+                    logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
 
             if not os.access(outputFilePth, os.F_OK):
-                logger.info(
-                    "messaging output file not found at: %s, so instantiating a copy.",
-                    outputFilePth,
-                )
+                logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
                 try:
                     # file may not exist b/c it is the first time that an
                     # annotator is sending a message in which case we create a new file
                     f = open(outputFilePth, "w")
                     f.close()
                 except IOError:
-                    logger.error(
-                        "problem creating messaging output file at: %s", outputFilePth
-                    )
+                    logger.error("problem creating messaging output file at: %s", outputFilePth)
             #
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-            with LockFile(
-                outputFilePth,
-                timeoutSeconds=self.__timeoutSeconds,
-                retrySeconds=self.__retrySeconds,
-                verbose=self.__verbose,
-                log=self.__lfh,
-            ) as _lf, FileSizeLogger(
+            with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
                 outputFilePth, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
@@ -1258,9 +998,7 @@ class MessagingIo(object):
                     outputFilePth, "msgingmod" + str(pid)
                 )  # may return False if there was a file but the file had no content yet (i.e. no annotator messages yet)
 
-            if self._sanityCheck(
-                p_msgObj.contentType, bGotContent, mIIo, outputFilePth
-            ):
+            if self._sanityCheck(p_msgObj.contentType, bGotContent, mIIo, outputFilePth):
                 mIIo.newBlock("messages")
                 #
                 if p_msgObj.isLive:
@@ -1271,15 +1009,11 @@ class MessagingIo(object):
                         logger.info("mI.get() is now: %s", mI.get())
                         logger.info("mI.getMessageId() is now: %s", mI.getMessageId())
                         logger.info("p_msgObj.messageId is now: %s", p_msgObj.messageId)
-                        logger.info(
-                            "p_msgObj.isReminderMsg is now: %s", p_msgObj.isReminderMsg
-                        )
+                        logger.info("p_msgObj.isReminderMsg is now: %s", p_msgObj.isReminderMsg)
                 elif p_msgObj.isDraft:
                     # if this is a draft we are updating the already existing draft copy of the message which we find by matching message id
 
-                    recordSetLst = (
-                        mIIo.getMessageInfo()
-                    )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    recordSetLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     #
                     rowToUpdate = None
                     for rowIdx, record in enumerate(recordSetLst):
@@ -1289,41 +1023,18 @@ class MessagingIo(object):
 
                     # ['context_value', 'sender', 'context_type', 'timestamp', 'ordinal_id', 'message_subject', 'deposition_data_set_id', 'message_text', 'send_status', 'message_type',
                     # 'message_id', 'parent_message_id']
-                    mIIo.update(
-                        "pdbx_deposition_message_info",
-                        "send_status",
-                        p_msgObj.sendStatus,
-                        iRow=rowToUpdate,
-                    )
-                    mIIo.update(
-                        "pdbx_deposition_message_info",
-                        "message_subject",
-                        p_msgObj.messageSubject,
-                        iRow=rowToUpdate,
-                    )
-                    mIIo.update(
-                        "pdbx_deposition_message_info",
-                        "message_text",
-                        p_msgObj.messageText,
-                        iRow=rowToUpdate,
-                    )
+                    mIIo.update("pdbx_deposition_message_info", "send_status", p_msgObj.sendStatus, iRow=rowToUpdate)
+                    mIIo.update("pdbx_deposition_message_info", "message_subject", p_msgObj.messageSubject, iRow=rowToUpdate)
+                    mIIo.update("pdbx_deposition_message_info", "message_text", p_msgObj.messageText, iRow=rowToUpdate)
 
                     # update timestamp
                     gmtTmStmp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-                    mIIo.update(
-                        "pdbx_deposition_message_info",
-                        "timestamp",
-                        gmtTmStmp,
-                        iRow=rowToUpdate,
-                    )
+                    mIIo.update("pdbx_deposition_message_info", "timestamp", gmtTmStmp, iRow=rowToUpdate)
 
                 # handle any file references
-                if (
-                    p_msgObj.isBeingSent and not self.__groupId
-                ):  # i.e. not executed for messages remaining in "draft" state
-                    bSuccess, msgFileRefs, failedFileRefs = self.__handleFileReferences(
-                        p_msgObj
-                    )
+                if p_msgObj.isBeingSent and not self.__groupId:  # i.e. not executed for messages remaining in "draft" state
+
+                    bSuccess, msgFileRefs, failedFileRefs = self.__handleFileReferences(p_msgObj)
                     if bSuccess:
                         flRefOrdinalId = mIIo.nextFileReferenceOrdinal()
                         for mfr in msgFileRefs:
@@ -1332,16 +1043,9 @@ class MessagingIo(object):
                             mIIo.appendFileReference(mfr.get())
                             flRefOrdinalId += 1
 
-                            if (
-                                mfr.getContentType() == "model-annotate"
-                                and mfr.getContentFormat() == "pdbx"
-                            ):
+                            if mfr.getContentType() == "model-annotate" and mfr.getContentFormat() == "pdbx":
                                 bPdbxMdlFlUpdtd = True
-                            if (
-                                mfr.getContentType() == "validation-report-annotate"
-                                or mfr.getContentType()
-                                == "validation-report-full-annotate"
-                            ):
+                            if mfr.getContentType() == "validation-report-annotate" or mfr.getContentType() == "validation-report-full-annotate":
                                 bVldtnRprtBeingSent = True
 
                     else:
@@ -1349,21 +1053,12 @@ class MessagingIo(object):
                         return bSuccess, False, failedFileRefs
 
                 # if this is a message to be archived or forwarded, handle reference to the original communication
-                if (
-                    "archive" in p_msgObj.messageType
-                    or "forward" in p_msgObj.messageType
-                ) and "noorig" not in p_msgObj.messageType:
+                if ("archive" in p_msgObj.messageType or "forward" in p_msgObj.messageType) and "noorig" not in p_msgObj.messageType:
                     self._handleOrigCommReferences(p_msgObj, mIIo)
 
                 self._updateSnapshotHistory(outputFilePth)
 
-                with LockFile(
-                    outputFilePth,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
-                ) as _lf:  # noqa: F841
+                with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf:  # noqa: F841
                     bOk = mIIo.write(outputFilePth)
 
                 # Write message to depositor message file and send email
@@ -1371,53 +1066,33 @@ class MessagingIo(object):
                     if self.__isWorkflow() and p_msgObj.contentType == "msgs":
                         # update copy of messages-to-depositor file in depositor file system if necessary
                         with LockFile(
-                            depUiMsgsToDpstrFilePath,
-                            timeoutSeconds=self.__timeoutSeconds,
-                            retrySeconds=self.__retrySeconds,
-                            verbose=self.__verbose,
-                            log=self.__lfh,
+                            depUiMsgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                         ) as _lf:  # noqa: F841
                             mIIo.write(depUiMsgsToDpstrFilePath)
 
                         try:
                             # send notification email to contact authors
                             if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                self.__sendNotificationEmail(
-                                    p_msgObj, bVldtnRprtBeingSent
-                                )
+                                self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
                         except:  # noqa: E722 pylint: disable=bare-except
-                            logger.exception(
-                                "Warning: problem sending notification email."
-                            )
+                            logger.exception("Warning: problem sending notification email.")
 
-                    elif (
-                        self.__isWorkflow()
-                        and p_msgObj.contentType == "notes"
-                        and p_msgObj.isNoteEmail
-                    ):
+                    elif self.__isWorkflow() and p_msgObj.contentType == "notes" and p_msgObj.isNoteEmail:
                         try:
                             # send notification email to contact authors
                             if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                self.__sendNotificationEmail(
-                                    p_msgObj, bVldtnRprtBeingSent
-                                )
+                                self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
                         except:  # noqa: E722  pylint: disable=bare-except
-                            logger.exception(
-                                "Warning: problem sending notification email."
-                            )
+                            logger.exception("Warning: problem sending notification email.")
 
                     else:
                         # execution here is for DEV TESTING purposes
                         if self.__devMode and p_msgObj.contentType == "msgs":
                             try:
                                 if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                    self.__sendNotificationEmail(
-                                        p_msgObj, bVldtnRprtBeingSent
-                                    )
+                                    self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
                             except:  # noqa: E722 pylint: disable=bare-except
-                                logger.exception(
-                                    "Warning: problem sending notification email."
-                                )
+                                logger.exception("Warning: problem sending notification email.")
 
             else:  # failed sanity check
                 logger.info("Message data append failed\n")
@@ -1426,11 +1101,7 @@ class MessagingIo(object):
             bOk = False
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)",
-            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-            endTime - startTime,
-        )
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk, bPdbxMdlFlUpdtd, failedFileRefs
 
@@ -1457,25 +1128,16 @@ class MessagingIo(object):
                 try:
                     shutil.copyfile(outputFilePth + srcVrsn, outputFilePth + dstVrsn)
                 except IOError:
-                    logger.error(
-                        "Problem making backup of preupdate messaging file at: %s",
-                        outputFilePth + srcVrsn,
-                    )
+                    logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth + srcVrsn)
 
         if os.access(outputFilePth, os.F_OK):
             try:
                 shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
             except IOError:
-                logger.error(
-                    "Problem making backup of preupdate messaging file at: %s",
-                    outputFilePth,
-                )
+                logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
 
         else:
-            logger.error(
-                "WARNING could NOT access messages-to-depositor file at: %s",
-                outputFilePth,
-            )
+            logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
 
         if self.__verbose:
             logger.info("COMPLETED")
@@ -1492,22 +1154,12 @@ class MessagingIo(object):
         """
         returnFilePath = None
 
-        msgDI = MessagingDataImport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         if contentType == "msgs":
-            returnFilePath = (
-                msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                if self.__isWorkflow()
-                else self.__msgsToDpstrFilePath
-            )
+            returnFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx") if self.__isWorkflow() else self.__msgsToDpstrFilePath
             logger.info("messages-to-depositor path is: %s", returnFilePath)
         elif contentType == "notes":
-            returnFilePath = (
-                msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
-                if self.__isWorkflow()
-                else self.__notesFilePath
-            )
+            returnFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx") if self.__isWorkflow() else self.__notesFilePath
             logger.info("notes-from-annotator path is: %s", returnFilePath)
 
         return returnFilePath
@@ -1526,21 +1178,11 @@ class MessagingIo(object):
                                     if no hwm available, then no assessment is done (True is returned)
 
         """
-        highWatermark = (
-            self.__reqObj.getValue("msgs_high_watermark")
-            if contentType == "msgs"
-            else self.__reqObj.getValue("notes_high_watermark")
-        )
+        highWatermark = self.__reqObj.getValue("msgs_high_watermark") if contentType == "msgs" else self.__reqObj.getValue("notes_high_watermark")
         bReturnVal = True
 
-        if (
-            highWatermark is not None and len(highWatermark) > 0
-        ):  # only if we have a valid high water mark can we peform the sanity check
-            logger.info(
-                "highWatermark of [%s] provided for contentType '%s' so using this for sanity check.",
-                highWatermark,
-                contentType,
-            )
+        if highWatermark is not None and len(highWatermark) > 0:  # only if we have a valid high water mark can we peform the sanity check
+            logger.info("highWatermark of [%s] provided for contentType '%s' so using this for sanity check.", highWatermark, contentType)
             try:
                 if bGotContent:
                     nextOrdinalID = mIIo.nextMessageOrdinal()
@@ -1548,13 +1190,12 @@ class MessagingIo(object):
                 else:
                     currentNumRows = 0
 
-                assert int(currentNumRows) >= int(highWatermark), (
-                    "MessagingIo._sanityCheck --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n"
-                    % (
-                        outputFilePth,
-                        currentNumRows,
-                        highWatermark,
-                    )
+                assert int(currentNumRows) >= int(
+                    highWatermark
+                ), "MessagingIo._sanityCheck --  CRITICAL ERROR -- file at: %s, had %s records but should have had at least %s records!\n" % (
+                    outputFilePth,
+                    currentNumRows,
+                    highWatermark,
                 )
             except AssertionError:
                 bReturnVal = False
@@ -1582,10 +1223,7 @@ class MessagingIo(object):
 
         """
         #
-        logger.info(
-            "'message_type' is '%s' so creating PdbxMessageOrigCommRef",
-            p_msgObj.messageType,
-        )
+        logger.info("'message_type' is '%s' so creating PdbxMessageOrigCommRef", p_msgObj.messageType)
 
         origSender = self.__reqObj.getValue("orig_sender")
         origRecipient = self.__reqObj.getValue("orig_recipient")
@@ -1603,9 +1241,7 @@ class MessagingIo(object):
         origRecipientAsAscii = self.__encodeUtf8ToCif(origRecipient)
         origSubjectAsAscii = self.__encodeUtf8ToCif(origSubject)
 
-        msgOrigCommRef = PdbxMessageOrigCommReference(
-            verbose=self.__verbose, log=self.__lfh
-        )
+        msgOrigCommRef = PdbxMessageOrigCommReference(verbose=self.__verbose, log=self.__lfh)
         msgOrigCommRef.setMessageId(p_msgObj.messageId)
         msgOrigCommRef.setDepositionId(p_msgObj.depositionId)
         msgOrigCommRef.setOrigSender(origSenderAsAscii)
@@ -1618,13 +1254,7 @@ class MessagingIo(object):
         msgOrigCommRef.setOrdinalId(id=nextOrdinalId)
         mIIo.appendOrigCommReference(msgOrigCommRef.get())
 
-    def autoMsg(
-        self,
-        p_depIdList,
-        p_tmpltType="release-publ",
-        p_isEmdbEntry=False,
-        p_sender="auto",
-    ):
+    def autoMsg(self, p_depIdList, p_tmpltType="release-publ", p_isEmdbEntry=False, p_sender="auto"):
         """
         Send message based on template type p_tmpltType, invoked by 'auto' batch operation rather than frontend UI selection.
         Originally deleveloped as a  method to enable release message to be automatically sent by another server-side
@@ -1656,13 +1286,10 @@ class MessagingIo(object):
         #
         # Added by ZF
         #
-        statusApi = StatusDbApi(
-            siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh
-        )
+        statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
         for depId in p_depIdList:  # for depId,tmpltType in p_depIdList:
-            self.__reqObj.setValue(
-                "identifier", depId
-            )  # IMPORTANT: enforcing value of deposition ID for all subsequent downstream processing
+
+            self.__reqObj.setValue("identifier", depId)  # IMPORTANT: enforcing value of deposition ID for all subsequent downstream processing
             #
             # Added by ZF
             #
@@ -1683,10 +1310,7 @@ class MessagingIo(object):
             self.__reqObj.setValue("em_map_and_model", "false")
 
             useAnnotatorName = False
-            if p_tmpltType in [
-                "remind-unlocked",
-                "approval-impl",
-            ]:  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+            if p_tmpltType in ["remind-unlocked", "approval-impl"]:  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
                 useAnnotatorName = True
 
             # Trigger lookup of annotator initial to name if desired by template
@@ -1695,9 +1319,7 @@ class MessagingIo(object):
 
             # qualifying name of database file, in case code calling this function does so with list of depIDs
             # in which case we will need to create individual database files for each depID, but all in same session path.
-            self.__dbFilePath = os.path.join(
-                self.__sessionPath, depId + "_modelFileData.db"
-            )
+            self.__dbFilePath = os.path.join(self.__sessionPath, depId + "_modelFileData.db")
             #
             self.initializeDataStore()
             #
@@ -1716,11 +1338,7 @@ class MessagingIo(object):
 
             # Default subject
             # sAccessionString is for entries being released - may not list all ids
-            sAccessionIdString = (
-                templateDict["accession_ids_em_rel"]
-                if p_isEmdbEntry
-                else templateDict["accession_ids"]
-            )
+            sAccessionIdString = templateDict["accession_ids_em_rel"] if p_isEmdbEntry else templateDict["accession_ids"]
             subject = "Release of " + sAccessionIdString
 
             # Template specific flags
@@ -1728,44 +1346,28 @@ class MessagingIo(object):
             # CS 2023-10-20 start, update auto message template based on PDB ID being superseded if any
             if p_tmpltType == "release-publ":
                 if p_isEmdbEntry:
-                    if (
-                        templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]"
-                    ):  # EM map-only
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only
-                        )
-                    if templateDict.get("spr_to_replace_pdb_ids", ""):
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede
-                        )
+                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em_map_only
+                    if templateDict.get("spr_to_replace_pdb_ids", ''):
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_em
                 else:
-                    if templateDict.get("spr_to_replace_pdb_ids", ""):
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthPblctn_supersede
-                        )
+                    if templateDict.get("spr_to_replace_pdb_ids", ''):
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthPblctn
             elif p_tmpltType == "release-nopubl":
                 if p_isEmdbEntry:
-                    if (
-                        templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]"
-                    ):  # EM map-only
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only
-                        )
-                    if templateDict.get("spr_to_replace_pdb_ids", ""):
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede
-                        )
+                    if templateDict.get("pdb_id", "") == "[PDBID NOT AVAIL]":  # EM map-only
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_map_only
+                    if templateDict.get("spr_to_replace_pdb_ids", ''):
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_em
                 else:
-                    if templateDict.get("spr_to_replace_pdb_ids", ""):
-                        msgTmplt = (
-                            MessagingTemplates.msgTmplt_releaseWthOutPblctn_supersede
-                        )
+                    if templateDict.get("spr_to_replace_pdb_ids", ''):
+                        msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn_supersede
                     else:
                         msgTmplt = MessagingTemplates.msgTmplt_releaseWthOutPblctn
             # CS 2023-10-20 end
@@ -1776,30 +1378,15 @@ class MessagingIo(object):
                 isNote = True
                 # Need all ids
                 accstr = templateDict["accession_ids"]
-                subject = (
-                    "ARCHIVED: Please attend to your unlocked deposition session - "
-                    + accstr
-                )
-            elif (
-                p_tmpltType == "approval-impl"
-            ):  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
-                msgTmplt = (
-                    MessagingTemplates.msgTmplt_approvalImplicit_em
-                    if p_isEmdbEntry
-                    else MessagingTemplates.msgTmplt_approvalImplicit
-                )
+                subject = "ARCHIVED: Please attend to your unlocked deposition session - " + accstr
+            elif p_tmpltType == "approval-impl":  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+                msgTmplt = MessagingTemplates.msgTmplt_approvalImplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalImplicit
                 attachFiles = False
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "Implicit Approval of Your Structure - " + accstr
-            elif (
-                p_tmpltType == "approval-expl"
-            ):  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
-                msgTmplt = (
-                    MessagingTemplates.msgTmplt_approvalExplicit_em
-                    if p_isEmdbEntry
-                    else MessagingTemplates.msgTmplt_approvalExplicit
-                )
+            elif p_tmpltType == "approval-expl":  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
+                msgTmplt = MessagingTemplates.msgTmplt_approvalExplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalExplicit
                 attachFiles = False
                 # Need all ids
                 accstr = templateDict["accession_ids"]
@@ -1816,27 +1403,15 @@ class MessagingIo(object):
                     msgTmplt = MessagingTemplates.msgTmplt_obsolete_model
                 subject = "Obsoletion of " + templateDict["obs_ids"]
                 attachFiles = False
-            elif (
-                p_tmpltType == "reminder"
-            ):  # CS 2024-04-04 change type from remind-feedback to reminder to match frontend drop-down
-                msgTmplt = (
-                    MessagingTemplates.msgTmplt_reminder_em
-                    if p_isEmdbEntry
-                    else MessagingTemplates.msgTmplt_reminder
-                )
+            elif p_tmpltType == "reminder":  # CS 2024-04-04 change type from remind-feedback to reminder to match frontend drop-down
+                msgTmplt = MessagingTemplates.msgTmplt_reminder_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder
                 attachFiles = False
                 isNote = True
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "REMINDER: Still awaiting feedback for " + accstr
-            elif (
-                p_tmpltType == "reminder-auth-to-rel"
-            ):  # CS 2024-09-09 add process to send reminder on AUTH entry deposited as REL
-                msgTmplt = (
-                    MessagingTemplates.msgTmplt_reminder_auth_to_rel_em
-                    if p_isEmdbEntry
-                    else MessagingTemplates.msgTmplt_reminder_auth_to_rel
-                )
+            elif p_tmpltType == "reminder-auth-to-rel":  # CS 2024-09-09 add process to send reminder on AUTH entry deposited as REL
+                msgTmplt = MessagingTemplates.msgTmplt_reminder_auth_to_rel_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder_auth_to_rel
                 attachFiles = False
                 isNote = True
                 accstr = templateDict["accession_ids"]
@@ -1887,53 +1462,32 @@ class MessagingIo(object):
             if self.__verbose:
                 logger.info("templateDict['em_entry'] is: %r", templateDict["em_entry"])
                 logger.info("templateDict['maponly'] is: %r", templateDict["maponly"])
-                logger.info(
-                    "templateDict['mapandmodel'] is: %r", templateDict["mapandmodel"]
-                )
+                logger.info("templateDict['mapandmodel'] is: %r", templateDict["mapandmodel"])
                 logger.info("fileRefList is now: %r", fileRefList)
             #
             rtrnDict[depId] = {}
             #
             if isNote:
-                autoMsgObj = AutoNote(
-                    messageDict, fileRefList, self.__verbose, self.__lfh
-                )
+                autoMsgObj = AutoNote(messageDict, fileRefList, self.__verbose, self.__lfh)
             else:
-                autoMsgObj = AutoMessage(
-                    messageDict, fileRefList, self.__verbose, self.__lfh
-                )
+                autoMsgObj = AutoMessage(messageDict, fileRefList, self.__verbose, self.__lfh)
 
             bOk, bPdbxMdlFlUpdtd, failedFileRefs = self.processMsg(autoMsgObj)
             #
             rtrnDict[depId]["success"] = "true" if bOk is True else "false"
             #
-            rtrnDict[depId]["pdbx_model_updated"] = (
-                "true" if bPdbxMdlFlUpdtd else "false"
-            )
+            rtrnDict[depId]["pdbx_model_updated"] = "true" if bPdbxMdlFlUpdtd else "false"
             rtrnDict[depId]["append_msg"] = ""
             if (not bOk) and (len(failedFileRefs) > 0):
-                sMsg = (
-                    "Failure to associate message with the following file types: "
-                    + (", ".join(failedFileRefs))
-                )
+                sMsg = "Failure to associate message with the following file types: " + (", ".join(failedFileRefs))
                 rtrnDict[depId]["append_msg"] = sMsg
             #
             if self.__verbose:
-                logger.info(
-                    "pdbx_model_updated is: %s", rtrnDict[depId]["pdbx_model_updated"]
-                )
+                logger.info("pdbx_model_updated is: %s", rtrnDict[depId]["pdbx_model_updated"])
         #
         return rtrnDict
 
-    def sendSingle(
-        self,
-        depId,
-        subject,
-        msg,
-        p_sender="auto",
-        p_testemail=None,
-        p_tmpltType="other",
-    ):  # CS 2024-04-04 add p_tmpltType arg
+    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None, p_tmpltType="other"):  # CS 2024-04-04 add p_tmpltType arg
         """Sends a single message for depId with subject and msg. If p_testemail is set - will send notification there
         Different from autoMsg, this function sends customized message pre-composed and passed by subject and msg args.
         Although template type p_tmpltType is an arg, the message doesn't base on the template type which is only provided for record.
@@ -1954,15 +1508,11 @@ class MessagingIo(object):
         self.__reqObj.setValue("content_type", "msgs")  # as opposed to "notes"
         self.__reqObj.setValue("filesource", "archive")
 
-        self.__reqObj.setValue(
-            "identifier", depId
-        )  # IMPORTANT: enforcing value of deposition ID for all subsequent downstream processing
+        self.__reqObj.setValue("identifier", depId)  # IMPORTANT: enforcing value of deposition ID for all subsequent downstream processing
 
         # qualifying name of database file, in case code calling this function does so with list of depIDs
         # in which case we will need to create individual database files for each depID, but all in same session path.
-        self.__dbFilePath = os.path.join(
-            self.__sessionPath, depId + "_modelFileData.db"
-        )
+        self.__dbFilePath = os.path.join(self.__sessionPath, depId + "_modelFileData.db")
         #
         self.initializeDataStore()
 
@@ -1993,36 +1543,26 @@ class MessagingIo(object):
         if isNote:
             autoMsgObj = AutoNote(messageDict, fileRefList, self.__verbose, self.__lfh)
         else:
-            autoMsgObj = AutoMessage(
-                messageDict, fileRefList, self.__verbose, self.__lfh
-            )
+            autoMsgObj = AutoMessage(messageDict, fileRefList, self.__verbose, self.__lfh)
 
         bOk, _bPdbxMdlFlUpdtd, _failedFileRefs = self.processMsg(autoMsgObj)
 
         return bOk
 
     def getMsgTmpltDataItems(self, p_returnDict):
-        msgTmpltHelper = MsgTmpltHlpr(
-            self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh
-        )
+        msgTmpltHelper = MsgTmpltHlpr(self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh)
         msgTmpltHelper.populateTmpltDict(p_returnDict)
         if self.__verbose:
-            logger.info(
-                "CStrack+++ completed MsgTmpltHlpr.populateTmpltDict with p_returnDict %s",
-                p_returnDict,
-            )
+            logger.info("CStrack+++ completed MsgTmpltHlpr.populateTmpltDict with p_returnDict %s", p_returnDict)
 
     def getStarterMsgBody(self):
         rtrnText = None
         oL = []
 
         if self.__isWorkflow():
-            msgDI = MessagingDataImport(
-                self.__reqObj, verbose=self.__verbose, log=self.__lfh
-            )
-            fPath = msgDI.getFilePath(
-                contentType="correspondence-to-depositor", format="txt"
-            )
+
+            msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+            fPath = msgDI.getFilePath(contentType="correspondence-to-depositor", format="txt")
             # if self.__devMode is True:
             #    fPath = "/net/wwpdb_da/da_top/data_internal/workflow/D_1100201324/instance/W_016/D_1100201324_correspondence-to-depositor_P1.txt.V1"
 
@@ -2049,20 +1589,12 @@ class MessagingIo(object):
 
     def get_message_list_from_depositor(self):
         message_list = []
-        msgDI = MessagingDataImport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
-        self.__msgsFrmDpstrFilePath = msgDI.getFilePath(
-            contentType="messages-from-depositor", format="pdbx"
-        )
+        msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+        self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
         logger.info("self.__msgsFromDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
         mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
         with LockFile(
-            self.__msgsFrmDpstrFilePath,
-            timeoutSeconds=self.__timeoutSeconds,
-            retrySeconds=self.__retrySeconds,
-            verbose=self.__verbose,
-            log=self.__lfh,
+            self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
         ) as _lf, FileSizeLogger(  # noqa: F841
             self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh
         ) as _fsl:  # noqa: F841
@@ -2101,9 +1633,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         #
@@ -2116,15 +1646,9 @@ class MessagingIo(object):
                 logger.info("request to mark msg read for msgID: [%s]", msgId)
             #
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             #
             if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
@@ -2137,20 +1661,14 @@ class MessagingIo(object):
             #
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
             with LockFile(
-                self.__msgsToDpstrFilePath,
-                timeoutSeconds=self.__timeoutSeconds,
-                retrySeconds=self.__retrySeconds,
-                verbose=self.__verbose,
-                log=self.__lfh,
+                self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
             ) as _lf, FileSizeLogger(
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
                 ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
             if ok:
-                recordSetLst = (
-                    mIIo.getMsgStatusInfo()
-                )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 msgAlreadySeen = False
                 for idx, record in enumerate(recordSetLst):
                     if record["message_id"] == msgId:
@@ -2160,12 +1678,7 @@ class MessagingIo(object):
                             return True
                         else:
                             # message not been marked as read before - but is in the list of messages in recordSetLst
-                            mIIo.update(
-                                "pdbx_deposition_message_status",
-                                "read_status",
-                                "Y",
-                                idx,
-                            )
+                            mIIo.update("pdbx_deposition_message_status", "read_status", "Y", idx)
 
                 mIIo.newBlock("messages")
                 if not msgAlreadySeen:
@@ -2174,11 +1687,7 @@ class MessagingIo(object):
                         mS.setReadyForRelStatus("Y")
                     mIIo.appendMsgReadStatus(mS.get())
                 with LockFile(
-                    self.__msgsToDpstrFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
+                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf:  # noqa: F841
                     mIIo.write(self.__msgsToDpstrFilePath)
 
@@ -2190,11 +1699,7 @@ class MessagingIo(object):
                     mIIo.newBlock("messages")
                     mIIo.appendMsgReadStatus(mS.get())
                     with LockFile(
-                        self.__msgsToDpstrFilePath,
-                        timeoutSeconds=self.__timeoutSeconds,
-                        retrySeconds=self.__retrySeconds,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf:  # noqa: F841
                         mIIo.write(self.__msgsToDpstrFilePath)
                     bOk = True
@@ -2202,11 +1707,7 @@ class MessagingIo(object):
             logger.exception("Message read status data update failed")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)",
-            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-            endTime - startTime,
-        )
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -2216,13 +1717,9 @@ class MessagingIo(object):
             boolean indicating whether all messages from depositor were read or not
 
         """
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         # are all messages read?
-        bAllMsgsRead = self.__globalMessageStatusCheck(
-            p_statusToCheck="read_status", p_flagForFalseReturn="N"
-        )
+        bAllMsgsRead = self.__globalMessageStatusCheck(p_statusToCheck="read_status", p_flagForFalseReturn="N")
 
         return bAllMsgsRead
 
@@ -2232,13 +1729,9 @@ class MessagingIo(object):
             boolean indicating whether all messages from depositor had all required actions fulfilled or not
 
         """
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         # are all messages "actioned"?
-        bAllMsgsActioned = self.__globalMessageStatusCheck(
-            p_statusToCheck="action_reqd", p_flagForFalseReturn="Y"
-        )
+        bAllMsgsActioned = self.__globalMessageStatusCheck(p_statusToCheck="action_reqd", p_flagForFalseReturn="Y")
 
         return bAllMsgsActioned
 
@@ -2250,9 +1743,7 @@ class MessagingIo(object):
         """
         logger.info("Starting")
         # asking, no flags exist that indicate "for release"?
-        bNoFlagsForRelease = self.__globalMessageStatusCheck(
-            p_statusToCheck="for_release", p_flagForFalseReturn="Y"
-        )
+        bNoFlagsForRelease = self.__globalMessageStatusCheck(p_statusToCheck="for_release", p_flagForFalseReturn="Y")
         # NOTE: in order to make semantic sense, we need to return the boolean opposite of the above return value
         return not bNoFlagsForRelease
 
@@ -2262,13 +1753,9 @@ class MessagingIo(object):
             boolean indicating whether any messages exist with approval without correction that still needs to be actioned
 
         """
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         # are all messages read?
-        bAnyAction = self.__globalMessageStatusCheck(
-            p_statusToCheck="approval_no_correct", p_flagForFalseReturn="N"
-        )
+        bAnyAction = self.__globalMessageStatusCheck(p_statusToCheck="approval_no_correct", p_flagForFalseReturn="N")
 
         return bAnyAction
 
@@ -2288,17 +1775,11 @@ class MessagingIo(object):
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__notesFilePath = msgDI.getFilePath(
-                    contentType="notes-from-annotator", format="pdbx"
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-            if self.__notesFilePath is not None and os.access(
-                self.__notesFilePath, os.R_OK
-            ):
+            if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
                 pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath)
 
@@ -2311,19 +1792,13 @@ class MessagingIo(object):
                         bAnyNotesIncldngArchvdMsgs = True
 
                     onlyAnnotatorNotesLst = [
-                        record
-                        for record in recordSetLst
-                        if ("archive" not in record["message_type"])
+                        record for record in recordSetLst if ("archive" not in record["message_type"])
                     ]  # i.e. do NOT count messages "archived" into notes file
                     if len(onlyAnnotatorNotesLst) >= 1:
                         bAnnotNotes = True
                     else:
                         # also check for external notes registered via archive mail handler but which require flagging (e.g. annotator comms originating from BMRB)
-                        externalNotesReqAttn = [
-                            row
-                            for row in recordSetLst
-                            if ("_flag" in row["message_type"])
-                        ]
+                        externalNotesReqAttn = [row for row in recordSetLst if ("_flag" in row["message_type"])]
                         if len(externalNotesReqAttn) >= 1:
                             bAnnotNotes = True
                             bBmrbNotes = True
@@ -2352,9 +1827,7 @@ class MessagingIo(object):
 
         """
         startTime = time.time()
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         bOk = False
         #
@@ -2364,21 +1837,12 @@ class MessagingIo(object):
             msgId = mS.getMessageId()
             #
             if self.__verbose:
-                logger.info(
-                    "--- request to tag msg with user classification(s) for msgID: [%s]",
-                    msgId,
-                )
+                logger.info("--- request to tag msg with user classification(s) for msgID: [%s]", msgId)
             #
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
             #
             if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
                 try:
@@ -2391,62 +1855,31 @@ class MessagingIo(object):
             mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
             msgAlreadySeen = False
             with LockFile(
-                self.__msgsToDpstrFilePath,
-                timeoutSeconds=self.__timeoutSeconds,
-                retrySeconds=self.__retrySeconds,
-                verbose=self.__verbose,
-                log=self.__lfh,
+                self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
             ) as _lf, FileSizeLogger(
-                self.__msgsToDpstrFilePath,
-                verbose=self.__verbose,
-                log=self.__lfh,  # noqa: F841
+                self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
                 ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
             if ok:
                 # i.e. get here if mIIo successfully read/obtained container list,
 
-                recordSetLst = (
-                    mIIo.getMsgStatusInfo()
-                )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
                 for idx, record in enumerate(recordSetLst):
                     if record["message_id"] == msgId:
                         msgAlreadySeen = True
-                        mIIo.update(
-                            "pdbx_deposition_message_status",
-                            "action_reqd",
-                            p_msgStatusDict["action_reqd"],
-                            idx,
-                        )
-                        if (
-                            record["read_status"] == "Y"
-                        ):  # i.e. only pertinent updates of 'read_status' in this method are when user is setting read flag back to 'N' for unread
-                            mIIo.update(
-                                "pdbx_deposition_message_status",
-                                "read_status",
-                                p_msgStatusDict["read_status"],
-                                idx,
-                            )
-                        mIIo.update(
-                            "pdbx_deposition_message_status",
-                            "for_release",
-                            p_msgStatusDict["for_release"],
-                            idx,
-                        )
+                        mIIo.update("pdbx_deposition_message_status", "action_reqd", p_msgStatusDict["action_reqd"], idx)
+                        if record["read_status"] == "Y":  # i.e. only pertinent updates of 'read_status' in this method are when user is setting read flag back to 'N' for unread
+                            mIIo.update("pdbx_deposition_message_status", "read_status", p_msgStatusDict["read_status"], idx)
+                        mIIo.update("pdbx_deposition_message_status", "for_release", p_msgStatusDict["for_release"], idx)
                         break
 
                 mIIo.newBlock("messages")
-                if (
-                    msgAlreadySeen is not True
-                ):  # which can occur if this is the first time any msgStatus is being recorded in the msgsToDpstrFile
+                if msgAlreadySeen is not True:  # which can occur if this is the first time any msgStatus is being recorded in the msgsToDpstrFile
                     mIIo.appendMsgReadStatus(mS.get())
                 with LockFile(
-                    self.__msgsToDpstrFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
+                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf:  # noqa: F841
                     mIIo.write(self.__msgsToDpstrFilePath)
                 bOk = ok
@@ -2457,11 +1890,7 @@ class MessagingIo(object):
                     mIIo.newBlock("messages")
                     mIIo.appendMsgReadStatus(mS.get())
                     with LockFile(
-                        self.__msgsToDpstrFilePath,
-                        timeoutSeconds=self.__timeoutSeconds,
-                        retrySeconds=self.__retrySeconds,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf:  # noqa: F841
                         mIIo.write(self.__msgsToDpstrFilePath)
                     bOk = True
@@ -2471,11 +1900,7 @@ class MessagingIo(object):
             logger.exception("Update message tags failure")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)\n",
-            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-            endTime - startTime,
-        )
+        logger.info("Completed at %s (%d seconds)\n", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bOk
 
@@ -2493,9 +1918,7 @@ class MessagingIo(object):
 
     def __globalMessageStatusCheck(self, p_statusToCheck, p_flagForFalseReturn):
         startTime = time.time()
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         logger.info("checking global status for: '%s'", p_statusToCheck)
 
         bReturnStatus = True
@@ -2508,67 +1931,37 @@ class MessagingIo(object):
         try:
             # GET LIST OF IDS OF MSGS FROM DEPOSITOR
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsFrmDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-from-depositor", format="pdbx"
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
                 fileSizeBytes = self.__getFileSizeBytes(self.__msgsFrmDpstrFilePath)
                 if fileSizeBytes > 0:
                     with LockFile(
-                        self.__msgsFrmDpstrFilePath,
-                        timeoutSeconds=self.__timeoutSeconds,
-                        retrySeconds=self.__retrySeconds,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf, FileSizeLogger(
-                        self.__msgsFrmDpstrFilePath,
-                        verbose=self.__verbose,
-                        log=self.__lfh,  # noqa: F841
+                        self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(
-                            self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid)
-                        )
+                        ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
                     if ok:
-                        msgsFrmDpstrLst = (
-                            mIIo.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                        msgsFrmDpstrLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
             if os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
                 if fileSizeToDpstr > 0:
                     with LockFile(
-                        self.__msgsToDpstrFilePath,
-                        timeoutSeconds=self.__timeoutSeconds,
-                        retrySeconds=self.__retrySeconds,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf, FileSizeLogger(  # noqa: F841
-                        self.__msgsToDpstrFilePath,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo2.read(
-                            self.__msgsToDpstrFilePath, "msgingmod" + str(pid)
-                        )
+                        ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
                     if ok:
-                        msgStatusLst = (
-                            mIIo2.getMsgStatusInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                        msgStatusLst = mIIo2.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
             # Approval no correct is a pseudo flag.  We are not storing in message flags
             if p_statusToCheck != "approval_no_correct":
@@ -2580,40 +1973,27 @@ class MessagingIo(object):
                             msgFound = True
                             if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                                 bReturnStatus = False
-                                logger.info(
-                                    "-- found flag of '%s' for status '%s' so returning False",
-                                    p_flagForFalseReturn,
-                                    p_statusToCheck,
-                                )
+                                logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                                 return bReturnStatus
 
-                    if msgFound is False and p_statusToCheck not in [
-                        "for_release",
-                        "approval_no_correct",
-                    ]:
+                    if msgFound is False and p_statusToCheck not in ["for_release", "approval_no_correct"]:
                         # handling here for instances in which the given message was not found in message_status category
                         bReturnStatus = False
                         return bReturnStatus
 
-            if (
-                p_statusToCheck == "for_release"
-            ):  # for this status check we have to check messages authored by annotators as well for "for_release" flags
-                if (
-                    os.access(self.__msgsToDpstrFilePath, os.R_OK)
-                    and fileSizeToDpstr > 0
-                ):
+            if p_statusToCheck == "for_release":  # for this status check we have to check messages authored by annotators as well for "for_release" flags
+
+                if os.access(self.__msgsToDpstrFilePath, os.R_OK) and fileSizeToDpstr > 0:
+
                     annotatorMsgsLst = mIIo2.getMessageInfo()
 
                     for row in annotatorMsgsLst:
+
                         for msgStatus in msgStatusLst:
                             if row["message_id"] == msgStatus["message_id"]:
                                 if msgStatus[p_statusToCheck] == p_flagForFalseReturn:
                                     bReturnStatus = False
-                                    logger.info(
-                                        "-- found flag of '%s' for status '%s' so returning False",
-                                        p_flagForFalseReturn,
-                                        p_statusToCheck,
-                                    )
+                                    logger.info("-- found flag of '%s' for status '%s' so returning False", p_flagForFalseReturn, p_statusToCheck)
                                     return bReturnStatus
 
                     for msg in msgsFrmDpstrLst:
@@ -2623,10 +2003,7 @@ class MessagingIo(object):
                             if msg["message_id"] == msgStatus["message_id"]:
                                 msgFound = True
                         if not msgFound:
-                            if (
-                                msg["message_subject"]
-                                in self.__release_message_subjects
-                            ):
+                            if msg["message_subject"] in self.__release_message_subjects:
                                 bReturnStatus = False
                                 return bReturnStatus
 
@@ -2639,28 +2016,22 @@ class MessagingIo(object):
                             if msg["message_id"] == msgStatus["message_id"]:
                                 msgFound = True
                         if not msgFound:
-                            if (
-                                msg["message_subject"]
-                                in self.__release_message_subjects
-                            ):
+                            if msg["message_subject"] in self.__release_message_subjects:
                                 bReturnStatus = False
                                 return bReturnStatus
             #
-            if (
-                p_statusToCheck == "approval_no_correct"
-            ):  # for this status check if any unactioned that are approval w/o corrections
+            if p_statusToCheck == "approval_no_correct":  # for this status check if any unactioned that are approval w/o corrections
+
                 # Look for an approval message from depositor - that is still pending
 
                 for msg in msgsFrmDpstrLst:
-                    if (
-                        msg["context_type"]
-                        in self.__approval_no_correct_message_subjects
-                    ):
+                    if msg["context_type"] in self.__approval_no_correct_message_subjects:
                         msgid = msg["message_id"]
 
                         # Check if message requres action - if so - return True
                         found = False
                         for msgStatus in msgStatusLst:
+
                             if msgid == msgStatus["message_id"]:
                                 if msgStatus["action_reqd"] == "Y":
                                     return True
@@ -2680,53 +2051,34 @@ class MessagingIo(object):
             logger.exception("Failure in check global msg")
 
         endTime = time.time()
-        logger.info(
-            "Completed at %s (%d seconds)",
-            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-            endTime - startTime,
-        )
+        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
         #
         return bReturnStatus
 
     def __getMsgsByStatus(self, p_statusToCheck, p_flagForInclusion):
+
         rtrnList = []
         recordSetLst = []
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "-- self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("-- self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 fileSizeBytes = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
                 if fileSizeBytes > 0:
                     mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                     with LockFile(
-                        self.__msgsToDpstrFilePath,
-                        timeoutSeconds=self.__timeoutSeconds,
-                        retrySeconds=self.__retrySeconds,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf, FileSizeLogger(  # noqa: F841
-                        self.__msgsToDpstrFilePath,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
+                        self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(
-                            self.__msgsToDpstrFilePath, "msgingmod" + str(pid)
-                        )
+                        ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
                     if ok:
-                        recordSetLst = (
-                            mIIo.getMsgStatusInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                        recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     #
                     for row in recordSetLst:
                         if self.__verbose and self.__debug:
@@ -2769,9 +2121,7 @@ class MessagingIo(object):
             for origComm in p_origCommsLst:
                 if origComm["message_id"] == record["message_id"]:
                     record["orig_message_id"] = origComm["orig_message_id"]
-                    record["orig_deposition_data_set_id"] = origComm[
-                        "orig_deposition_data_set_id"
-                    ]
+                    record["orig_deposition_data_set_id"] = origComm["orig_deposition_data_set_id"]
                     record["orig_timestamp"] = origComm["orig_timestamp"]
                     record["orig_sender"] = origComm["orig_sender"]
                     record["orig_recipient"] = origComm["orig_recipient"]
@@ -2815,9 +2165,7 @@ class MessagingIo(object):
         failedMsgFileRefs = []
         bOk = True
 
-        msgDI = MessagingDataImport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         fPath = None
         contentType = None
         contentFormat = None
@@ -2829,24 +2177,12 @@ class MessagingIo(object):
             workingFileRefsList.remove("val-report-batch")
             # Determine available reports
             avail = self.checkAvailFiles(depositionId)
-            preference = [
-                "val-report",
-                "val-report-full",
-                "val-data",
-                "val-data-cif",
-                "val-report-wwpdb-2fo-fc-edmap-coef",
-                "val-report-wwpdb-fo-fc-edmap-coef",
-            ]
+            preference = ["val-report", "val-report-full", "val-data", "val-data-cif", "val-report-wwpdb-2fo-fc-edmap-coef", "val-report-wwpdb-fo-fc-edmap-coef"]
             for f in preference:
                 if f in avail:
-                    if (
-                        f not in workingFileRefsList
-                    ):  # CS 2023-11-01 not to append validation report files if already in
+                    if f not in workingFileRefsList:  # CS 2023-11-01 not to append validation report files if already in
                         workingFileRefsList.append(f)
-            logger.info(
-                "CStrack+++ final list of file attachement type: %s",
-                workingFileRefsList,
-            )
+            logger.info("CStrack+++ final list of file attachement type: %s", workingFileRefsList)
 
         if self.__verbose and sIsEmEntry == "true":
             sType = "Map Only" if sIsEmMapOnly == "true" else "Map and Model"
@@ -2855,18 +2191,15 @@ class MessagingIo(object):
 
         # If em-volume requested - send model file as well... Should this be for map only?
         if "em-volume" in workingFileRefsList and "model" not in workingFileRefsList:
+
             workingFileRefsList.append("model")
             if self.__verbose:
-                logger.info(
-                    "-- 'em-volume' was selected as file reference so automatically propagating 'model' also, for 'annotate' purposes on deposit side"
-                )
+                logger.info("-- 'em-volume' was selected as file reference so automatically propagating 'model' also, for 'annotate' purposes on deposit side")
 
         for fileRef in workingFileRefsList:
             # fileRefs received correspond to content type acronyms encoded in ConfigInfoData
 
-            auxFileIndx = (
-                str(fileRef.split("aux-file")[1]) if "aux-file" in fileRef else ""
-            )
+            auxFileIndx = str(fileRef.split("aux-file")[1]) if "aux-file" in fileRef else ""
             upldFileName = ""
 
             if len(auxFileIndx) > 0:
@@ -2875,9 +2208,7 @@ class MessagingIo(object):
                 # if we're operating in mode where multiple aux file references are allowed for a single message
                 # then we will use the "P"artition number to distinguish between the multiple aux-files referenced
                 # NOTE: therefore when in mode where only single aux-file reference is allowed, this code has no impact
-                if (
-                    not bAtLeastOneAuxFile
-                ):  # i.e. if we haven't encountered the first auxiliary file yet
+                if not bAtLeastOneAuxFile:  # i.e. if we haven't encountered the first auxiliary file yet
                     auxFilePartNum = self.__getNextAuxFilePartNum()
                     bAtLeastOneAuxFile = True
                 else:
@@ -2885,30 +2216,19 @@ class MessagingIo(object):
             else:
                 acronym = fileRef
 
-            contentType, contentFormat = self.__getContentTypeAndFormat(
-                acronym, auxFileIndx
-            )
+            contentType, contentFormat = self.__getContentTypeAndFormat(acronym, auxFileIndx)
 
             if self.__isWorkflow():
                 if acronym == "aux-file":
-                    fPath = self.__reqObj.getValue(
-                        "auxFilePath" + auxFileIndx
-                    )  # i.e. if aux-file then file is being provided by annotator and is NOT sourced from archive storage
+                    fPath = self.__reqObj.getValue("auxFilePath" + auxFileIndx)  # i.e. if aux-file then file is being provided by annotator and is NOT sourced from archive storage
                 else:
                     fPath = msgDI.getFilePath(contentType, contentFormat)
 
                 if fPath is not None and os.access(fPath, os.R_OK):
+
                     # make straight copy of the file to generate "-annotate" milestone version of the file
                     bOk = self.__createAnnotateMilestone(
-                        p_msgObj.depositionId,
-                        p_msgObj.messageId,
-                        fPath,
-                        acronym,
-                        contentType,
-                        contentFormat,
-                        auxFilePartNum,
-                        msgFileRefs,
-                        failedMsgFileRefs,
+                        p_msgObj.depositionId, p_msgObj.messageId, fPath, acronym, contentType, contentFormat, auxFilePartNum, msgFileRefs, failedMsgFileRefs
                     )
 
                     if not bOk:
@@ -2917,16 +2237,7 @@ class MessagingIo(object):
                     if fileRef == "model" and sIsEmMapOnly != "true":
                         # if dealing with model file then additionally make copy of model file in
                         # which internal view items are stripped out--this serves as "-review" version of the file
-                        bOk = self.__createModelReviewCopy(
-                            p_msgObj.depositionId,
-                            p_msgObj.messageId,
-                            fPath,
-                            acronym,
-                            contentType,
-                            contentFormat,
-                            msgFileRefs,
-                            failedMsgFileRefs,
-                        )
+                        bOk = self.__createModelReviewCopy(p_msgObj.depositionId, p_msgObj.messageId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs)
 
                         if not bOk:
                             break
@@ -2934,16 +2245,7 @@ class MessagingIo(object):
                     if fileRef == "cs":
                         # if dealing with chemical shifts file then additionally make copy of
                         # cs file in which internal view items are stripped out--this serves as "-review" version of the file
-                        bOk = self.__createChemShiftsReviewCopy(
-                            p_msgObj.depositionId,
-                            p_msgObj.messageId,
-                            fPath,
-                            acronym,
-                            contentType,
-                            "nmr-star",
-                            msgFileRefs,
-                            failedMsgFileRefs,
-                        )
+                        bOk = self.__createChemShiftsReviewCopy(p_msgObj.depositionId, p_msgObj.messageId, fPath, acronym, contentType, "nmr-star", msgFileRefs, failedMsgFileRefs)
 
                         if not bOk:
                             break
@@ -2951,16 +2253,7 @@ class MessagingIo(object):
                     if fileRef == "nmr-data-str":
                         # if dealing with nmr-data-str file then additionally make copy of cs file in which
                         # internal view items are stripped out--this serves as "-review" version of the file
-                        bOk = self.__createNmrDataStarReviewCopy(
-                            p_msgObj.depositionId,
-                            p_msgObj.messageId,
-                            fPath,
-                            acronym,
-                            contentType,
-                            "nmr-star",
-                            msgFileRefs,
-                            failedMsgFileRefs,
-                        )
+                        bOk = self.__createNmrDataStarReviewCopy(p_msgObj.depositionId, p_msgObj.messageId, fPath, acronym, contentType, "nmr-star", msgFileRefs, failedMsgFileRefs)
 
                         if not bOk:
                             break
@@ -2983,31 +2276,12 @@ class MessagingIo(object):
                         annotPartitionNum = auxFilePartNum
 
                     msgFileRefs.append(
-                        self.__createMsgFileReference(
-                            p_msgObj.messageId,
-                            p_msgObj.depositionId,
-                            cntntTyp,
-                            contentFormat,
-                            annotPartitionNum,
-                            annotVersionNum,
-                            upldFileName,
-                        )
+                        self.__createMsgFileReference(p_msgObj.messageId, p_msgObj.depositionId, cntntTyp, contentFormat, annotPartitionNum, annotVersionNum, upldFileName)
                     )
 
         return bOk, msgFileRefs, failedMsgFileRefs
 
-    def __createAnnotateMilestone(
-        self,
-        p_depId,
-        p_msgId,
-        fPath,
-        acronym,
-        contentType,
-        contentFormat,
-        auxFilePartNum,
-        msgFileRefs,
-        failedMsgFileRefs,
-    ):
+    def __createAnnotateMilestone(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, auxFilePartNum, msgFileRefs, failedMsgFileRefs):
         """Creates the --annotete milestones and will symlink to deposit non-milestone files for the V3.0 DepUI to make available"""
 
         logger.debug("Starting %s %s", contentType, contentFormat)
@@ -3019,9 +2293,7 @@ class MessagingIo(object):
         ###############################################################################################
         # make straight copy of the file to generate "-annotate" milestone version of the file
         ###############################################################################################
-        msgDE = MessagingDataExport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         mileStoneCntntTyp = contentType + "-annotate"
         upldFileName = ""
         #
@@ -3030,13 +2302,9 @@ class MessagingIo(object):
 
             try:
                 if self.__allowingMultiAuxFiles:
-                    milestoneFilePthDict = msgDE.getMileStoneFilePaths(
-                        mileStoneCntntTyp, contentFormat, auxFilePartNum
-                    )
+                    milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat, auxFilePartNum)
                 else:
-                    milestoneFilePthDict = msgDE.getMileStoneFilePaths(
-                        mileStoneCntntTyp, contentFormat
-                    )
+                    milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat)
             except:  # noqa: E722 pylint: disable=bare-except
                 bOk = False
                 failedMsgFileRefs.append(acronym)
@@ -3046,33 +2314,23 @@ class MessagingIo(object):
             upldFileName = os.path.basename(fPath)
 
         else:
-            milestoneFilePthDict = msgDE.getMileStoneFilePaths(
-                mileStoneCntntTyp, contentFormat
-            )
+            milestoneFilePthDict = msgDE.getMileStoneFilePaths(mileStoneCntntTyp, contentFormat)
         #
         logger.debug("milestonFilePthDict %s", milestoneFilePthDict)
 
         # next version
         annotMilestoneFilePth = milestoneFilePthDict["annotPth"]
-        dpstMilestoneFilePth = milestoneFilePthDict[
-            "dpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        dpstMilestoneFilePth = milestoneFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
         # last version
         curAnnotMilestoneFilePth = milestoneFilePthDict["curPth"]
-        curDpstMilestoneFilePth = milestoneFilePthDict[
-            "curDpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        curDpstMilestoneFilePth = milestoneFilePthDict["curDpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
 
         if annotMilestoneFilePth is not None:
             # For multi-part files - always copy - easier to handle the parts business
 
             if self.__skipCopyIfSame:
                 if self.__sameFile(fPath, curAnnotMilestoneFilePth):
-                    logger.debug(
-                        "Existing milestone good -- using %s %s",
-                        fPath,
-                        curAnnotMilestoneFilePth,
-                    )
+                    logger.debug("Existing milestone good -- using %s %s", fPath, curAnnotMilestoneFilePth)
                     annotMilestoneFilePth = curAnnotMilestoneFilePth
                     dpstMilestoneFilePth = curDpstMilestoneFilePth
                 else:
@@ -3088,14 +2346,10 @@ class MessagingIo(object):
                     annotPartitionNum = auxFilePartNum
                 else:
                     # if not aux-file then just parse P# from the targeted filename
-                    annotPartitionNum = (annotMilestoneFilePth.split("_P")[1]).split(
-                        ".", 1
-                    )[0]
+                    annotPartitionNum = (annotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                 if self.__verbose and self.__debug:
-                    logger.info(
-                        "-- annotMilestoneFilePth is: %s", annotMilestoneFilePth
-                    )
+                    logger.info("-- annotMilestoneFilePth is: %s", annotMilestoneFilePth)
                 ####################################################
                 # create counterpart copy in deposition storage area
                 if dpstMilestoneFilePth is not None:
@@ -3105,40 +2359,22 @@ class MessagingIo(object):
                     if bEmdCnvrtRqrd and self.__copyMilestoneDeposit:
                         # generate "emd" dialect version of model file for storage/use on deposition side
                         # Only do this if copying to deposit directory
-                        bSuccess = self.__genAnnotMilestoneEmdVrsn(
-                            p_depId, fPath, dpstMilestoneFilePth
-                        )
+                        bSuccess = self.__genAnnotMilestoneEmdVrsn(p_depId, fPath, dpstMilestoneFilePth)
                         if not bSuccess:
                             if self.__verbose:
-                                logger.info(
-                                    "WARNING: problem creating 'emd' version of model file at: %s",
-                                    dpstMilestoneFilePth,
-                                )
+                                logger.info("WARNING: problem creating 'emd' version of model file at: %s", dpstMilestoneFilePth)
                         #
-                        mlstnFilePthDict = msgDE.getMileStoneFilePaths(
-                            "em-volume-header-annotate", "xml"
-                        )
+                        mlstnFilePthDict = msgDE.getMileStoneFilePaths("em-volume-header-annotate", "xml")
                         dpstEmHeaderMilestoneFilePth = mlstnFilePthDict["dpstPth"]
 
                         if MessagingIo.bMakeEmXmlHeaderFiles is True:
-                            bSuccess2 = (
-                                self.__genAnnotMilestoneEmXmlHeader(
-                                    p_depId,
-                                    dpstMilestoneFilePth,
-                                    dpstEmHeaderMilestoneFilePth,
-                                )
-                                if dpstEmHeaderMilestoneFilePth
-                                else False
-                            )
+                            bSuccess2 = self.__genAnnotMilestoneEmXmlHeader(p_depId, dpstMilestoneFilePth, dpstEmHeaderMilestoneFilePth) if dpstEmHeaderMilestoneFilePth else False
                         else:
                             bSuccess2 = True
 
                         if not bSuccess2:
                             if self.__verbose:
-                                logger.info(
-                                    "+-- WARNING: problem creating xml header version of model file at: %s",
-                                    dpstEmHeaderMilestoneFilePth,
-                                )
+                                logger.info("+-- WARNING: problem creating xml header version of model file at: %s", dpstEmHeaderMilestoneFilePth)
                         #
                         if (not bSuccess) or (not bSuccess2):
                             bOk = False
@@ -3147,53 +2383,24 @@ class MessagingIo(object):
                         # else just propagate identifical copy to deposition side if requested
                         if self.__copyMilestoneDeposit:
                             shutil.copyfile(fPath, dpstMilestoneFilePth)
-                            logger.debug(
-                                "Milestone copied to deposit %s", dpstMilestoneFilePth
-                            )
+                            logger.debug("Milestone copied to deposit %s", dpstMilestoneFilePth)
 
-                    if (
-                        self.__copyMilestoneDeposit
-                        and os.access(dpstMilestoneFilePth, os.R_OK)
-                    ) or (not self.__copyMilestoneDeposit):
-                        msgFileRefs.append(
-                            self.__createMsgFileReference(
-                                p_msgId,
-                                p_depId,
-                                mileStoneCntntTyp,
-                                contentFormat,
-                                annotPartitionNum,
-                                annotVersionNum,
-                                upldFileName,
-                            )
-                        )
+                    if (self.__copyMilestoneDeposit and os.access(dpstMilestoneFilePth, os.R_OK)) or (not self.__copyMilestoneDeposit):
+                        msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, mileStoneCntntTyp, contentFormat, annotPartitionNum, annotVersionNum, upldFileName))
 
                     else:
                         bOk = False
                         failedMsgFileRefs.append(mileStoneCntntTyp)
-                        logger.error(
-                            "problem with accessing dpstMilestoneFilePth if copy to deposit enabled: %s",
-                            dpstMilestoneFilePth,
-                        )
+                        logger.error("problem with accessing dpstMilestoneFilePth if copy to deposit enabled: %s", dpstMilestoneFilePth)
 
                 # ################################### Done copy to deposit directory
                 if self.__symlinkDepositAnnotate:
                     # Create symlink from contenttype in deposit to archive -annotate milestone for V3.0 of DepUI
                     # Only do this for non aux-file and non-model
                     if acronym not in ["model", "aux-file", "model_pdb"]:
-                        logger.debug(
-                            "About to symlink to deposit acronym: %s contentType: %s",
-                            acronym,
-                            contentType,
-                        )
-                        depFilePthDict = msgDE.getFilePathExt(
-                            contentType=contentType,
-                            format=contentFormat,
-                            fileSource="deposit",
-                            version="next",
-                        )
-                        logger.info(
-                            "Symlink %s -> %s", depFilePthDict, annotMilestoneFilePth
-                        )
+                        logger.debug("About to symlink to deposit acronym: %s contentType: %s", acronym, contentType)
+                        depFilePthDict = msgDE.getFilePathExt(contentType=contentType, format=contentFormat, fileSource="deposit", version="next")
+                        logger.info("Symlink %s -> %s", depFilePthDict, annotMilestoneFilePth)
                         try:
                             os.symlink(annotMilestoneFilePth, depFilePthDict)
                         except:  # noqa: E722 pylint: disable=bare-except
@@ -3203,24 +2410,11 @@ class MessagingIo(object):
                 bOk = False
                 failedMsgFileRefs.append(mileStoneCntntTyp)
                 if self.__verbose:
-                    logger.info(
-                        "-- problem with accessing annotMilestoneFilePth: %s",
-                        annotMilestoneFilePth,
-                    )
+                    logger.info("-- problem with accessing annotMilestoneFilePth: %s", annotMilestoneFilePth)
 
         return bOk
 
-    def __createModelReviewCopy(
-        self,
-        p_depId,
-        p_msgId,
-        fPath,
-        acronym,
-        contentType,
-        contentFormat,
-        msgFileRefs,
-        failedMsgFileRefs,
-    ):  # pylint: disable=unused-argument
+    def __createModelReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with model file then make additional copy of model file in which
         # internal view items are stripped out--this serves as "-review" version of the file
@@ -3229,44 +2423,33 @@ class MessagingIo(object):
         # bEmExclusion = (self.__emDeposition and acronym == "model")
         #
         logger.debug("STARTING")
-        msgDE = MessagingDataExport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         reviewCntntTyp = contentType + "-review"
         reviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp, contentFormat)
         # next version
         reviewAnnotMilestoneFilePth = reviewFilePthDict["annotPth"]
         # current version
         reviewAnnotCurMilestoneFilePth = reviewFilePthDict["curPth"]
-        reviewDpstMilestoneFilePth = reviewFilePthDict[
-            "dpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
-        reviewDpstCurMilestoneFilePth = reviewFilePthDict[
-            "curDpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        reviewDpstMilestoneFilePth = reviewFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
+        reviewDpstCurMilestoneFilePth = reviewFilePthDict["curDpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
 
         logger.debug("reviewAnnotMilestoneFilePth: %s", reviewAnnotMilestoneFilePth)
         if reviewAnnotMilestoneFilePth is not None:
+
             sourceMdlFileName = os.path.basename(fPath)
             modelFileLocalPthAbslt = os.path.join(self.__sessionPath, sourceMdlFileName)
             logger.debug("Copy %s to %s", fPath, modelFileLocalPthAbslt)
             shutil.copyfile(fPath, modelFileLocalPthAbslt)
 
             if os.access(modelFileLocalPthAbslt, os.R_OK):
+
                 #
                 # Generate Public pdbx cif file
                 #
-                pdbxReviewFilePath = os.path.join(
-                    self.__sessionPath, p_depId + "_model-review_P1.cif"
-                )  # filename here is arbitrary just for temporary session processing purposes
+                pdbxReviewFilePath = os.path.join(self.__sessionPath, p_depId + "_model-review_P1.cif")  # filename here is arbitrary just for temporary session processing purposes
 
                 try:
-                    dp = RcsbDpUtility(
-                        tmpPath=self.__sessionPath,
-                        siteId=self.__siteId,
-                        verbose=self.__verbose,
-                        log=self.__lfh,
-                    )
+                    dp = RcsbDpUtility(tmpPath=self.__sessionPath, siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     dp.imp(modelFileLocalPthAbslt)
                     dp.op("cif2pdbx-public")
                     logPath = os.path.join(self.__sessionPath, "cif2pdbx-public.log")
@@ -3278,270 +2461,144 @@ class MessagingIo(object):
                     logger.exception("Exception in generating review copy")
 
                 if os.access(pdbxReviewFilePath, os.F_OK):
+
                     if self.__skipCopyIfSame:
-                        if self.__sameFile(
-                            pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth
-                        ):
-                            logger.debug(
-                                "Existing milestone good -- using %s %s",
-                                pdbxReviewFilePath,
-                                reviewAnnotCurMilestoneFilePth,
-                            )
+                        if self.__sameFile(pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth):
+                            logger.debug("Existing milestone good -- using %s %s", pdbxReviewFilePath, reviewAnnotCurMilestoneFilePth)
                             reviewAnnotMilestoneFilePth = reviewAnnotCurMilestoneFilePth
                             reviewDpstMilestoneFilePth = reviewDpstCurMilestoneFilePth
                         else:
-                            shutil.copyfile(
-                                pdbxReviewFilePath, reviewAnnotMilestoneFilePth
-                            )
+                            shutil.copyfile(pdbxReviewFilePath, reviewAnnotMilestoneFilePth)
                     else:
                         shutil.copyfile(pdbxReviewFilePath, reviewAnnotMilestoneFilePth)
 
                     annotVersionNum = reviewAnnotMilestoneFilePth.rsplit(".V")[1]
-                    annotPartitionNum = (
-                        reviewAnnotMilestoneFilePth.split("_P")[1]
-                    ).split(".", 1)[0]
+                    annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                     if self.__verbose and self.__debug:
-                        logger.debug(
-                            "reviewAnnotMilestoneFilePth is: %s",
-                            reviewAnnotMilestoneFilePth,
-                        )
+                        logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
                     if reviewDpstMilestoneFilePth is not None:
                         if self.__copyMilestoneDeposit:
                             if os.access(reviewAnnotMilestoneFilePth, os.R_OK):
-                                shutil.copyfile(
-                                    reviewAnnotMilestoneFilePth,
-                                    reviewDpstMilestoneFilePth,
-                                )
+                                shutil.copyfile(reviewAnnotMilestoneFilePth, reviewDpstMilestoneFilePth)
 
                                 if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                                     if self.__verbose and self.__debug:
-                                        logger.debug(
-                                            "reviewDpstMilestoneFilePth is: %s",
-                                            reviewDpstMilestoneFilePth,
-                                        )
+                                        logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
-                                    msgFileRefs.append(
-                                        self.__createMsgFileReference(
-                                            p_msgId,
-                                            p_depId,
-                                            reviewCntntTyp,
-                                            contentFormat,
-                                            annotPartitionNum,
-                                            annotVersionNum,
-                                        )
-                                    )
+                                    msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
                                 else:
                                     bOk = False
                                     failedMsgFileRefs.append(reviewCntntTyp)
-                                    logger.error(
-                                        "problem with accessing deposit copy of 'review' milestone model file at: %s",
-                                        reviewDpstMilestoneFilePth,
-                                    )
+                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
 
                             else:
                                 bOk = False
                                 failedMsgFileRefs.append(reviewCntntTyp)
-                                logger.error(
-                                    "problem with accessing annotation copy of 'review' milestone model file at: %s",
-                                    reviewAnnotMilestoneFilePth,
-                                )
+                                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
                         else:
                             # For not copying to deposit, register attachment
-                            msgFileRefs.append(
-                                self.__createMsgFileReference(
-                                    p_msgId,
-                                    p_depId,
-                                    reviewCntntTyp,
-                                    contentFormat,
-                                    annotPartitionNum,
-                                    annotVersionNum,
-                                )
-                            )
+                            msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                 else:
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
                     if self.__verbose:
-                        logger.error(
-                            "problem with accessing session copy of 'review' milestone model file at: %s",
-                            pdbxReviewFilePath,
-                        )
+                        logger.error("problem with accessing session copy of 'review' milestone model file at: %s", pdbxReviewFilePath)
 
         logger.debug("FINISHED %s", bOk)
 
         return bOk
 
-    def __createChemShiftsReviewCopy(
-        self,
-        p_depId,
-        p_msgId,
-        fPath,
-        acronym,
-        contentType,
-        contentFormat,
-        msgFileRefs,
-        failedMsgFileRefs,
-    ):  # pylint: disable=unused-argument
+    def __createChemShiftsReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with cs file then make additional copy of cs file in which
         # internal view items are stripped out--this serves as "-review" version of the file
         ##################################################################################
         bOk = True
         #
-        msgDE = MessagingDataExport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         reviewCntntTyp = contentType + "-review"
         reviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp, contentFormat)
         # next version
         reviewAnnotMilestoneFilePth = reviewFilePthDict["annotPth"]
-        reviewDpstMilestoneFilePth = reviewFilePthDict[
-            "dpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        reviewDpstMilestoneFilePth = reviewFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
         # current version
         reviewAnnotCurMilestoneFilePth = reviewFilePthDict["curPth"]
-        reviewDpstCurMilestoneFilePth = reviewFilePthDict[
-            "curDpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        reviewDpstCurMilestoneFilePth = reviewFilePthDict["curDpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
 
         if reviewAnnotMilestoneFilePth is not None:
+
             sourceChemShiftsFileName = os.path.basename(fPath)
-            chemShiftsFileLocalPthAbslt = os.path.join(
-                self.__sessionPath, sourceChemShiftsFileName
-            )
+            chemShiftsFileLocalPthAbslt = os.path.join(self.__sessionPath, sourceChemShiftsFileName)
             shutil.copyfile(fPath, chemShiftsFileLocalPthAbslt)
 
             if os.access(chemShiftsFileLocalPthAbslt, os.R_OK):
+
                 #
                 # Generate Public pdbx cif file
                 #
-                nmrStarReviewFilePath = os.path.join(
-                    self.__sessionPath, p_depId + "_cs-review_P1.cif"
-                )  # filename here is arbitrary just for temporary session processing purposes
+                nmrStarReviewFilePath = os.path.join(self.__sessionPath, p_depId + "_cs-review_P1.cif")  # filename here is arbitrary just for temporary session processing purposes
 
                 try:
-                    dfa = DataFileAdapter(
-                        reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                    )
-                    ok = dfa.pdbx2nmrstar(
-                        chemShiftsFileLocalPthAbslt,
-                        nmrStarReviewFilePath,
-                        pdbId=p_depId,
-                    )
+                    dfa = DataFileAdapter(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                    ok = dfa.pdbx2nmrstar(chemShiftsFileLocalPthAbslt, nmrStarReviewFilePath, pdbId=p_depId)
 
                 except:  # noqa: E722 pylint: disable=bare-except
                     logger.exception("In pdbx2nmrstar")
 
                 if ok and os.access(nmrStarReviewFilePath, os.F_OK):
                     if self.__skipCopyIfSame:
-                        if self.__sameFile(
-                            nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth
-                        ):
-                            logger.debug(
-                                "Existing milestone good -- using %s %s",
-                                nmrStarReviewFilePath,
-                                reviewAnnotCurMilestoneFilePth,
-                            )
+                        if self.__sameFile(nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth):
+                            logger.debug("Existing milestone good -- using %s %s", nmrStarReviewFilePath, reviewAnnotCurMilestoneFilePth)
                             reviewAnnotMilestoneFilePth = reviewAnnotCurMilestoneFilePth
                             reviewDpstMilestoneFilePth = reviewDpstCurMilestoneFilePth
                         else:
-                            shutil.copyfile(
-                                nmrStarReviewFilePath, reviewAnnotMilestoneFilePth
-                            )
+                            shutil.copyfile(nmrStarReviewFilePath, reviewAnnotMilestoneFilePth)
                     else:
-                        shutil.copyfile(
-                            nmrStarReviewFilePath, reviewAnnotMilestoneFilePth
-                        )
+                        shutil.copyfile(nmrStarReviewFilePath, reviewAnnotMilestoneFilePth)
 
                     annotVersionNum = reviewAnnotMilestoneFilePth.rsplit(".V")[1]
-                    annotPartitionNum = (
-                        reviewAnnotMilestoneFilePth.split("_P")[1]
-                    ).split(".", 1)[0]
+                    annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
                     if self.__verbose and self.__debug:
-                        logger.debug(
-                            "reviewAnnotMilestoneFilePth is: %s",
-                            reviewAnnotMilestoneFilePth,
-                        )
+                        logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
                     if reviewDpstMilestoneFilePth is not None:
+
                         if os.access(reviewAnnotMilestoneFilePth, os.R_OK):
                             if self.__copyMilestoneDeposit:
-                                shutil.copyfile(
-                                    reviewAnnotMilestoneFilePth,
-                                    reviewDpstMilestoneFilePth,
-                                )
+                                shutil.copyfile(reviewAnnotMilestoneFilePth, reviewDpstMilestoneFilePth)
 
                                 if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                                     if self.__verbose and self.__debug:
-                                        logger.debug(
-                                            "reviewDpstMilestoneFilePth is: %s",
-                                            reviewDpstMilestoneFilePth,
-                                        )
+                                        logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
-                                    msgFileRefs.append(
-                                        self.__createMsgFileReference(
-                                            p_msgId,
-                                            p_depId,
-                                            reviewCntntTyp,
-                                            contentFormat,
-                                            annotPartitionNum,
-                                            annotVersionNum,
-                                        )
-                                    )
+                                    msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                                 else:
                                     bOk = False
                                     failedMsgFileRefs.append(reviewCntntTyp)
-                                    logger.error(
-                                        "problem with accessing deposit copy of 'review' milestone model file at: %s",
-                                        reviewDpstMilestoneFilePth,
-                                    )
+                                    logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
                             else:
                                 # For not copying to deposit, register attachment
-                                msgFileRefs.append(
-                                    self.__createMsgFileReference(
-                                        p_msgId,
-                                        p_depId,
-                                        reviewCntntTyp,
-                                        contentFormat,
-                                        annotPartitionNum,
-                                        annotVersionNum,
-                                    )
-                                )
+                                msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                         else:
                             bOk = False
                             failedMsgFileRefs.append(reviewCntntTyp)
-                            logger.error(
-                                "problem with accessing annotation copy of 'review' milestone model file at: %s",
-                                reviewAnnotMilestoneFilePth,
-                            )
+                            logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
 
                 else:
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
                     if self.__verbose:
-                        logger.info(
-                            "-- problem with accessing session copy of 'review' milestone model file at: %s",
-                            nmrStarReviewFilePath,
-                        )
+                        logger.info("-- problem with accessing session copy of 'review' milestone model file at: %s", nmrStarReviewFilePath)
 
         return bOk
 
-    def __createNmrDataStarReviewCopy(
-        self,
-        p_depId,
-        p_msgId,
-        fPath,
-        acronym,
-        contentType,
-        contentFormat,
-        msgFileRefs,
-        failedMsgFileRefs,
-    ):  # pylint: disable=unused-argument
+    def __createNmrDataStarReviewCopy(self, p_depId, p_msgId, fPath, acronym, contentType, contentFormat, msgFileRefs, failedMsgFileRefs):  # pylint: disable=unused-argument
         ##################################################################################
         # if dealing with nmr-data file then make additional copy of cs file in which
         # internal view items are stripped out--this serves as "-review" version of the file
@@ -3551,29 +2608,21 @@ class MessagingIo(object):
 
         bOk = True
         #
-        msgDE = MessagingDataExport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         reviewCntntTyp = contentType + "-review"
         reviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp, contentFormat)
 
         # next version
         reviewAnnotMilestoneFilePth = reviewFilePthDict["annotPth"]
-        reviewDpstMilestoneFilePth = reviewFilePthDict[
-            "dpstPth"
-        ]  # same filename as "archive" version of file, but different path for "deposit" area
+        reviewDpstMilestoneFilePth = reviewFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
         # current version
         # reviewAnnotCurMilestoneFilePth = reviewFilePthDict['curPth']
         # reviewDpstCurMilestoneFilePth = reviewFilePthDict[
         #    'curDpstPth']  # same filename as "archive" version of file, but different path for "deposit" area
 
         if reviewAnnotMilestoneFilePth is not None:
-            dp = RcsbDpUtility(
-                tmpPath=self.__sessionPath,
-                siteId=self.__siteId,
-                verbose=self.__verbose,
-                log=self.__lfh,
-            )
+
+            dp = RcsbDpUtility(tmpPath=self.__sessionPath, siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
             dp.imp(fPath)
             dp.addInput(name="pdb_id", value=p_depId)
             dp.op("annot-generte-nmr-data-str-file")
@@ -3583,103 +2632,57 @@ class MessagingIo(object):
             logger.info("-- generated %s", reviewAnnotMilestoneFilePth)
 
             annotVersionNum = reviewAnnotMilestoneFilePth.rsplit(".V")[1]
-            annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(
-                ".", 1
-            )[0]
+            annotPartitionNum = (reviewAnnotMilestoneFilePth.split("_P")[1]).split(".", 1)[0]
 
             if self.__verbose and self.__debug:
-                logger.debug(
-                    "reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth
-                )
+                logger.debug("reviewAnnotMilestoneFilePth is: %s", reviewAnnotMilestoneFilePth)
 
             if reviewDpstMilestoneFilePth is not None:
+
                 if os.access(reviewAnnotMilestoneFilePth, os.R_OK):
                     if self.__copyMilestoneDeposit:
-                        shutil.copyfile(
-                            reviewAnnotMilestoneFilePth, reviewDpstMilestoneFilePth
-                        )
+                        shutil.copyfile(reviewAnnotMilestoneFilePth, reviewDpstMilestoneFilePth)
 
                         if os.access(reviewDpstMilestoneFilePth, os.R_OK):
                             if self.__verbose and self.__debug:
-                                logger.debug(
-                                    "reviewDpstMilestoneFilePth is: %s",
-                                    reviewDpstMilestoneFilePth,
-                                )
+                                logger.debug("reviewDpstMilestoneFilePth is: %s", reviewDpstMilestoneFilePth)
 
-                            msgFileRefs.append(
-                                self.__createMsgFileReference(
-                                    p_msgId,
-                                    p_depId,
-                                    reviewCntntTyp,
-                                    contentFormat,
-                                    annotPartitionNum,
-                                    annotVersionNum,
-                                )
-                            )
+                            msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                         else:
                             bOk = False
                             failedMsgFileRefs.append(reviewCntntTyp)
-                            logger.error(
-                                "problem with accessing deposit copy of 'review' milestone model file at: %s",
-                                reviewDpstMilestoneFilePth,
-                            )
+                            logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", reviewDpstMilestoneFilePth)
                     else:
                         # For not copying to deposit, register attachment
-                        msgFileRefs.append(
-                            self.__createMsgFileReference(
-                                p_msgId,
-                                p_depId,
-                                reviewCntntTyp,
-                                contentFormat,
-                                annotPartitionNum,
-                                annotVersionNum,
-                            )
-                        )
+                        msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                 else:
                     bOk = False
                     failedMsgFileRefs.append(reviewCntntTyp)
-                    logger.error(
-                        "problem with accessing annotation copy of 'review' milestone model file at: %s",
-                        reviewAnnotMilestoneFilePth,
-                    )
+                    logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", reviewAnnotMilestoneFilePth)
 
             else:
                 bOk = False
                 failedMsgFileRefs.append(reviewCntntTyp)
                 if self.__verbose:
-                    logger.info(
-                        "-- problem with depositor milestone path for copyng %s",
-                        reviewAnnotMilestoneFilePth,
-                    )
+                    logger.info("-- problem with depositor milestone path for copyng %s", reviewAnnotMilestoneFilePth)
 
         if os.access(reviewAnnotMilestoneFilePth, os.R_OK) and bOk is True:
+
             reviewCntntTyp = "model"
             # modelFilePthDict = msgDE.getMileStoneFilePaths("model", "pdbx")
             # modelFilePath = modelFilePthDict['curPth']
 
             reviewCntntTyp = "nmr-data-nef-review"
-            nefReviewFilePthDict = msgDE.getMileStoneFilePaths(
-                reviewCntntTyp, contentFormat
-            )
-            nefReviewDpstMilestoneFilePth = nefReviewFilePthDict[
-                "dpstPth"
-            ]  # same filename as "archive" version of file, but different path for "deposit" area
+            nefReviewFilePthDict = msgDE.getMileStoneFilePaths(reviewCntntTyp, contentFormat)
+            nefReviewDpstMilestoneFilePth = nefReviewFilePthDict["dpstPth"]  # same filename as "archive" version of file, but different path for "deposit" area
             nefReviewAnnotMilestoneFilePth = nefReviewFilePthDict["annotPth"]
 
-            logger.info(
-                "About to generate NEF file %s -> %s",
-                reviewAnnotMilestoneFilePth,
-                nefReviewAnnotMilestoneFilePth,
-            )
+            logger.info("About to generate NEF file %s -> %s", reviewAnnotMilestoneFilePth, nefReviewAnnotMilestoneFilePth)
 
-            logOutPath2 = os.path.join(
-                self.__sessionPath, p_depId + "-logstrnef.json"
-            )  # output log for converted NEF file in "nmr-str2nef-release" op
-            logOutPath1 = os.path.join(
-                self.__sessionPath, p_depId + "-logstrstr.json"
-            )  # output log for converted NMR-STAR file in "nmr-str2nef-release" op
+            logOutPath2 = os.path.join(self.__sessionPath, p_depId + "-logstrnef.json")  # output log for converted NEF file in "nmr-str2nef-release" op
+            logOutPath1 = os.path.join(self.__sessionPath, p_depId + "-logstrstr.json")  # output log for converted NMR-STAR file in "nmr-str2nef-release" op
             strOut = os.path.join(self.__sessionPath, p_depId + "-str.str")
 
             np = NmrDpUtility()
@@ -3688,14 +2691,10 @@ class MessagingIo(object):
             np.setSource(reviewAnnotMilestoneFilePth)
 
             np.setDestination(strOut)
-            np.addOutput(
-                name="nef_file_path", value=nefReviewAnnotMilestoneFilePth, type="file"
-            )
+            np.addOutput(name="nef_file_path", value=nefReviewAnnotMilestoneFilePth, type="file")
 
             # Need to specify report_file path again???
-            np.addOutput(
-                name="report_file_path", value=logOutPath2, type="file"
-            )  # Yes, see comments above
+            np.addOutput(name="report_file_path", value=logOutPath2, type="file")  # Yes, see comments above
             np.addOutput(name="insert_entry_id_to_loops", value=True, type="param")
             np.setLog(logOutPath1)  #
             logging.info("About to do OP")
@@ -3706,58 +2705,30 @@ class MessagingIo(object):
 
             if nexists:
                 if self.__copyMilestoneDeposit:
-                    shutil.copyfile(
-                        nefReviewAnnotMilestoneFilePth, nefReviewDpstMilestoneFilePth
-                    )
+                    shutil.copyfile(nefReviewAnnotMilestoneFilePth, nefReviewDpstMilestoneFilePth)
 
                     if os.access(nefReviewDpstMilestoneFilePth, os.R_OK):
                         if self.__verbose and self.__debug:
-                            logger.debug(
-                                "nefReviewDpstMilestoneFilePth is: %s",
-                                nefReviewDpstMilestoneFilePth,
-                            )
+                            logger.debug("nefReviewDpstMilestoneFilePth is: %s", nefReviewDpstMilestoneFilePth)
 
-                            msgFileRefs.append(
-                                self.__createMsgFileReference(
-                                    p_msgId,
-                                    p_depId,
-                                    reviewCntntTyp,
-                                    contentFormat,
-                                    annotPartitionNum,
-                                    annotVersionNum,
-                                )
-                            )
+                            msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
 
                     else:
                         bOk = False
                         failedMsgFileRefs.append(reviewCntntTyp)
-                        logger.error(
-                            "problem with accessing deposit copy of 'review' milestone model file at: %s",
-                            nefReviewDpstMilestoneFilePth,
-                        )
+                        logger.error("problem with accessing deposit copy of 'review' milestone model file at: %s", nefReviewDpstMilestoneFilePth)
                 else:
                     # For not copying to deposit, register attachment
-                    msgFileRefs.append(
-                        self.__createMsgFileReference(
-                            p_msgId,
-                            p_depId,
-                            reviewCntntTyp,
-                            contentFormat,
-                            annotPartitionNum,
-                            annotVersionNum,
-                        )
-                    )
+                    msgFileRefs.append(self.__createMsgFileReference(p_msgId, p_depId, reviewCntntTyp, contentFormat, annotPartitionNum, annotVersionNum))
             else:
                 bOk = False
                 failedMsgFileRefs.append(reviewCntntTyp)
-                logger.error(
-                    "problem with accessing annotation copy of 'review' milestone model file at: %s",
-                    nefReviewAnnotMilestoneFilePth,
-                )
+                logger.error("problem with accessing annotation copy of 'review' milestone model file at: %s", nefReviewAnnotMilestoneFilePth)
 
         return bOk
 
     def __genAnnotMilestoneEmdVrsn(self, p_depId, p_srcFilePath, p_dstFilePath):
+
         bOk = True
 
         #################################################################################################################
@@ -3767,27 +2738,22 @@ class MessagingIo(object):
         # p_srcFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/tests/4UI9-em-org.cif"  # FOR PRELIM TESTING ONLY
 
         # dpstModelEmFilePth_Local = os.path.join(self.__sessionPath,p_depId+"_model-em_P1.cif") # filename here is arbitrary just for temporary session processing purposes
-        dpstModelEmdFilePth_Local = os.path.join(
-            self.__sessionPath, p_depId + "_model-emd_P1.cif"
-        )  # filename here is arbitrary just for temporary session processing purposes
+        dpstModelEmdFilePth_Local = os.path.join(self.__sessionPath, p_depId + "_model-emd_P1.cif")  # filename here is arbitrary just for temporary session processing purposes
 
         if self.__verbose and self.__debug:
             logger.debug("dpstModelEmdFilePth_Local is: %s", dpstModelEmdFilePth_Local)
 
         if p_srcFilePath and p_dstFilePath:
+
             startTime = time.time()
-            logger.debug(
-                "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-            )
+            logger.debug("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
             try:
                 #
                 im = InstanceMapper(verbose=self.__verbose, log=self.__lfh)
                 im.setMappingFilePath(self.__emdDialectMappingFile)
                 # bOk = im.translate(p_srcFilePath, dpstModelEmFilePth_Local, mode="dst-src")
                 # bOk = im.translate(dpstModelEmFilePth_Local, dpstModelEmdFilePth_Local, mode="src-dst")
-                bOk = im.translate(
-                    p_srcFilePath, dpstModelEmdFilePth_Local, mode="src-dst"
-                )
+                bOk = im.translate(p_srcFilePath, dpstModelEmdFilePth_Local, mode="src-dst")
                 logger.info("return status %r", bOk)
 
             except:  # noqa: E722 pylint: disable=bare-except
@@ -3796,24 +2762,16 @@ class MessagingIo(object):
                 return bOk
 
             endTime = time.time()
-            logger.debug(
-                "Completed at %s (%.2f seconds)",
-                time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                endTime - startTime,
-            )
+            logger.debug("Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
 
-            logger.debug(
-                "About to copy file %s %s %s",
-                bOk,
-                dpstModelEmdFilePth_Local,
-                p_dstFilePath,
-            )
+            logger.debug("About to copy file %s %s %s", bOk, dpstModelEmdFilePth_Local, p_dstFilePath)
             if bOk and os.access(dpstModelEmdFilePth_Local, os.R_OK):
                 shutil.copyfile(dpstModelEmdFilePth_Local, p_dstFilePath)
 
         return bOk
 
     def __genAnnotMilestoneEmXmlHeader(self, p_depId, p_srcFilePath, p_dstFilePath):
+
         bOk = True
 
         ####################################################################################################################################
@@ -3825,28 +2783,19 @@ class MessagingIo(object):
         dpstModelEmHdrFilePth_Local = os.path.join(
             self.__sessionPath, p_depId + "_em-volume-header_P1.xml"
         )  # filename here is arbitrary just for temporary session processing purposes
-        emHeaderUtilLocalLogPath = os.path.join(
-            self.__sessionPath, p_depId + "_emHeaderUtil.log"
-        )
+        emHeaderUtilLocalLogPath = os.path.join(self.__sessionPath, p_depId + "_emHeaderUtil.log")
 
         if self.__verbose and self.__debug:
-            logger.info(
-                "-- dpstModelEmHdrFilePth_Local is: %s", dpstModelEmHdrFilePth_Local
-            )
+            logger.info("-- dpstModelEmHdrFilePth_Local is: %s", dpstModelEmHdrFilePth_Local)
 
         if p_srcFilePath and p_dstFilePath:
+
             startTime = time.time()
-            logger.info(
-                "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-            )
+            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
             try:
                 #
-                emHeaderUtil = EmHeaderUtils(
-                    self.__siteId, verbose=self.__verbose, log=self.__lfh
-                )
-                bOk = emHeaderUtil.transHeader(
-                    p_srcFilePath, dpstModelEmHdrFilePth_Local, emHeaderUtilLocalLogPath
-                )
+                emHeaderUtil = EmHeaderUtils(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                bOk = emHeaderUtil.transHeader(p_srcFilePath, dpstModelEmHdrFilePth_Local, emHeaderUtilLocalLogPath)
 
                 logger.info("return status %r", bOk)
 
@@ -3856,11 +2805,7 @@ class MessagingIo(object):
                 return bOk
 
             endTime = time.time()
-            logger.info(
-                "Completed at %s (%.2f seconds)",
-                time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                endTime - startTime,
-            )
+            logger.info("Completed at %s (%.2f seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
 
             if bOk and os.access(dpstModelEmHdrFilePth_Local, os.R_OK):
                 shutil.copyfile(dpstModelEmHdrFilePth_Local, p_dstFilePath)
@@ -3879,17 +2824,8 @@ class MessagingIo(object):
         # for to be different - but you never know
         return filecmp.cmp(f1, f2, False)
 
-    def __createMsgFileReference(
-        self,
-        p_msgId,
-        p_depId,
-        p_contentType,
-        p_contentFormat,
-        p_annotPartitionNum,
-        p_annotVersionNum,
-        p_upldFileName=None,
-        p_storageType="archive",
-    ):
+    def __createMsgFileReference(self, p_msgId, p_depId, p_contentType, p_contentFormat, p_annotPartitionNum, p_annotVersionNum, p_upldFileName=None, p_storageType="archive"):
+
         mfr = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
         mfr.setMessageId(p_msgId)
         mfr.setDepositionId(p_depId)
@@ -3920,6 +2856,7 @@ class MessagingIo(object):
         return contentType
 
     def __getContentFormat(self, acronym, auxFileIndx):
+
         contentTypeToFormatMap = {
             "model": "pdbx",
             "model_pdb": "pdb",
@@ -3950,6 +2887,7 @@ class MessagingIo(object):
         return contentFormat
 
     def __getContentTypeAndFormat(self, acronym, auxFileIndx):
+
         contentType = self.__getContentType(acronym)
         contentFormat = self.__getContentFormat(acronym, auxFileIndx)
 
@@ -3963,35 +2901,21 @@ class MessagingIo(object):
         #
         try:
             if self.__isWorkflow():
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(
-                    contentType="messages-to-depositor", format="pdbx"
-                )
-                logger.info(
-                    "self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath
-                )
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-            if self.__msgsToDpstrFilePath is not None and os.access(
-                self.__msgsToDpstrFilePath, os.R_OK
-            ):
+            if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
-                    self.__msgsToDpstrFilePath,
-                    timeoutSeconds=self.__timeoutSeconds,
-                    retrySeconds=self.__retrySeconds,
-                    verbose=self.__verbose,
-                    log=self.__lfh,
+                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
                     ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
                 if ok:
-                    recordSetLst = (
-                        mIIo.getFileReferenceInfo()
-                    )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
             #
             if self.__verbose and self.__debug and self.__debugLvl2:
@@ -4015,6 +2939,7 @@ class MessagingIo(object):
         return maxAuxPartNum + 1
 
     def __sendNotificationEmail(self, p_msgObj, p_bVldtnRprtFlg=False):
+
         # haveUploadFile = False  # attachment not being utilized at this time
         #
         senderEmail = self.__cI.get("SITE_NOREPLY_EMAIL", "noreply@mail.wwpdb.org")
@@ -4023,24 +2948,15 @@ class MessagingIo(object):
         # For testing - allow overriding of recipients
         test_emailaddr = p_msgObj.getMsgDict().get("test_email_recpt", None)
 
-        commHostName = self.__reqObj.getValue(
-            "hostname"
-        )  # the hostname of site currently hosting the annotator's communication UI
+        commHostName = self.__reqObj.getValue("hostname")  # the hostname of site currently hosting the annotator's communication UI
         #
         depId = p_msgObj.depositionId
         depEmailUrl = self.__cI.get("SITE_CURRENT_DEP_EMAIL_URL")
         archiveNotifEmails = self.__cI.get("SITE_ARCHIVE_NOTIF_EMAILS")
         #
         if self.__verbose:
-            logger.info(
-                "-- hostname for Annotator Comm UI currently running on this server is '%s'",
-                commHostName,
-            )
-            logger.info(
-                " -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'",
-                self.__siteId,
-                depEmailUrl,
-            )
+            logger.info("-- hostname for Annotator Comm UI currently running on this server is '%s'", commHostName)
+            logger.info(" -- Deposit UI email URL retrieved from ConfigInfoData for current siteId of '%s' is '%s'", self.__siteId, depEmailUrl)
             #
         msgStrDict = {}
         #
@@ -4064,11 +2980,7 @@ class MessagingIo(object):
             if index > 0:
                 separator = ", "
             recipientLst.append(emailAddrs)
-            greetRecipientList += separator + (
-                ("Dr. " + lname)
-                if (lname is not None and (len(lname) > 1))
-                else "Sir or Madam"
-            )
+            greetRecipientList += separator + (("Dr. " + lname) if (lname is not None and (len(lname) > 1)) else "Sir or Madam")
         #
         # For testing - override recipientLst if need be.
         if test_emailaddr:
@@ -4077,27 +2989,14 @@ class MessagingIo(object):
         msgStrDict["tab"] = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
         #
         msgStrDict["dep_id"] = depId
-        msgStrDict["pdb_block"] = (
-            (MessagingTemplates.emailNotif_pdbBlock % pdbId)
-            if (pdbId is not None and pdbId != "[PDBID NOT AVAIL]")
-            else ""
-        )
-        msgStrDict["entry_authors"] = (
-            ", ".join(entryAuthors) if entryAuthors is not None else ""
-        )
-        msgStrDict["entry_authors_block"] = (
-            MessagingTemplates.emailNotif_entryAuthorsBlock % msgStrDict
-            if len(msgStrDict["entry_authors"]) > 1
-            else ""
-        )
+        msgStrDict["pdb_block"] = (MessagingTemplates.emailNotif_pdbBlock % pdbId) if (pdbId is not None and pdbId != "[PDBID NOT AVAIL]") else ""
+        msgStrDict["entry_authors"] = ", ".join(entryAuthors) if entryAuthors is not None else ""
+        msgStrDict["entry_authors_block"] = MessagingTemplates.emailNotif_entryAuthorsBlock % msgStrDict if len(msgStrDict["entry_authors"]) > 1 else ""
         # msgStrDict['entry_authors_block'] = (MessagingTemplates.emailNotif_entryAuthorsBlock % '\n\t'.join(entryAuthors) ) if entryAuthors is not None else ""
         msgStrDict["entry_title"] = entryTitle if entryTitle is not None else ""
         msgStrDict["entry_title_block"] = (
             MessagingTemplates.emailNotif_entryTitleBlock % msgStrDict
-            if (
-                len(msgStrDict["entry_title"]) > 1
-                and msgStrDict["entry_title"] != "[NOT AVAILABLE]"
-            )
+            if (len(msgStrDict["entry_title"]) > 1 and msgStrDict["entry_title"] != "[NOT AVAILABLE]")
             else "<br /><br />"
         )
         msgStrDict["msg_mime_spec"] = MessagingTemplates.emailNotif_msgBodyMimeSpec
@@ -4105,27 +3004,16 @@ class MessagingIo(object):
         msgStrDict["email_to_lname"] = greetRecipientList
         # ### DELETE IF NOT NEEDED -->  msgStrDict['role'] = role
         msgStrDict["dep_email_url"] = depEmailUrl
-        msgStrDict["mention_vldtn_rprts"] = (
-            "and validation report(s) " if (p_bVldtnRprtFlg is True) else ""
-        )
-        msgStrDict["orig_commui_msg_content"] = self.__protectLineBreaks(
-            self.__decodeCifToUtf8(p_msgObj.messageText)
-        )
+        msgStrDict["mention_vldtn_rprts"] = "and validation report(s) " if (p_bVldtnRprtFlg is True) else ""
+        msgStrDict["orig_commui_msg_content"] = self.__protectLineBreaks(self.__decodeCifToUtf8(p_msgObj.messageText))
         if sys.version_info[0] < 3:
             # A unicode encoded string does not work well with templates - which is ASCII only in python 2
-            msgStrDict["orig_commui_msg_content"] = (
-                msgStrDict["orig_commui_msg_content"]
-                .decode("utf-8")
-                .encode("ascii", "replace")
-            )
+            msgStrDict["orig_commui_msg_content"] = msgStrDict["orig_commui_msg_content"].decode("utf-8").encode("ascii", "replace")
         #
         msgStrDict["msg_body_main"] = (
             MessagingTemplates.emailNotif_msgBodyMain % msgStrDict
             if not p_msgObj.isAutoMsg
-            else (
-                (p_msgObj.messageText).replace("\n", "<br />")
-                + MessagingTemplates.emailNotif_replyRedirectFooter % msgStrDict
-            )
+            else ((p_msgObj.messageText).replace("\n", "<br />") + MessagingTemplates.emailNotif_replyRedirectFooter % msgStrDict)
         )
         msgBody = MessagingTemplates.emailNotif_msgBodyTmplt % msgStrDict
         #
@@ -4133,26 +3021,16 @@ class MessagingIo(object):
         frmttedRecipList = ["<" + emailTo + ">" for emailTo in recipientLst]
         msgStrDict["receiver"] = ", ".join(frmttedRecipList)
         #
-        msgStrDict["subject"] = (
-            subject + " - DEP ID: " + p_msgObj.depositionId
-            if not p_msgObj.isAutoMsg
-            else p_msgObj.messageSubject
-        )
+        msgStrDict["subject"] = subject + " - DEP ID: " + p_msgObj.depositionId if not p_msgObj.isAutoMsg else p_msgObj.messageSubject
         msgStrDict["mime_hdr"] = MessagingTemplates.emailNotif_mimeHdr
         msgStrDict["msg_content"] = msgBody
         #
         # Adjust subject to strip archiving 'ARCHIVED: '
         if p_msgObj.contentType == "notes":
             spre = "ARCHIVED: "
-            if (
-                len(msgStrDict["subject"]) > len(spre)
-                and msgStrDict["subject"][0 : len(spre)] == spre
-            ):
+            if len(msgStrDict["subject"]) > len(spre) and msgStrDict["subject"][0 : len(spre)] == spre:
                 msgStrDict["subject"] = msgStrDict["subject"][len(spre) :]
-            if (
-                len(msgStrDict["comm_subject"]) > len(spre)
-                and msgStrDict["comm_subject"][0 : len(spre)] == spre
-            ):
+            if len(msgStrDict["comm_subject"]) > len(spre) and msgStrDict["comm_subject"][0 : len(spre)] == spre:
                 msgStrDict["comm_subject"] = msgStrDict["comm_subject"][len(spre) :]
 
         # Generate message with template
@@ -4180,10 +3058,7 @@ class MessagingIo(object):
                 logger.info("-- Successfully generated email from %s", senderEmail)
                 logger.info("-- email message was %r\n", message)
                 if archiveNotifEmails is not None and archiveNotifEmails == "yes":
-                    logger.info(
-                        "-- email message was also archived to %s",
-                        self.__notifEmailArchAddress,
-                    )
+                    logger.info("-- email message was also archived to %s", self.__notifEmailArchAddress)
         except smtplib.SMTPException:
             logger.exception("In sending email")
             if self.__verbose:
@@ -4233,21 +3108,13 @@ class MessagingIo(object):
                 rtrnDict[msgId] = []
             #
             try:
-                msgDI = MessagingDataImport(
-                    self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
-                pathDict = msgDI.getMileStoneFilePaths(
-                    contentType=contentType,
-                    format=contentFormat,
-                    version=versionId,
-                    partitionNum=partitionNum,
-                )
+
+                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                pathDict = msgDI.getMileStoneFilePaths(contentType=contentType, format=contentFormat, version=versionId, partitionNum=partitionNum)
                 archiveFilePth = pathDict["annotPth"]
                 #
                 fileRef = os.path.basename(archiveFilePth)
-                toLocalSessionFilePthRltv = os.path.join(
-                    self.__sessionRelativePath, fileRef
-                )
+                toLocalSessionFilePthRltv = os.path.join(self.__sessionRelativePath, fileRef)
                 toLocalSessionFilePthAbslt = os.path.join(self.__sessionPath, fileRef)
 
                 if os.access(archiveFilePth, os.R_OK):
@@ -4259,10 +3126,7 @@ class MessagingIo(object):
                         shutil.copyfile(archiveFilePth, toLocalSessionFilePthAbslt)
 
             except:  # noqa: E722 pylint: disable=bare-except
-                logger.info(
-                    " ----- problem importing a file reference from archiveFilePth: %s",
-                    archiveFilePth,
-                )
+                logger.info(" ----- problem importing a file reference from archiveFilePth: %s", archiveFilePth)
                 logger.exception("file reference import")
         #
         return rtrnDict
@@ -4310,9 +3174,7 @@ class MessagingIo(object):
 
                     row.append(value if (value != "?") else "")
                 except:  # noqa: E722 pylint: disable=bare-except
-                    logger.info(
-                        "----- current rcrd in dict type message list is: %r", rcrd
-                    )
+                    logger.info("----- current rcrd in dict type message list is: %r", rcrd)
                     logger.exception("Internal failure")
             rtrnLst.append(row)
 
@@ -4330,19 +3192,10 @@ class MessagingIo(object):
         Have to replace any ';' that begin a newline with a ' ;' in order to preserve ; matching required for multiline items
         """
         if sys.version_info[0] < 3:
-            return (
-                p_content.encode("ascii", "xmlcharrefreplace")
-                .replace("\n;", "\n ;")
-                .replace("\\xa0", " ")
-            )
+            return p_content.encode("ascii", "xmlcharrefreplace").replace("\n;", "\n ;").replace("\\xa0", " ")
         else:
             # Coming in as string already - no need to encode to bytes, however, we would like the xml character replacement
-            return (
-                p_content.encode("ascii", "xmlcharrefreplace")
-                .decode("ascii")
-                .replace("\n;", "\n ;")
-                .replace("\\xa0", " ")
-            )
+            return p_content.encode("ascii", "xmlcharrefreplace").decode("ascii").replace("\n;", "\n ;").replace("\\xa0", " ")
 
     def __decodeCifToUtf8(self, p_content):
         if sys.version_info[0] < 3:
@@ -4367,10 +3220,7 @@ class MessagingIo(object):
             localDateTimeStr = localDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            logger.info(
-                " ----- argument received, '%s', was not in expected datetime format so using data as is.",
-                p_timeStamp,
-            )
+            logger.info(" ----- argument received, '%s', was not in expected datetime format so using data as is.", p_timeStamp)
             # traceback.print_exc(file=self.__lfh)
             return p_timeStamp
 
@@ -4392,10 +3242,7 @@ class MessagingIo(object):
             gmtDateTimeStr = gmtDateTime.strftime("%Y-%m-%d %H:%M:%S")
 
         except ValueError:
-            logger.info(
-                "----- argument received, '%s', was not in expected datetime format",
-                p_timeStamp,
-            )
+            logger.info("----- argument received, '%s', was not in expected datetime format", p_timeStamp)
             logger.exception("Failure in datetime format %s", p_timeStamp)
             return p_timeStamp
 
@@ -4417,15 +3264,15 @@ class MessagingIo(object):
         p_rtrnDict["INDENT_DICT"] = indentDict
 
     def __sortMsgsForThreading(self, p_recordSetLst, p_indentDict):
+
         p_recordSetLst = self.__parentChildProcessing(p_recordSetLst, p_indentDict)
         p_recordSetLst = self.__siblingMsgProcessing(p_recordSetLst, p_indentDict)
-        p_recordSetLst = self.__parentChildProcessing(
-            p_recordSetLst, p_indentDict, p_bFinalPass=True
-        )
+        p_recordSetLst = self.__parentChildProcessing(p_recordSetLst, p_indentDict, p_bFinalPass=True)
 
         return p_recordSetLst
 
     def __siblingMsgProcessing(self, p_recordSetLst, p_indentDict):
+
         correctionRqd = False
 
         for rowIdx, row in enumerate(p_recordSetLst):
@@ -4443,16 +3290,10 @@ class MessagingIo(object):
                 #
                 try:
                     # if previous msg is not a parent and prev msg is a sibling and current message is of equal thread level
-                    if (
-                        (prevMsgId != parentId)
-                        and (prevMsgParentId == parentId)
-                        and (p_indentDict[msgId] == p_indentDict[prevMsgId])
-                    ):
+                    if (prevMsgId != parentId) and (prevMsgParentId == parentId) and (p_indentDict[msgId] == p_indentDict[prevMsgId]):
                         # if we're inside this if block, then we know current record is sibling of previous record
 
-                        if datetime.strptime(
-                            prevMsgTimeStamp, "%Y-%m-%d %H:%M:%S"
-                        ) > datetime.strptime(timeStamp, "%Y-%m-%d %H:%M:%S"):
+                        if datetime.strptime(prevMsgTimeStamp, "%Y-%m-%d %H:%M:%S") > datetime.strptime(timeStamp, "%Y-%m-%d %H:%M:%S"):
                             # if we're inside this if block, previous sibling is actually more recent than current record and so we must reorder for proper chronological display
 
                             if self.__verbose and self.__debug and False:
@@ -4465,18 +3306,14 @@ class MessagingIo(object):
                                     p_indentDict[prevMsgId],
                                 )
                                 logger.info("new index is [%s]", prevRecrdIdx)
-                            p_recordSetLst.insert(
-                                prevRecrdIdx, p_recordSetLst.pop(rowIdx)
-                            )
+                            p_recordSetLst.insert(prevRecrdIdx, p_recordSetLst.pop(rowIdx))
                             correctionRqd = True
                             if self.__verbose and self.__debug and False:
                                 for idx, rowval in enumerate(p_recordSetLst):
                                     logger.info("-- row[%s]: %r", idx, rowval)
                             break
                 except:  # noqa: E722 pylint: disable=bare-except
-                    logger.info(
-                        "-- prevMsgId is [%s] and msgId is [%s]", prevMsgId, msgId
-                    )
+                    logger.info("-- prevMsgId is [%s] and msgId is [%s]", prevMsgId, msgId)
                     logger.info("-- p_indentDict is %r", p_indentDict)
                     logger.exception("__siblingMsgProcessing")
 
@@ -4486,6 +3323,7 @@ class MessagingIo(object):
             return p_recordSetLst
 
     def __parentChildProcessing(self, p_recordSetLst, p_indentDict, p_bFinalPass=False):
+
         correctionRqd = False
 
         if self.__verbose and self.__debug:
@@ -4505,19 +3343,15 @@ class MessagingIo(object):
                 prevMsgParentId = (p_recordSetLst[prevRecrdIdx])["parent_message_id"]
                 #
                 try:
+
                     # if previous msg is not a parent and prev msg is not a sibling and msg is not a root msg (root msg means indent level = 0)
-                    if (
-                        (prevMsgId != parentId)
-                        and (prevMsgParentId != parentId)
-                        and (p_indentDict[msgId] > 0)
-                    ):
+                    if (prevMsgId != parentId) and (prevMsgParentId != parentId) and (p_indentDict[msgId] > 0):
+
                         # if this is the final pass to identify any orphaned children that may have resulted from sibling processing
                         # and if the current message is of equal or higher thread level and
                         if p_bFinalPass is True:
                             if p_indentDict[msgId] >= p_indentDict[prevMsgId]:
-                                insertIdx = self.__findIdxOfInsertion(
-                                    msgId, parentId, p_recordSetLst
-                                )
+                                insertIdx = self.__findIdxOfInsertion(msgId, parentId, p_recordSetLst)
                                 #
                                 if self.__verbose and self.__debug:
                                     logger.info(
@@ -4531,9 +3365,7 @@ class MessagingIo(object):
                                     logger.info("new index is [%s]", insertIdx)
                                     logger.info("p_bFinalPass is [%s]", p_bFinalPass)
                                 #
-                                p_recordSetLst.insert(
-                                    insertIdx, p_recordSetLst.pop(rowIdx)
-                                )
+                                p_recordSetLst.insert(insertIdx, p_recordSetLst.pop(rowIdx))
                                 correctionRqd = True
                                 if self.__verbose and self.__debug and self.__debugLvl2:
                                     for idx, rowval in enumerate(p_recordSetLst):
@@ -4541,9 +3373,7 @@ class MessagingIo(object):
                                 break
 
                         else:
-                            insertIdx = self.__findIdxOfInsertion(
-                                msgId, parentId, p_recordSetLst
-                            )
+                            insertIdx = self.__findIdxOfInsertion(msgId, parentId, p_recordSetLst)
                             #
                             if self.__verbose and self.__debug:
                                 logger.debug(
@@ -4568,9 +3398,7 @@ class MessagingIo(object):
                     logger.exception("__parentChildProcessing")
 
         if correctionRqd:
-            return self.__parentChildProcessing(
-                p_recordSetLst, p_indentDict, p_bFinalPass
-            )
+            return self.__parentChildProcessing(p_recordSetLst, p_indentDict, p_bFinalPass)
         else:
             return p_recordSetLst
 
@@ -4593,9 +3421,7 @@ class MessagingIo(object):
                 rtrnVal = rowIdx
         return rtrnVal
 
-    def __findIdxOfInsertion(
-        self, msgId, parentId, recordSetLst
-    ):  # pylint: disable=unused-argument
+    def __findIdxOfInsertion(self, msgId, parentId, recordSetLst):  # pylint: disable=unused-argument
         """called when it is necessary to move a message entry to a different position in the list of message records.
         for given message ID, return index indicating new position in record list
 
@@ -4631,15 +3457,10 @@ class MessagingIo(object):
             for colIndx in reversed(orderby):
                 if dType is dict:
                     # XXXXX This code is wrong - but we are not using dict - to fix - would need to use functools.partial
-                    sortlist.sort(
-                        key=lambda dictEntry: (dictEntry.items())[0][1][colIndx],
-                        reverse=(colIndx in desc),
-                    )  # pylint: disable=cell-var-from-loop
+                    sortlist.sort(key=lambda dictEntry: (dictEntry.items())[0][1][colIndx], reverse=(colIndx in desc))  # pylint: disable=cell-var-from-loop
 
                 elif dType is list:
-                    sortlist.sort(
-                        key=operator.itemgetter(colIndx), reverse=(colIndx in desc)
-                    )
+                    sortlist.sort(key=operator.itemgetter(colIndx), reverse=(colIndx in desc))
 
         return sortlist
 
@@ -4661,9 +3482,7 @@ class MessagingIo(object):
         else:
             return True
 
-    def __filterRsltSet(
-        self, p_rsltSetList, p_sGlobalSrchFilter=None, p_dictColSrchFilter=None
-    ):
+    def __filterRsltSet(self, p_rsltSetList, p_sGlobalSrchFilter=None, p_dictColSrchFilter=None):
         """Performs filtering of resultset. Accommodates two mutually-exclusive filter modes: global search and column specific search modes.
 
         :Params:
@@ -4675,9 +3494,7 @@ class MessagingIo(object):
 
         if p_sGlobalSrchFilter:
             if self.__verbose and self.__debug:
-                logger.debug(
-                    "-- performing global search for string '%s'", p_sGlobalSrchFilter
-                )
+                logger.debug("-- performing global search for string '%s'", p_sGlobalSrchFilter)
             for trueRowIdx, rcrd in enumerate(p_rsltSetList):
                 for field in rcrd:
                     if p_sGlobalSrchFilter.lower() in str(field).lower():
@@ -4691,15 +3508,9 @@ class MessagingIo(object):
 
         elif p_dictColSrchFilter:
             if self.__verbose and self.__debug:
-                logger.debug(
-                    "-- performing column-specific searches with search dictionary: %r",
-                    p_dictColSrchFilter.items(),
-                )
+                logger.debug("-- performing column-specific searches with search dictionary: %r", p_dictColSrchFilter.items())
             if self.__verbose and self.__debug and self.__debugLvl2:
-                logger.debug(
-                    "-- performing column-specific searches against recordset: %r",
-                    p_rsltSetList,
-                )
+                logger.debug("-- performing column-specific searches against recordset: %r", p_rsltSetList)
             #
             bAllCriteriaMet = False
             for trueRowIdx, rcrd in enumerate(p_rsltSetList):
@@ -4726,14 +3537,7 @@ class MessagingIo(object):
         #
         fileSource = str(self.__reqObj.getValue("filesource")).lower()
         #
-        if fileSource and fileSource in [
-            "archive",
-            "autogroup",
-            "wf-archive",
-            "wf_archive",
-            "wf-instance",
-            "wf_instance",
-        ]:
+        if fileSource and fileSource in ["archive", "autogroup", "wf-archive", "wf_archive", "wf-instance", "wf_instance"]:
             # if the file source is any of the above then we are in the workflow manager environment
             return True
         else:
@@ -4763,19 +3567,8 @@ class MsgTmpltHlpr(object):
         self.__fileFormatExtDict = self.__cI.get("FILE_FORMAT_EXTENSION_DICTIONARY")
         self.__annotatorUserNameDict = self.__cI.get("ANNOTATOR_USER_NAME_DICT")
         #
-        self.__expMethodList = (
-            (self.__reqObj.getValue("expmethod").replace('"', "")).split(",")
-            if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1)
-            else []
-        )
-        self.__emDeposition = (
-            True
-            if (
-                "ELECTRON MICROSCOPY" in self.__expMethodList
-                or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList
-            )
-            else False
-        )
+        self.__expMethodList = (self.__reqObj.getValue("expmethod").replace('"', "")).split(",") if (len(self.__reqObj.getValue("expmethod").replace('"', "")) > 1) else []
+        self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         # self.__expMethodMapToAccessID = {
         #     "X-RAY DIFFRACTION": "PDB ID %(pdb_id)s",
         #     "ELECTRON MICROSCOPY": "EMDB ID %(emdb_id)s",
@@ -4785,17 +3578,9 @@ class MsgTmpltHlpr(object):
         #     "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
         # }
 
-        self.__idMapToString = {
-            "PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)",
-            "EMDB": "EMDB ID %(emdb_id)s",
-            "BMRB": "PDB ID %(pdb_id)s",
-        }  # CS 2023-11-02
+        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}  # CS 2023-11-02
 
-        self.__idMapToString_EM = {
-            "PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)",
-            "EMDB": "EMDB entry ID %(emdb_id)s",
-            "BMRB": "PDB entry ID %(pdb_id)s",
-        }  # CS 2023-11-02
+        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}  # CS 2023-11-02
 
         if self.__verbose and self.__debug:
             for value in self.__expMethodList:
@@ -4844,9 +3629,7 @@ class MsgTmpltHlpr(object):
         self.__authRelStatusCodeMap = None  # CS 2023-10-20
         self.__authApprovalType = None  # only used to determine default msg template
         #
-        self.__holdDate = (
-            None  # used as expire_date and to build coordRelBlock and entryStatus
-        )
+        self.__holdDate = None  # used as expire_date and to build coordRelBlock and entryStatus
         self.__expireDate = None
         self.__initRecvdDate = None
         self.__pdbReleaseDate = None
@@ -4912,9 +3695,7 @@ class MsgTmpltHlpr(object):
             self.__statusCode = "TEST_CODE"
             self.__statusCodeEmMap = "TEST EM STATUS CODE"
             self.__authRelStatusCode = "TEST STATUS (auth rel status code)"
-            self.__authRelStatusCodeMap = (
-                "TEST STATUS (auth rel status code)"  # CS 2023-10-20
-            )
+            self.__authRelStatusCodeMap = "TEST STATUS (auth rel status code)"  # CS 2023-10-20
             self.__entryStatus = "Hold until Whenever (test entry status)"
 
             self.__holdDate = "01/01/1000 (hold date)"
@@ -4989,15 +3770,9 @@ class MsgTmpltHlpr(object):
                     self.__getDefaultMsgTmpltType()
 
                     # parse info from annotation messaging file
-                    msgDI = MessagingDataImport(
-                        self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                    )
-                    self.__messagingFilePath = msgDI.getFilePath(
-                        contentType="messages-to-depositor", format="pdbx"
-                    )
-                    if self.__messagingFilePath is not None and os.access(
-                        self.__messagingFilePath, os.R_OK
-                    ):
+                    msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
+                    self.__messagingFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
+                    if self.__messagingFilePath is not None and os.access(self.__messagingFilePath, os.R_OK):
                         self.__getLastCommDate()
 
                     # establish release date values
@@ -5011,10 +3786,7 @@ class MsgTmpltHlpr(object):
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "problem recovering data into PdbxPersist from db file at: %s",
-                        self.__dbFilePath,
-                    )
+                    logger.info("problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
                 logger.exception("Problem recovering date from PdbxPersist")
 
     def __getAccessionIdString(self, idList):
@@ -5048,241 +3820,90 @@ class MsgTmpltHlpr(object):
             # acknowleding here that X-RAY and NMR processing both result in a single "PDB" accession ID being granted to depositor for a given deposition (i.e. no separate "BMRB" id)
             # so the "accessionIdList" at this time only consists of single member (but perhaps this may change in the future?)
             # at this current time it's only for EM experimental method where we have to handle the generation of more than one accession ID for the same deposition
-        p_returnDict["pdb_id"] = (
-            self.__pdbId
-            if (
-                self.__pdbId is not None
-                and len(self.__pdbId) > 0
-                and self.__pdbId != "?"
-            )
-            else "[PDBID NOT AVAIL]"
-        )
-        p_returnDict["pdb_ext_id"] = (
-            self.__pdbExtId
-            if (
-                self.__pdbExtId is not None
-                and len(self.__pdbExtId) > 0
-                and self.__pdbExtId != "?"
-            )
-            else "[PDBEXTID NOT AVAIL]"
-        )  # CS 2023-11-02
-        p_returnDict["emdb_id"] = (
-            self.__emdbId
-            if (
-                self.__emdbId is not None
-                and len(self.__emdbId) > 0
-                and self.__emdbId != "?"
-            )
-            else "[EMDBID NOT AVAIL]"
-        )
-        p_returnDict["accession_ids"] = (
-            self.__getAccessionIdString(accessionIdList)
-        ) % p_returnDict
+        p_returnDict["pdb_id"] = self.__pdbId if (self.__pdbId is not None and len(self.__pdbId) > 0 and self.__pdbId != "?") else "[PDBID NOT AVAIL]"
+        p_returnDict["pdb_ext_id"] = self.__pdbExtId if (self.__pdbExtId is not None and len(self.__pdbExtId) > 0 and self.__pdbExtId != "?") else "[PDBEXTID NOT AVAIL]"  # CS 2023-11-02
+        p_returnDict["emdb_id"] = self.__emdbId if (self.__emdbId is not None and len(self.__emdbId) > 0 and self.__emdbId != "?") else "[EMDBID NOT AVAIL]"
+        p_returnDict["accession_ids"] = (self.__getAccessionIdString(accessionIdList)) % p_returnDict
         #################################################################################
 
         p_returnDict["contact_authors_list"] = self.__contactAuths
         #
         p_returnDict["entry_authors_list"] = self.__entryAuthrs
-        p_returnDict["entry_authors_newline_list"] = (
-            "\n".join(self.__entryAuthrs)
-            if (self.__entryAuthrs is not None and len(self.__entryAuthrs) > 0)
-            else "[NOT AVAILABLE]"
-        )
-        p_returnDict["entry_authors_csv_list"] = (
-            ", ".join(self.__entryAuthrs)
-            if (self.__entryAuthrs is not None and len(self.__entryAuthrs) > 0)
-            else "[NOT AVAILABLE]"
-        )
+        p_returnDict["entry_authors_newline_list"] = "\n".join(self.__entryAuthrs) if (self.__entryAuthrs is not None and len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
+        p_returnDict["entry_authors_csv_list"] = ", ".join(self.__entryAuthrs) if (self.__entryAuthrs is not None and len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
         #
-        p_returnDict["title"] = (
-            self.__title
-            if (self.__title is not None and len(self.__title) > 0)
-            else "[NOT AVAILABLE]"
-        )
+        p_returnDict["title"] = self.__title if (self.__title is not None and len(self.__title) > 0) else "[NOT AVAILABLE]"
         #
-        p_returnDict["status_code"] = (
-            self.__statusCode
-            if (self.__statusCode is not None and len(self.__statusCode) > 0)
-            else "[NOT AVAILABLE]"
-        )
-        p_returnDict["entry_status"] = (
-            self.__entryStatus
-            if (self.__entryStatus is not None and len(self.__entryStatus) > 0)
-            else "[NOT AVAILABLE]"
-        )
-        p_returnDict["auth_rel_status_code"] = (
-            self.__authRelStatusCode
-            if (
-                self.__authRelStatusCode is not None
-                and len(self.__authRelStatusCode) > 0
-            )
-            else "[NOT AVAILABLE]"
-        )
-        p_returnDict["auth_rel_status_code_map"] = (
-            self.__authRelStatusCodeMap
-            if (
-                self.__authRelStatusCodeMap is not None
-                and len(self.__authRelStatusCodeMap) > 0
-            )
-            else "[NOT AVAILABLE]"
-        )  # CS 2023-10-20  # noqa: E501
+        p_returnDict["status_code"] = self.__statusCode if (self.__statusCode is not None and len(self.__statusCode) > 0) else "[NOT AVAILABLE]"
+        p_returnDict["entry_status"] = self.__entryStatus if (self.__entryStatus is not None and len(self.__entryStatus) > 0) else "[NOT AVAILABLE]"
+        p_returnDict["auth_rel_status_code"] = self.__authRelStatusCode if (self.__authRelStatusCode is not None and len(self.__authRelStatusCode) > 0) else "[NOT AVAILABLE]"
+        p_returnDict["auth_rel_status_code_map"] = self.__authRelStatusCodeMap if (self.__authRelStatusCodeMap is not None and len(self.__authRelStatusCodeMap) > 0) else "[NOT AVAILABLE]"  # CS 2023-10-20  # noqa: E501
 
         p_returnDict["expire_date"] = self.__expireDate
         p_returnDict["recvd_date"] = (
             du.date_to_display(self.__initRecvdDate)
-            if (
-                self.__initRecvdDate is not None
-                and len(self.__initRecvdDate) > 0
-                and self.__isNotCifNull(self.__initRecvdDate)
-            )
+            if (self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate))
             else "[NOT AVAILABLE]"
         )
         p_returnDict["processing_site"] = (
-            self.__procSite
-            if (self.__procSite is not None and len(self.__procSite) > 0)
-            else "[NOT AVAILABLE]"
+            self.__procSite if (self.__procSite is not None and len(self.__procSite) > 0) else "[NOT AVAILABLE]"
         )  # processing site used in statement regarding upcoming Thursday cutoff date
         #
-        p_returnDict["citation_authors"] = (
-            ",".join(self.__citAuthors)
-            if (self.__citAuthors is not None and len(self.__citAuthors) > 0)
-            else "[NOT AVAILABLE]"
-        )
+        p_returnDict["citation_authors"] = ",".join(self.__citAuthors) if (self.__citAuthors is not None and len(self.__citAuthors) > 0) else "[NOT AVAILABLE]"
         p_returnDict["citation_title"] = (
-            self.__citTitle
-            if (
-                self.__citTitle is not None
-                and len(self.__citTitle) > 0
-                and self.__isNotCifNull(self.__citTitle)
-            )
-            else "[NOT AVAILABLE]"
+            self.__citTitle if (self.__citTitle is not None and len(self.__citTitle) > 0 and self.__isNotCifNull(self.__citTitle)) else "[NOT AVAILABLE]"
         )
         p_returnDict["citation_journal_abbrev"] = (
             self.__citJournalAbbrev
-            if (
-                self.__citJournalAbbrev is not None
-                and len(self.__citJournalAbbrev) > 0
-                and self.__isNotCifNull(self.__citJournalAbbrev)
-            )
+            if (self.__citJournalAbbrev is not None and len(self.__citJournalAbbrev) > 0 and self.__isNotCifNull(self.__citJournalAbbrev))
             else "[NOT AVAILABLE]"
         )
         p_returnDict["citation_journal_volume"] = (
             ("\nVolume:   " + self.__citJournalVolume)
-            if (
-                self.__citJournalVolume is not None
-                and len(self.__citJournalVolume) > 0
-                and self.__isNotCifNull(self.__citJournalVolume)
-            )
+            if (self.__citJournalVolume is not None and len(self.__citJournalVolume) > 0 and self.__isNotCifNull(self.__citJournalVolume))
             else ""
         )
         p_returnDict["citation_page_first"] = (
-            self.__citPageFirst
-            if (
-                self.__citPageFirst is not None
-                and len(self.__citPageFirst) > 0
-                and self.__isNotCifNull(self.__citPageFirst)
-            )
-            else "[NOT AVAILABLE]"
+            self.__citPageFirst if (self.__citPageFirst is not None and len(self.__citPageFirst) > 0 and self.__isNotCifNull(self.__citPageFirst)) else "[NOT AVAILABLE]"
         )
         p_returnDict["citation_page_last"] = (
-            (" - " + self.__citPageLast)
-            if (
-                self.__citPageLast is not None
-                and len(self.__citPageLast) > 0
-                and self.__isNotCifNull(self.__citPageLast)
-            )
-            else ""
+            (" - " + self.__citPageLast) if (self.__citPageLast is not None and len(self.__citPageLast) > 0 and self.__isNotCifNull(self.__citPageLast)) else ""
         )
         p_returnDict["citation_pages"] = (
-            ("\nPages:   %(citation_page_first)s%(citation_page_last)s" % p_returnDict)
-            if p_returnDict["citation_page_first"] != "[NOT AVAILABLE]"
-            else ""
+            ("\nPages:   %(citation_page_first)s%(citation_page_last)s" % p_returnDict) if p_returnDict["citation_page_first"] != "[NOT AVAILABLE]" else ""
         )
-        p_returnDict["citation_year"] = (
-            ("\nYear:   " + self.__citYear)
-            if (
-                self.__citYear is not None
-                and len(self.__citYear) > 0
-                and self.__isNotCifNull(self.__citYear)
-            )
-            else ""
-        )
+        p_returnDict["citation_year"] = ("\nYear:   " + self.__citYear) if (self.__citYear is not None and len(self.__citYear) > 0 and self.__isNotCifNull(self.__citYear)) else ""
         p_returnDict["citation_pubmedid"] = (
             ("\nPubMed ID:   " + self.__citPdbxDbIdPubMed)
-            if (
-                self.__citPdbxDbIdPubMed is not None
-                and len(self.__citPdbxDbIdPubMed) > 0
-                and self.__isNotCifNull(self.__citPdbxDbIdPubMed)
-            )
+            if (self.__citPdbxDbIdPubMed is not None and len(self.__citPdbxDbIdPubMed) > 0 and self.__isNotCifNull(self.__citPdbxDbIdPubMed))
             else ""
         )
         p_returnDict["citation_doi"] = (
-            ("\nDOI:   " + self.__citPdbxDbIdDOI)
-            if (
-                self.__citPdbxDbIdDOI is not None
-                and len(self.__citPdbxDbIdDOI) > 0
-                and self.__isNotCifNull(self.__citPdbxDbIdDOI)
-            )
-            else ""
+            ("\nDOI:   " + self.__citPdbxDbIdDOI) if (self.__citPdbxDbIdDOI is not None and len(self.__citPdbxDbIdDOI) > 0 and self.__isNotCifNull(self.__citPdbxDbIdDOI)) else ""
         )
         #
         p_returnDict["default_msg_tmplt"] = self.__defaultMsgTmpltType
         #
         p_returnDict["outbound_rprt_date"] = (
-            self.__lastOutboundRprtDate
-            if (
-                self.__lastOutboundRprtDate is not None
-                and len(self.__lastOutboundRprtDate) > 0
-            )
-            else "[NOT AVAILABLE]"
+            self.__lastOutboundRprtDate if (self.__lastOutboundRprtDate is not None and len(self.__lastOutboundRprtDate) > 0) else "[NOT AVAILABLE]"
         )
         #
-        p_returnDict["release_date"] = (
-            self.__releaseDate
-            if (self.__releaseDate is not None and len(self.__releaseDate) > 0)
-            else "[NOT AVAILABLE]"
-        )
+        p_returnDict["release_date"] = self.__releaseDate if (self.__releaseDate is not None and len(self.__releaseDate) > 0) else "[NOT AVAILABLE]"
         p_returnDict["withdrawn_date"] = p_returnDict["release_date"]
-        p_returnDict["thurs_prerelease_clause"] = (
-            self.__thursPreRlsClause
-            if (
-                self.__thursPreRlsClause is not None
-                and len(self.__thursPreRlsClause) > 0
-            )
-            else ""
-        )
-        p_returnDict["thurs_wdrn_clause"] = (
-            self.__thursWdrnClause
-            if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0)
-            else ""
-        )
-        p_returnDict["thurs_obs_clause"] = (
-            self.__thursObsClause
-            if (self.__thursObsClause is not None and len(self.__thursObsClause) > 0)
-            else ""
-        )
+        p_returnDict["thurs_prerelease_clause"] = self.__thursPreRlsClause if (self.__thursPreRlsClause is not None and len(self.__thursPreRlsClause) > 0) else ""
+        p_returnDict["thurs_wdrn_clause"] = self.__thursWdrnClause if (self.__thursWdrnClause is not None and len(self.__thursWdrnClause) > 0) else ""
+        p_returnDict["thurs_obs_clause"] = self.__thursObsClause if (self.__thursObsClause is not None and len(self.__thursObsClause) > 0) else ""
 
         p_returnDict["thurs_wdrn_clause_em_map_only"] = (
-            self.__thursWdrnClauseEmMapOnly
-            if (
-                self.__thursWdrnClauseEmMapOnly is not None
-                and len(self.__thursWdrnClauseEmMapOnly) > 0
-            )
-            else ""
+            self.__thursWdrnClauseEmMapOnly if (self.__thursWdrnClauseEmMapOnly is not None and len(self.__thursWdrnClauseEmMapOnly) > 0) else ""
         )
 
         # message template closing details
         p_returnDict["annotator_group_signoff"] = (
-            MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff
-            if (self.__procSite == "PDBC")
-            else MessagingTemplates.msgTmplt_annotatorGroupSignoff
+            MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if (self.__procSite == "PDBC") else MessagingTemplates.msgTmplt_annotatorGroupSignoff
         )
         p_returnDict["site_contact_details"] = self.__closingSiteDetails
-        p_returnDict["unlock_date"] = (
-            du.date_to_display(self.__lastUnlockDate)
-            if (self.__lastUnlockDate is not None and len(self.__lastUnlockDate) > 0)
-            else "[NOT AVAILBLE]"
-        )
+        p_returnDict["unlock_date"] = du.date_to_display(self.__lastUnlockDate) if (self.__lastUnlockDate is not None and len(self.__lastUnlockDate) > 0) else "[NOT AVAILBLE]"
 
         #######################
         # DOI NOTICE HANDLING #
@@ -5323,79 +3944,33 @@ class MsgTmpltHlpr(object):
             p_returnDict["this_these"] = dictThisThese[rqstdNumber]
             p_returnDict["is_are"] = dictIsAre[rqstdNumber]
             p_returnDict["has_have"] = dictHasHave[rqstdNumber]
-            p_returnDict["entry_entries_comma"] = (
-                dictEntryEntries[rqstdNumber]
-            ).strip() + ","
+            p_returnDict["entry_entries_comma"] = (dictEntryEntries[rqstdNumber]).strip() + ","
             p_returnDict["it_they_lcase"] = (dictItThey[rqstdNumber]).lower()
 
             if self.__emMapOnly:
-                p_returnDict["em_entry_authors_newline_list"] = (
-                    "\n".join(self.__emEntryAuthrs)
-                    if (len(self.__emEntryAuthrs) > 0)
-                    else "[NOT AVAILABLE]"
-                )
-                p_returnDict["em_title"] = (
-                    self.__emTitle
-                    if (self.__emTitle is not None and len(self.__emTitle) > 0)
-                    else "[NOT AVAILABLE]"
-                )
+                p_returnDict["em_entry_authors_newline_list"] = "\n".join(self.__emEntryAuthrs) if (len(self.__emEntryAuthrs) > 0) else "[NOT AVAILABLE]"
+                p_returnDict["em_title"] = self.__emTitle if (self.__emTitle is not None and len(self.__emTitle) > 0) else "[NOT AVAILABLE]"
             elif self.__emMapAndModelEntry:
                 if self.__emSameAuthorsAsPDB == "no":
+                    p_returnDict["em_entry_authors_newline_list"] = "EMDB:\n" + "\n".join(self.__emEntryAuthrs) if (len(self.__emEntryAuthrs) > 0) else "[NOT AVAILABLE]"
                     p_returnDict["em_entry_authors_newline_list"] = (
-                        "EMDB:\n" + "\n".join(self.__emEntryAuthrs)
-                        if (len(self.__emEntryAuthrs) > 0)
-                        else "[NOT AVAILABLE]"
-                    )
-                    p_returnDict["em_entry_authors_newline_list"] = (
-                        p_returnDict["em_entry_authors_newline_list"]
-                        + "\n\nPDB:\n"
-                        + "\n".join(self.__entryAuthrs)
-                        if (len(self.__entryAuthrs) > 0)
-                        else "[NOT AVAILABLE]"
+                        p_returnDict["em_entry_authors_newline_list"] + "\n\nPDB:\n" + "\n".join(self.__entryAuthrs) if (len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
                     )
                 else:
                     # i.e map-and-model entry with EM authors same as PDB authors
                     p_returnDict["em_entry_authors_list"] = self.__entryAuthrs
-                    p_returnDict["em_entry_authors_newline_list"] = (
-                        "\n".join(self.__entryAuthrs)
-                        if (len(self.__entryAuthrs) > 0)
-                        else "[NOT AVAILABLE]"
-                    )
-                    p_returnDict["em_entry_authors_csv_list"] = (
-                        ", ".join(self.__entryAuthrs)
-                        if (len(self.__entryAuthrs) > 0)
-                        else "[NOT AVAILABLE]"
-                    )
+                    p_returnDict["em_entry_authors_newline_list"] = "\n".join(self.__entryAuthrs) if (len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
+                    p_returnDict["em_entry_authors_csv_list"] = ", ".join(self.__entryAuthrs) if (len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
 
                 if self.__emSameTitleAsPDB == "no":
-                    p_returnDict["em_title"] = (
-                        ("EMDB: " + self.__emTitle)
-                        if (self.__emTitle is not None and len(self.__emTitle) > 0)
-                        else "EMDB: [NOT AVAILABLE]"
-                    )
+                    p_returnDict["em_title"] = ("EMDB: " + self.__emTitle) if (self.__emTitle is not None and len(self.__emTitle) > 0) else "EMDB: [NOT AVAILABLE]"
                 else:
                     # i.e map-and-model entry with EM title same as PDB title
-                    p_returnDict["em_title"] = (
-                        self.__title
-                        if (self.__title is not None and len(self.__title) > 0)
-                        else "[NOT AVAILABLE]"
-                    )
+                    p_returnDict["em_title"] = self.__title if (self.__title is not None and len(self.__title) > 0) else "[NOT AVAILABLE]"
             else:  # model only...does this actually occur?
-                p_returnDict["em_title"] = (
-                    self.__title
-                    if (self.__title is not None and len(self.__title) > 0)
-                    else "[NOT AVAILABLE]"
-                )
-                p_returnDict["em_entry_authors_newline_list"] = (
-                    "\n".join(self.__entryAuthrs)
-                    if (len(self.__entryAuthrs) > 0)
-                    else "[NOT AVAILABLE]"
-                )
-                p_returnDict["em_entry_authors_csv_list"] = (
-                    ", ".join(self.__entryAuthrs)
-                    if (len(self.__entryAuthrs) > 0)
-                    else "[NOT AVAILABLE]"
-                )
+                p_returnDict["em_title"] = self.__title if (self.__title is not None and len(self.__title) > 0) else "[NOT AVAILABLE]"
+                p_returnDict["em_entry_authors_newline_list"] = "\n".join(self.__entryAuthrs) if (len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
+                p_returnDict["em_entry_authors_csv_list"] = ", ".join(self.__entryAuthrs) if (len(self.__entryAuthrs) > 0) else "[NOT AVAILABLE]"
 
             #
 
@@ -5403,44 +3978,26 @@ class MsgTmpltHlpr(object):
             emReleasedIdList = accessionIdList  # default to both PDB and EMDB
 
             if self.__emMapAndModelEntry:
-                logger.info(
-                    "self.__emMapAndModelEntry is:  %s", self.__emMapAndModelEntry
-                )
+
+                logger.info("self.__emMapAndModelEntry is:  %s", self.__emMapAndModelEntry)
                 logger.info("self.__emMapReleased is:  %s", self.__emMapReleased)
                 logger.info("self.__emModelReleased is:  %s", self.__emModelReleased)
-                logger.info(
-                    "self.__emMapPreviouslyReleased is:  %s",
-                    self.__emMapPreviouslyReleased,
-                )
-                logger.info(
-                    "self.__emCoordPreviouslyReleased is:  %s",
-                    self.__emCoordPreviouslyReleased,
-                )
+                logger.info("self.__emMapPreviouslyReleased is:  %s", self.__emMapPreviouslyReleased)
+                logger.info("self.__emCoordPreviouslyReleased is:  %s", self.__emCoordPreviouslyReleased)
                 if self.__emMapReleased and self.__emModelReleased:
                     if self.__emMapPreviouslyReleased:
                         emReleasedIdList = ["PDB"]
                     elif self.__emCoordPreviouslyReleased:
                         emReleasedIdList = ["EMDB"]
                 else:
-                    emReleasedIdList = (
-                        ["PDB"]
-                        if self.__emModelReleased
-                        else ["EMDB"]
-                        if self.__emMapReleased
-                        else []
-                    )
+                    emReleasedIdList = ["PDB"] if self.__emModelReleased else ["EMDB"] if self.__emMapReleased else []
 
-                p_returnDict["accession_ids_em_rel"] = (
-                    self.__getAccessionIdString(emReleasedIdList)
-                ) % p_returnDict
+                p_returnDict["accession_ids_em_rel"] = (self.__getAccessionIdString(emReleasedIdList)) % p_returnDict
 
             else:
                 p_returnDict["accession_ids_em_rel"] = p_returnDict["accession_ids"]
 
-            logger.info(
-                "p_returnDict['accession_ids_em_rel'] finalized as:  %s",
-                p_returnDict["accession_ids_em_rel"],
-            )
+            logger.info("p_returnDict['accession_ids_em_rel'] finalized as:  %s", p_returnDict["accession_ids_em_rel"])
 
             emReleasedNumber = "multi" if (len(emReleasedIdList) > 1) else "single"
             #
@@ -5449,68 +4006,29 @@ class MsgTmpltHlpr(object):
             p_returnDict["this_these_em_rel"] = dictThisThese[emReleasedNumber]
             p_returnDict["is_are_em_rel"] = dictIsAre[emReleasedNumber]
             p_returnDict["has_have_em_rel"] = dictHasHave[emReleasedNumber]
-            p_returnDict["entry_entries_comma_em_rel"] = (
-                dictEntryEntries[emReleasedNumber]
-            ).strip() + ","
-            p_returnDict["it_they_lcase_em_rel"] = (
-                dictItThey[emReleasedNumber]
-            ).lower()
+            p_returnDict["entry_entries_comma_em_rel"] = (dictEntryEntries[emReleasedNumber]).strip() + ","
+            p_returnDict["it_they_lcase_em_rel"] = (dictItThey[emReleasedNumber]).lower()
             #
-            p_returnDict["status_code_em_map"] = (
-                self.__statusCodeEmMap
-                if (
-                    self.__statusCodeEmMap is not None
-                    and len(self.__statusCodeEmMap) > 0
-                )
-                else "[NOT AVAILABLE]"
-            )
-            p_returnDict["entry_status_em_map"] = (
-                self.__entryStatusEmMap
-                if (
-                    self.__entryStatusEmMap is not None
-                    and len(self.__entryStatusEmMap) > 0
-                )
-                else "[NOT AVAILABLE]"
-            )
-            p_returnDict["auth_rel_status_code_em_rel"] = p_returnDict[
-                "auth_rel_status_code"
-            ]
+            p_returnDict["status_code_em_map"] = self.__statusCodeEmMap if (self.__statusCodeEmMap is not None and len(self.__statusCodeEmMap) > 0) else "[NOT AVAILABLE]"
+            p_returnDict["entry_status_em_map"] = self.__entryStatusEmMap if (self.__entryStatusEmMap is not None and len(self.__entryStatusEmMap) > 0) else "[NOT AVAILABLE]"
+            p_returnDict["auth_rel_status_code_em_rel"] = p_returnDict["auth_rel_status_code"]
             p_returnDict["expire_date_em_map"] = self.__expireDateEmMap
             #
             p_returnDict["outbound_rprt_date_em"] = (
-                self.__lastOutboundRprtDateEm
-                if (
-                    self.__lastOutboundRprtDateEm is not None
-                    and len(self.__lastOutboundRprtDateEm) > 0
-                )
-                else "[NOT AVAILABLE]"
+                self.__lastOutboundRprtDateEm if (self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0) else "[NOT AVAILABLE]"
             )
             #
-            p_returnDict["caveat_records"] = (
-                " with CAVEAT records highlighting any outstanding issues"
-                if self.__emMapAndModelEntry
-                else ""
-            )
-            p_returnDict["vldtn_rprt"] = (
-                "validation report and " if self.__emMapAndModelEntry else ""
-            )
-            p_returnDict["wwpdb_and"] = (
-                "wwPDB and " if self.__emMapAndModelEntry else ""
-            )
+            p_returnDict["caveat_records"] = " with CAVEAT records highlighting any outstanding issues" if self.__emMapAndModelEntry else ""
+            p_returnDict["vldtn_rprt"] = "validation report and " if self.__emMapAndModelEntry else ""
+            p_returnDict["wwpdb_and"] = "wwPDB and " if self.__emMapAndModelEntry else ""
             # message template closing details
             if self.__procSite != "PDBC":
                 p_returnDict["annotator_group_signoff"] = (
-                    MessagingTemplates.msgTmplt_annotatorGroupSignoff
-                    if self.__emModelOnly
-                    else MessagingTemplates.msgTmplt_annotatorGroupSignoff_em
-                    % p_returnDict
+                    MessagingTemplates.msgTmplt_annotatorGroupSignoff if self.__emModelOnly else MessagingTemplates.msgTmplt_annotatorGroupSignoff_em % p_returnDict
                 )
             else:
                 p_returnDict["annotator_group_signoff"] = (
-                    MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff
-                    if self.__emModelOnly
-                    else MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff_em
-                    % p_returnDict
+                    MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff if self.__emModelOnly else MessagingTemplates.msgTmplt_annotatorGuestPdbjSignoff_em % p_returnDict
                 )
             p_returnDict["site_contact_details"] = self.__closingSiteDetails
 
@@ -5524,11 +4042,7 @@ class MsgTmpltHlpr(object):
         titleLength = (
             len(p_returnDict["title"])
             if (not self.__emDeposition)
-            else (
-                len(p_returnDict["em_title"])
-                if (len(p_returnDict["em_title"]) > len(p_returnDict["title"]))
-                else len(p_returnDict["title"])
-            )
+            else (len(p_returnDict["em_title"]) if (len(p_returnDict["em_title"]) > len(p_returnDict["title"])) else len(p_returnDict["title"]))
         )
 
         if self.__debugLvl2:
@@ -5537,9 +4051,7 @@ class MsgTmpltHlpr(object):
                 logger.debug("em_title is:  %s", p_returnDict["em_title"])
             logger.debug("titleLength:  %s", titleLength)
 
-        primaryTitle = (
-            p_returnDict["em_title"] if (self.__emDeposition) else p_returnDict["title"]
-        )
+        primaryTitle = p_returnDict["em_title"] if (self.__emDeposition) else p_returnDict["title"]
 
         if titleLength <= 100:
             horizLineLngth = titleLength
@@ -5549,9 +4061,7 @@ class MsgTmpltHlpr(object):
             for num in range(targetLength, targetLength - 20, -1):
                 if self.__debugLvl2:
                     logger.debug("testing targetLength of:  %s", num)
-                if (
-                    len(textwrap.wrap(primaryTitle, num)[-1]) > 10
-                ):  # EM: using reference to primaryTitle instead of p_returnDict['title']
+                if len(textwrap.wrap(primaryTitle, num)[-1]) > 10:  # EM: using reference to primaryTitle instead of p_returnDict['title']
                     targetLength = num
                     if self.__debugLvl2:
                         logger.debug("found targetLength of:  %s", targetLength)
@@ -5560,19 +4070,14 @@ class MsgTmpltHlpr(object):
                 logger.debug("using targetLength of:  %s", targetLength)
             p_returnDict["title"] = textwrap.fill(p_returnDict["title"], targetLength)
             if self.__emDeposition:
-                p_returnDict["em_title"] = textwrap.fill(
-                    p_returnDict["em_title"], targetLength
-                )  # EM: added this
+                p_returnDict["em_title"] = textwrap.fill(p_returnDict["em_title"], targetLength)  # EM: added this
 
         if self.__emDeposition:
             if self.__emMapAndModelEntry and self.__emSameTitleAsPDB == "no":
                 # p_returnDict['em_title'] = p_returnDict['em_title'] + ("&#13;&#10;PDB: "+p_returnDict['title']) if( p_returnDict['title'] is not None and len(p_returnDict['title']) > 0 ) else "&#13;&#10;PDB: [NOT AVAILABLE]"  # noqa: E501
                 p_returnDict["em_title"] = (
                     p_returnDict["em_title"] + ("\nPDB: " + p_returnDict["title"])
-                    if (
-                        p_returnDict["title"] is not None
-                        and len(p_returnDict["title"]) > 0
-                    )
+                    if (p_returnDict["title"] is not None and len(p_returnDict["title"]) > 0)
                     else "&#13;&#10;PDB: [NOT AVAILABLE]"
                 )
 
@@ -5591,21 +4096,15 @@ class MsgTmpltHlpr(object):
         p_returnDict["full_name_annotator"] = self.__annotatorFullName
 
         if self.__emDeposition and self.__emMapOnly:
-            p_returnDict["msg_closing"] = (
-                MessagingTemplates.msgTmplt_closing_emMapOnly % p_returnDict
-            )
+            p_returnDict["msg_closing"] = MessagingTemplates.msgTmplt_closing_emMapOnly % p_returnDict
         else:
-            p_returnDict["msg_closing"] = (
-                MessagingTemplates.msgTmplt_closing % p_returnDict
-            )
+            p_returnDict["msg_closing"] = MessagingTemplates.msgTmplt_closing % p_returnDict
 
         #######################
         # SUPERCEDE PROCESSING # CS 2023-10-20
         #######################
         if self.__sprToReplacePdb:
-            p_returnDict[
-                "spr_to_replace_pdb_ids"
-            ] = self.__sprToReplacePdb  # CS 2023-10-20
+            p_returnDict["spr_to_replace_pdb_ids"] = self.__sprToReplacePdb  # CS 2023-10-20
 
         #######################
         # OBSOLETE PROCESSING #
@@ -5666,11 +4165,7 @@ class MsgTmpltHlpr(object):
         self.__dataBlockName = containerNameList[0][0]
         self.__dataCategories = myInd.get(self.__dataBlockName, None)
         if self.__verbose:
-            logger.info(
-                "successfully obtained datablock name as: %s, from %s",
-                self.__dataBlockName,
-                self.__dbFilePath,
-            )
+            logger.info("successfully obtained datablock name as: %s, from %s", self.__dataBlockName, self.__dbFilePath)
 
     def __isNotCifNull(self, p_value):
         if p_value in [".", "?"]:
@@ -5682,32 +4177,19 @@ class MsgTmpltHlpr(object):
         return not self.__isNotCifNull(p_value)
 
     def __getCatObj(self, p_ctgryNm):
+
         if self.__dataCategories is not None and p_ctgryNm not in self.__dataCategories:
-            logger.info(
-                "-- Shortcut Unable to find '%s' category in db file: %s",
-                p_ctgryNm,
-                self.__dbFilePath,
-            )
+            logger.info("-- Shortcut Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
             return None
 
-        catObj = self.__pdbxPersist.fetchOneObject(
-            self.__dbFilePath, self.__dataBlockName, p_ctgryNm
-        )
+        catObj = self.__pdbxPersist.fetchOneObject(self.__dbFilePath, self.__dataBlockName, p_ctgryNm)
 
         if catObj is None:
             if self.__verbose:
-                logger.info(
-                    "-- Unable to find '%s' category in db file: %s",
-                    p_ctgryNm,
-                    self.__dbFilePath,
-                )
+                logger.info("-- Unable to find '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         else:
             if self.__verbose:
-                logger.info(
-                    "-- Successfully found '%s' category in db file: %s",
-                    p_ctgryNm,
-                    self.__dbFilePath,
-                )
+                logger.info("-- Successfully found '%s' category in db file: %s", p_ctgryNm, self.__dbFilePath)
         return catObj
 
     def __getContactAuthors(self):
@@ -5724,11 +4206,7 @@ class MsgTmpltHlpr(object):
             ctgryNm = "pdbx_contact_author"
             try:
                 if self.__verbose:
-                    logger.info(
-                        "-- Category name sought from [%s] is: '%s'",
-                        self.__dbFilePath,
-                        ctgryNm,
-                    )
+                    logger.info("-- Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
                 #
                 catObj = self.__getCatObj(ctgryNm)
                 if catObj:
@@ -5747,17 +4225,9 @@ class MsgTmpltHlpr(object):
                             email = row[idEmail]
                             role = row[idRole]
                             lname = row[idLname]
-                            if (
-                                self.__validateEmail(email) is True
-                                and email not in emailAddrsSoFar
-                            ):
+                            if self.__validateEmail(email) is True and email not in emailAddrsSoFar:
                                 if self.__verbose and self.__debug:
-                                    logger.debug(
-                                        "-- [%s, %s, %s] being appended to self.__contactAuths.",
-                                        email,
-                                        role,
-                                        lname,
-                                    )
+                                    logger.debug("-- [%s, %s, %s] being appended to self.__contactAuths.", email, role, lname)
                                 emailAddrsSoFar.append(email)
                                 self.__contactAuths.append((email, role, lname))
                         except:  # noqa: E722 pylint: disable=bare-except
@@ -5765,13 +4235,8 @@ class MsgTmpltHlpr(object):
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "problem recovering data from PdbxPersist for category: '%s'",
-                        ctgryNm,
-                    )
-                logger.exception(
-                    "Recovering data from PdbxPersist for category: '%s'", ctgryNm
-                )
+                    logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+                logger.exception("Recovering data from PdbxPersist for category: '%s'", ctgryNm)
 
         # 2014-10-30, decision was made to always include validated brain page email on notification emails
         ss = dbAPI(self.__depId, verbose=True)
@@ -5781,40 +4246,23 @@ class MsgTmpltHlpr(object):
         else:
             roleFilter = roleFilterVrsn1_5
 
-        brainPageContactList = ss.runSelectNQ(
-            table="user_data",
-            select=["email", "role", "last_name"],
-            where={"dep_set_id": self.__depId, "role": roleFilter},
-        )
+        brainPageContactList = ss.runSelectNQ(table="user_data", select=["email", "role", "last_name"], where={"dep_set_id": self.__depId, "role": roleFilter})
 
         if (
             self.__depSystemVrsn2 and len(brainPageContactList) == 0
         ):  # if we have no brain contacts using Dep UI system 2.0 query, double check using pre vrsn 2.0 query qualifier for backwards compatibility
-            brainPageContactList = ss.runSelectNQ(
-                table="user_data",
-                select=["email", "role", "last_name"],
-                where={"dep_set_id": self.__depId, "role": roleFilterVrsn1_5},
-            )
+            brainPageContactList = ss.runSelectNQ(table="user_data", select=["email", "role", "last_name"], where={"dep_set_id": self.__depId, "role": roleFilterVrsn1_5})
 
         if len(brainPageContactList) > 0:
             for email, role, lastName in brainPageContactList:
-                logger.info(
-                    "-- found contact author from brainpage --> [%s, %s, %s]",
-                    email,
-                    role,
-                    lastName,
-                )
+                logger.info("-- found contact author from brainpage --> [%s, %s, %s]", email, role, lastName)
                 if email not in emailAddrsSoFar:
                     if self.__verbose and self.__debug:
-                        logger.info(
-                            "-- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths.",
-                            email,
-                            role,
-                            lastName,
-                        )
+                        logger.info("-- contact author from brainpage --> [%s, %s, %s] being appended to self.__contactAuths.", email, role, lastName)
                     self.__contactAuths.append([email, role, lastName])
 
     def __getEntryAuthors(self, p_IdType="PDB"):
+
         if p_IdType == "PDB":
             ctgryNm = "audit_author"
             itemNm = "name"
@@ -5827,11 +4275,7 @@ class MsgTmpltHlpr(object):
 
         try:
             if self.__verbose:
-                logger.info(
-                    "-- Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("-- Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -5860,24 +4304,16 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    (
-                        "problem recovering data from PdbxPersist for category: '%s'",
-                        ctgryNm,
-                    )
-                )
+                logger.info(("problem recovering data from PdbxPersist for category: '%s'", ctgryNm))
             logger.exception("Recoveringo data for category '%s'", ctgryNm)
 
     def __getId(self, p_IdType):
+
         ctgryNm = "database_2"
 
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -5891,9 +4327,7 @@ class MsgTmpltHlpr(object):
                     #
                 idxDbId = itDict["_database_2.database_id"]
                 idxDbCode = itDict["_database_2.database_code"]
-                idxDbExtCode = itDict.get(
-                    "_database_2.pdbx_database_accession", None
-                )  # CS 2023-11-02
+                idxDbExtCode = itDict.get("_database_2.pdbx_database_accession", None)  # CS 2023-11-02
 
                 for row in catObj.getRowList():
                     try:
@@ -5916,24 +4350,16 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
-            logger.exception(
-                "Problem recoving data from PdbxPersis for category: '%s'", ctgryNm
-            )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
+            logger.exception("Problem recoving data from PdbxPersis for category: '%s'", ctgryNm)
 
     def __getEmEntryAdminMapping(self):
+
         if not self.__emModelOnly and not self.__emMapOnly:
             ctgryNm = "em_depui"
             try:
                 if self.__verbose:
-                    logger.info(
-                        "Category name sought from [%s] is: '%s'",
-                        self.__dbFilePath,
-                        ctgryNm,
-                    )
+                    logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
                 #
                 catObj = self.__getCatObj(ctgryNm)
                 if catObj:
@@ -5951,17 +4377,12 @@ class MsgTmpltHlpr(object):
                     for row in catObj.getRowList():
                         try:
                             self.__emSameTitleAsPDB = (row[idxSameTitleAsPDB]).lower()
-                            self.__emSameAuthorsAsPDB = (
-                                row[idxSameAuthorsAsPDB]
-                            ).lower()
+                            self.__emSameAuthorsAsPDB = (row[idxSameAuthorsAsPDB]).lower()
                         except:  # noqa: E722 pylint: disable=bare-except
                             pass
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "problem recovering data from PdbxPersist for category: '%s'",
-                        ctgryNm,
-                    )
+                    logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
                 logger.exception("in __getEmEntryAdminMapping")
         else:
             if self.__emMapOnly:
@@ -5972,38 +4393,28 @@ class MsgTmpltHlpr(object):
                 ctgryNm = "em_depui"
                 try:
                     if self.__verbose:
-                        logger.info(
-                            "Category name sought from [%s] is: '%s'",
-                            self.__dbFilePath,
-                            ctgryNm,
-                        )
+                        logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
                     catObj = self.__getCatObj(ctgryNm)
                     if catObj:
                         itDict = {}
                         itNameList = catObj.getItemNameList()
                         for idxIt, itName in enumerate(itNameList):
                             itDict[str(itName).lower()] = idxIt
-                        idxAuthRelStatusCodeMap = itDict[
-                            "_em_depui.depositor_hold_instructions"
-                        ]  # CS 2023-10-20
+                        idxAuthRelStatusCodeMap = itDict["_em_depui.depositor_hold_instructions"]  # CS 2023-10-20
 
                         for row in catObj.getRowList():
                             try:
-                                self.__authRelStatusCodeMap = str(
-                                    row[idxAuthRelStatusCodeMap]
-                                )  # CS 2023-10-20
+                                self.__authRelStatusCodeMap = str(row[idxAuthRelStatusCodeMap])  # CS 2023-10-20
                             except:  # noqa: E722 pylint: disable=bare-except
                                 pass
                 except:  # noqa: E722 pylint: disable=bare-except
                     if self.__verbose:
-                        logger.info(
-                            "problem recovering data from PdbxPersist for category: '%s'",
-                            ctgryNm,
-                        )
+                        logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
                     logger.exception("in __getEmEntryAdminMapping")
                 # CS 2023-10-20 end
 
     def __getEntryTitle(self, p_IdType="PDB"):
+
         if p_IdType == "PDB":
             ctgryNm = "struct"
             itemNm = "title"
@@ -6016,11 +4427,7 @@ class MsgTmpltHlpr(object):
 
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6045,19 +4452,13 @@ class MsgTmpltHlpr(object):
                         pass
 
         except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception(
-                "Problem recovering data from PdbxPersist for category %s", ctgryNm
-            )
+            logger.exception("Problem recovering data from PdbxPersist for category %s", ctgryNm)
 
     def __getProcessingStatusInfo(self):
         ctgryNm = "pdbx_database_status"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6070,22 +4471,14 @@ class MsgTmpltHlpr(object):
                     itDict[str(itName).lower()] = idxIt
                     #
                 idxStatusCode = itDict["_pdbx_database_status.status_code"]
-                idxAuthRelStatusCode = itDict[
-                    "_pdbx_database_status.author_release_status_code"
-                ]
-                idxAuthApprovalType = itDict[
-                    "_pdbx_database_status.author_approval_type"
-                ]
+                idxAuthRelStatusCode = itDict["_pdbx_database_status.author_release_status_code"]
+                idxAuthApprovalType = itDict["_pdbx_database_status.author_approval_type"]
                 idxHoldDate = itDict["_pdbx_database_status.date_hold_coordinates"]
-                idxInitRecvdDate = itDict[
-                    "_pdbx_database_status.recvd_initial_deposition_date"
-                ]
+                idxInitRecvdDate = itDict["_pdbx_database_status.recvd_initial_deposition_date"]
                 idxDatePdbRelease = itDict["_pdbx_database_status.date_of_ndb_release"]
                 idxProcSite = itDict["_pdbx_database_status.process_site"]
                 # idxPdbAnnotator = itDict['_pdbx_database_status.pdbx_annotator']
-                idxPostRelStatus = itDict.get(
-                    "_pdbx_database_status.post_rel_status", None
-                )
+                idxPostRelStatus = itDict.get("_pdbx_database_status.post_rel_status", None)
 
                 for row in catObj.getRowList():
                     try:
@@ -6105,13 +4498,7 @@ class MsgTmpltHlpr(object):
 
                 du = DateUtil()
                 self.__holdDate = (
-                    "[none listed]"
-                    if (
-                        self.__holdDate is None
-                        or len(self.__holdDate) < 1
-                        or self.__isCifNull(self.__holdDate)
-                    )
-                    else du.date_to_display(self.__holdDate)
+                    "[none listed]" if (self.__holdDate is None or len(self.__holdDate) < 1 or self.__isCifNull(self.__holdDate)) else du.date_to_display(self.__holdDate)
                 )
 
                 if self.__statusCode is not None and len(self.__statusCode) > 0:
@@ -6128,28 +4515,16 @@ class MsgTmpltHlpr(object):
                 if self.__authRelStatusCode.upper() == "HOLD":
                     self.__expireDate = self.__holdDate
                 elif self.__authRelStatusCode.upper() in ["HPUB", "REL"]:
-                    if (
-                        self.__initRecvdDate is not None
-                        and len(self.__initRecvdDate) > 0
-                        and self.__isNotCifNull(self.__initRecvdDate)
-                    ):
-                        initRecvdDate = datetime.strptime(
-                            self.__initRecvdDate, "%Y-%m-%d"
-                        )
+                    if self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate):
+                        initRecvdDate = datetime.strptime(self.__initRecvdDate, "%Y-%m-%d")
 
                         # determine expire date as 1 year from initial received date (taking into account possibility of init recv'd date being 2/29 (a leap year)
                         if initRecvdDate.month == 2 and initRecvdDate.day == 29:
-                            initRecvdDatePlusOneYr = initRecvdDate.replace(
-                                year=(initRecvdDate.year + 1), month=3, day=1
-                            )
+                            initRecvdDatePlusOneYr = initRecvdDate.replace(year=(initRecvdDate.year + 1), month=3, day=1)
                         else:
-                            initRecvdDatePlusOneYr = initRecvdDate.replace(
-                                year=(initRecvdDate.year + 1)
-                            )
+                            initRecvdDatePlusOneYr = initRecvdDate.replace(year=(initRecvdDate.year + 1))
                         du = DateUtil()
-                        self.__expireDate = du.datetime_to_display(
-                            initRecvdDatePlusOneYr
-                        )
+                        self.__expireDate = du.datetime_to_display(initRecvdDatePlusOneYr)
 
                     else:
                         self.__expireDate = "[NO DATE AVAIL]"
@@ -6158,21 +4533,14 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Category name %s", ctgryNm)
 
     def __getProcessingStatusInfoEM(self):
         ctgryNm = "em_admin"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6199,10 +4567,7 @@ class MsgTmpltHlpr(object):
                     except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
-                if (
-                    self.__statusCodeEmMap is not None
-                    and len(self.__statusCodeEmMap) > 0
-                ):
+                if self.__statusCodeEmMap is not None and len(self.__statusCodeEmMap) > 0:
                     if self.__statusCodeEmMap == "HPUB":
                         self.__entryStatusEmMap = "Hold for publication"
                     elif self.__statusCodeEmMap == "HOLD":
@@ -6213,49 +4578,30 @@ class MsgTmpltHlpr(object):
                     self.__entryStatusEmMap = "[none listed]"
                     self.__statusCodeEmMap = "[none listed]"
 
-                if (
-                    self.__dpstnDateEmMap is not None
-                    and len(self.__dpstnDateEmMap) > 0
-                    and self.__isNotCifNull(self.__dpstnDateEmMap)
-                ):
-                    dpstnDateEmMap = datetime.strptime(
-                        self.__dpstnDateEmMap, "%Y-%m-%d"
-                    )
+                if self.__dpstnDateEmMap is not None and len(self.__dpstnDateEmMap) > 0 and self.__isNotCifNull(self.__dpstnDateEmMap):
+                    dpstnDateEmMap = datetime.strptime(self.__dpstnDateEmMap, "%Y-%m-%d")
 
                     # determine expire date as 1 year from initial received date (taking into account possibility of init recv'd date being 2/29 (a leap year)
                     if dpstnDateEmMap.month == 2 and dpstnDateEmMap.day == 29:
-                        dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace(
-                            year=(dpstnDateEmMap.year + 1), month=3, day=1
-                        )
+                        dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace(year=(dpstnDateEmMap.year + 1), month=3, day=1)
                     else:
-                        dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace(
-                            year=(dpstnDateEmMap.year + 1)
-                        )
+                        dpstnDateEmMapPlusOneYr = dpstnDateEmMap.replace(year=(dpstnDateEmMap.year + 1))
                     du = DateUtil()
-                    self.__expireDateEmMap = du.datetime_to_display(
-                        dpstnDateEmMapPlusOneYr
-                    )
+                    self.__expireDateEmMap = du.datetime_to_display(dpstnDateEmMapPlusOneYr)
 
                 else:
                     self.__expireDateEmMap = "[NO DATE AVAIL]"
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Exeption in gettign EM processing info")
 
     def __getObsoleteInfo(self):
         ctgryNm = "pdbx_database_PDB_obs_spr"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6278,51 +4624,29 @@ class MsgTmpltHlpr(object):
                 for row in catObj.getRowList():
                     try:
                         idstatus = (str(row[idxId])).upper()
-                        if (
-                            idstatus == "OBSLTE"
-                        ):  # check if this entry is to be obsolete
+                        if idstatus == "OBSLTE":  # check if this entry is to be obsolete
                             self.__obsDate = (str(row[idxDate])).upper()
-                            self.__obsReplacePdb = str(
-                                row[idxPdbIdNew]
-                            )  # record PDB that supersedes this entry
-                        elif (
-                            idstatus == "SPRSDE"
-                        ):  # CS 2023-10-20 check if this entry supersedes other PDB IDs
+                            self.__obsReplacePdb = str(row[idxPdbIdNew])  # record PDB that supersedes this entry
+                        elif idstatus == "SPRSDE":  # CS 2023-10-20 check if this entry supersedes other PDB IDs
                             # self.__sprDate = (str(row[idxDate])).upper()  # CS 2023-10-20
-                            self.__sprToReplacePdb = str(
-                                row[idxPdbIdOld]
-                            )  # CS 2023-10-20 record PDB being superseded
+                            self.__sprToReplacePdb = str(row[idxPdbIdOld])  # CS 2023-10-20 record PDB being superseded
                         else:
                             continue
                     except:  # noqa: E722 pylint: disable=bare-except
                         logger.exception("Parsing obsolete")
                 du = DateUtil()
-                self.__obsDate = (
-                    "[none listed]"
-                    if (
-                        self.__obsDate is None
-                        or len(self.__obsDate) < 1
-                        or self.__isCifNull(self.__obsDate)
-                    )
-                    else du.date_to_display(self.__obsDate)
-                )
+                self.__obsDate = "[none listed]" if (self.__obsDate is None or len(self.__obsDate) < 1 or self.__isCifNull(self.__obsDate)) else du.date_to_display(self.__obsDate)
                 # self.__sprDate = "[none listed]" if (self.__sprDate is None or len(self.__sprDate) < 1 or self.__isCifNull(self.__sprDate)) else du.date_to_display(self.__sprDate)
                 # CS 2023-10-20 end
 
         except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception(
-                "problem recovering data from PdbxPersist for category: '%s'", ctgryNm
-            )
+            logger.exception("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
 
     def __getEmObsoleteInfo(self):
         ctgryNm = "em_supersede"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6347,24 +4671,16 @@ class MsgTmpltHlpr(object):
 
                 du = DateUtil()
                 self.__obsEmDate = (
-                    "[none listed]"
-                    if (
-                        self.__obsEmDate is None
-                        or len(self.__obsEmDate) < 1
-                        or self.__isCifNull(self.__obsEmDate)
-                    )
-                    else du.date_to_display(self.__obsEmDate)
+                    "[none listed]" if (self.__obsEmDate is None or len(self.__obsEmDate) < 1 or self.__isCifNull(self.__obsEmDate)) else du.date_to_display(self.__obsEmDate)
                 )
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("Category name %s", ctgryNm)
 
     def __getAnnotatorDetails(self):
+
         procSite = self.__procSite.upper()
 
         useAnnotatorName = self.__reqObj.getValueOrDefault("useAnnotatorName", None)
@@ -6375,22 +4691,14 @@ class MsgTmpltHlpr(object):
 
         if procSite == "RCSB":
             # self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_rcsb_em if( self.__emDeposition ) else MessagingTemplates.msgTmplt_site_contact_details_rcsb
-            self.__closingSiteDetails = (
-                MessagingTemplates.msgTmplt_site_contact_details_rcsb
-            )
+            self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_rcsb
         elif procSite == "PDBE":
-            self.__closingSiteDetails = (
-                MessagingTemplates.msgTmplt_site_contact_details_pdbe
-            )
+            self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbe
         elif procSite == "PDBJ":
-            self.__closingSiteDetails = (
-                MessagingTemplates.msgTmplt_site_contact_details_pdbj
-            )
+            self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbj
         elif procSite == "PDBC":
             # During initial training PDBC uses PDBJ closing
-            self.__closingSiteDetails = (
-                MessagingTemplates.msgTmplt_site_contact_details_pdbj
-            )
+            self.__closingSiteDetails = MessagingTemplates.msgTmplt_site_contact_details_pdbj
 
         if self.__annotatorUserNameDict:
             userNameMap = self.__annotatorUserNameDict.get(procSite, None)
@@ -6413,11 +4721,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "citation_author"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6448,10 +4752,7 @@ class MsgTmpltHlpr(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("In recovering data")
 
         ############
@@ -6460,11 +4761,7 @@ class MsgTmpltHlpr(object):
         ctgryNm = "citation"
         try:
             if self.__verbose:
-                logger.info(
-                    "Category name sought from [%s] is: '%s'",
-                    self.__dbFilePath,
-                    ctgryNm,
-                )
+                logger.info("Category name sought from [%s] is: '%s'", self.__dbFilePath, ctgryNm)
             #
             catObj = self.__getCatObj(ctgryNm)
             if catObj:
@@ -6484,16 +4781,8 @@ class MsgTmpltHlpr(object):
                 idxPageFirst = itDict["_citation.page_first"]
                 idxPageLast = itDict["_citation.page_last"]
                 idxYear = itDict["_citation.year"]
-                idxPdbxDbIdDOI = (
-                    itDict["_citation.pdbx_database_id_doi"]
-                    if "_citation.pdbx_database_id_doi" in itDict
-                    else None
-                )
-                idxPdbxDbIdPubMed = (
-                    itDict["_citation.pdbx_database_id_pubmed"]
-                    if "_citation.pdbx_database_id_pubmed" in itDict
-                    else None
-                )
+                idxPdbxDbIdDOI = itDict["_citation.pdbx_database_id_doi"] if "_citation.pdbx_database_id_doi" in itDict else None
+                idxPdbxDbIdPubMed = itDict["_citation.pdbx_database_id_pubmed"] if "_citation.pdbx_database_id_pubmed" in itDict else None
 
                 for row in catObj.getRowList():
                     try:
@@ -6506,34 +4795,24 @@ class MsgTmpltHlpr(object):
                             self.__citPageFirst = row[idxPageFirst]
                             self.__citPageLast = row[idxPageLast]
                             self.__citYear = row[idxYear]
-                            self.__citPdbxDbIdDOI = (
-                                row[idxPdbxDbIdDOI] if idxPdbxDbIdDOI else ""
-                            )
-                            self.__citPdbxDbIdPubMed = (
-                                row[idxPdbxDbIdPubMed] if idxPdbxDbIdPubMed else ""
-                            )
+                            self.__citPdbxDbIdDOI = row[idxPdbxDbIdDOI] if idxPdbxDbIdDOI else ""
+                            self.__citPdbxDbIdPubMed = row[idxPdbxDbIdPubMed] if idxPdbxDbIdPubMed else ""
 
                             if self.__verbose:
-                                logger.info(
-                                    " -- citation.title found as: %s", self.__citTitle
-                                )
+                                logger.info(" -- citation.title found as: %s", self.__citTitle)
 
                     except Exception as _e:  # noqa: F841
                         pass
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "problem recovering data from PdbxPersist for category: '%s'",
-                    ctgryNm,
-                )
+                logger.info("problem recovering data from PdbxPersist for category: '%s'", ctgryNm)
             logger.exception("In data recovery")
 
     def __getRqstdAccessionIds(self):
+
         logger.info("--------------------------------------------")
-        logger.info(
-            "Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime())
-        )
+        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
         #
         # accessionIdsLst = []
         ctgryNm = "pdbx_depui_entry_details"
@@ -6547,10 +4826,7 @@ class MsgTmpltHlpr(object):
                 if self.__verbose and self.__debug:
                     logger.debug("fullRsltSet obtained as: %r\n", fullRsltSet)
 
-                assert iTotalRecords == 1, (
-                    "expecting '%s' category to contain a single record but had %s records"
-                    % (ctgryNm, iTotalRecords)
-                )
+                assert iTotalRecords == 1, "expecting '%s' category to contain a single record but had %s records" % (ctgryNm, iTotalRecords)
                 #
                 #
                 # Get column name index.
@@ -6561,24 +4837,15 @@ class MsgTmpltHlpr(object):
                     itDict[str(itName).lower()] = idxIt
                     #
 
-                idxRqstdIdTypes = itDict[
-                    "_pdbx_depui_entry_details.requested_accession_types"
-                ]
+                idxRqstdIdTypes = itDict["_pdbx_depui_entry_details.requested_accession_types"]
                 #
                 for row in ctgryObj.getRowList():
                     try:
                         if self.__verbose and self.__debug:
-                            logger.debug(
-                                "found 'requested_accession_types' field at index: %s with value: %s",
-                                idxRqstdIdTypes,
-                                (fullRsltSet[0])[idxRqstdIdTypes],
-                            )
+                            logger.debug("found 'requested_accession_types' field at index: %s with value: %s", idxRqstdIdTypes, (fullRsltSet[0])[idxRqstdIdTypes])
 
                         self.__rqstdAccessionIdsLst = (row[idxRqstdIdTypes]).split(",")
-                        logger.info(
-                            "self.__rqstdAccessionIdsLst being assigned as: %r",
-                            self.__rqstdAccessionIdsLst,
-                        )
+                        logger.info("self.__rqstdAccessionIdsLst being assigned as: %r", self.__rqstdAccessionIdsLst)
 
                         if self.__emDeposition:
                             if "PDB" in self.__rqstdAccessionIdsLst:
@@ -6647,11 +4914,7 @@ class MsgTmpltHlpr(object):
         # CS 2024-09-18 end
 
         logger.info("CStrack+++ statusCode = %s", statusCode)
-        logger.info(
-            "CStrack+++ self.__emDeposition = %s, self.__emMapOnly = %s",
-            self.__emDeposition,
-            self.__emMapOnly,
-        )
+        logger.info("CStrack+++ self.__emDeposition = %s, self.__emMapOnly = %s", self.__emDeposition, self.__emMapOnly)
 
         if statusCode and len(statusCode) > 1:
             if statusCode == "HPUB" or statusCode == "HOLD":
@@ -6661,9 +4924,7 @@ class MsgTmpltHlpr(object):
                     elif self.__authApprovalType.lower() == "explicit":
                         self.__defaultMsgTmpltType = "approval-expl"
             elif statusCode == "REL":
-                if (self.__citPdbxDbIdDOI and len(self.__citPdbxDbIdDOI) > 1) or (
-                    self.__citPdbxDbIdPubMed and len(self.__citPdbxDbIdPubMed) > 1
-                ):
+                if (self.__citPdbxDbIdDOI and len(self.__citPdbxDbIdDOI) > 1) or (self.__citPdbxDbIdPubMed and len(self.__citPdbxDbIdPubMed) > 1):
                     self.__defaultMsgTmpltType = "release-publ"
                 else:
                     self.__defaultMsgTmpltType = "release-nopubl"
@@ -6676,9 +4937,7 @@ class MsgTmpltHlpr(object):
                     self.__defaultMsgTmpltType = "maponly-authstatus-em"
 
         if self.__verbose:
-            logger.info(
-                "-- default message template is: %s\n", self.__defaultMsgTmpltType
-            )
+            logger.info("-- default message template is: %s\n", self.__defaultMsgTmpltType)
 
     def __getLastCommDate(self):
         # Retrieves last message sent date as well as last unlocked message
@@ -6692,10 +4951,7 @@ class MsgTmpltHlpr(object):
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
                 if self.__verbose:
-                    logger.info(
-                        " -- Unable to find 'pdbx_deposition_message_info' category in file: %s",
-                        self.__messagingFilePath,
-                    )
+                    logger.info(" -- Unable to find 'pdbx_deposition_message_info' category in file: %s", self.__messagingFilePath)
             else:
                 #
                 # Get column name index.
@@ -6723,18 +4979,13 @@ class MsgTmpltHlpr(object):
                         if msgsubj == "System Unlocked":
                             if ordinalId > maxUnlockOrdId:
                                 maxUnlockOrdId = ordinalId
-                                self.__lastUnlockDate = str(row[idxLastCommDate]).split(
-                                    " "
-                                )[0]
+                                self.__lastUnlockDate = str(row[idxLastCommDate]).split(" ")[0]
                     except Exception as _e:  # noqa: F841
                         pass
 
         else:
             if self.__verbose:
-                logger.info(
-                    "-- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s",
-                    self.__messagingFilePath,
-                )
+                logger.info("-- Unable to find 'pdbx_deposition_message_info' category in empty cif file: %s", self.__messagingFilePath)
 
     def __getLastOutboundRprtDate(self, p_IdType="PDB"):
         """Returns a string of last timestamp"""
@@ -6749,22 +5000,16 @@ class MsgTmpltHlpr(object):
             logger.error("lastOutboundRpttDate: unknown IdType %s", p_IdType)
             return
 
-        msgDI = MessagingDataImport(
-            self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         pathDict = msgDI.getMileStoneFilePaths(contentType=cType, format=frmt)
         archiveFilePth = pathDict["annotPth"]
 
         if archiveFilePth is not None:
             du = DateUtil()
-            lastModfdTime = du.datetime_to_display(
-                date.fromtimestamp(os.path.getmtime(archiveFilePth))
-            )
+            lastModfdTime = du.datetime_to_display(date.fromtimestamp(os.path.getmtime(archiveFilePth)))
             lastOutboundRprtDate = lastModfdTime
             if self.__verbose:
-                logger.info(
-                    "lastOutboundRprtDate was found to be [%s]", lastOutboundRprtDate
-                )
+                logger.info("lastOutboundRprtDate was found to be [%s]", lastOutboundRprtDate)
         else:
             lastOutboundRprtDate = "[NO DATE AVAIL]"
 
@@ -6774,6 +5019,7 @@ class MsgTmpltHlpr(object):
             self.__lastOutboundRprtDateEm = lastOutboundRprtDate
 
     def __identifyEmReleaseTargets(self):
+
         if "REL" in [self.__statusCodeEmMap, self.__statusCode]:
             if self.__statusCodeEmMap != self.__statusCode:
                 if self.__statusCodeEmMap == "REL":
@@ -6792,31 +5038,21 @@ class MsgTmpltHlpr(object):
                     if relDateEmMap < relDateEmCoord:
                         self.__emMapPreviouslyReleased = True
                         if self.__verbose:
-                            logger.info(
-                                "Map found to be previously released on: %s.",
-                                relDateEmMap,
-                            )
+                            logger.info("Map found to be previously released on: %s.", relDateEmMap)
                     elif relDateEmCoord < relDateEmMap:
                         self.__emCoordPreviouslyReleased = True
                         if self.__verbose:
-                            logger.info(
-                                "Coordinates found to be previously released on: %s.",
-                                relDateEmCoord,
-                            )
+                            logger.info("Coordinates found to be previously released on: %s.", relDateEmCoord)
                     elif relDateEmMap == relDateEmCoord:
                         # self.__emMapAndModelJointRelease = True
                         if self.__verbose:
-                            logger.info(
-                                "Joint release of map and coordinates on: %s.",
-                                relDateEmCoord,
-                            )
+                            logger.info("Joint release of map and coordinates on: %s.", relDateEmCoord)
 
     def __getReleaseDateInfo(self):
+
         """determine release date which is Wednesday of week following the current week."""
         dateRef = date.today()
-        weekDayIndex = (
-            dateRef.weekday()
-        )  # Monday through Sunday represented by indexes 0 through 6
+        weekDayIndex = dateRef.weekday()  # Monday through Sunday represented by indexes 0 through 6
 
         if weekDayIndex >= 5:
             # advancing dateRef to point at closest coming Monday if this code invoked on a Saturday or Sunday
@@ -6834,9 +5070,7 @@ class MsgTmpltHlpr(object):
 
         # #### also need to determine date threshold of acceptable change request from depositor, which is Thursday (morning, before 11am) of week prior to Wednesday release
 
-        notherDateRef = (
-            date.today()
-        )  # to determine which day of the week today is (as opposed to numerical date)
+        notherDateRef = date.today()  # to determine which day of the week today is (as opposed to numerical date)
         now = datetime.now()  # to determine what the current time is
 
         if (notherDateRef.weekday() > 3 and notherDateRef.weekday() < 5) or (
@@ -6848,11 +5082,7 @@ class MsgTmpltHlpr(object):
             self.__thursObsClause = ""  # CS 2022-02-27
         else:
             # i.e. if we're still before the deadline for acceptable change requests
-            processingSite = (
-                self.__procSite
-                if (self.__procSite is not None and len(self.__procSite) > 0)
-                else "[not available]"
-            )
+            processingSite = self.__procSite if (self.__procSite is not None and len(self.__procSite) > 0) else "[not available]"
 
             if notherDateRef.weekday() != 3:
                 # not Thursday yet, so can tell depositor that they have until noon of Thursday this week to communicate any changes
@@ -6861,12 +5091,9 @@ class MsgTmpltHlpr(object):
                     # advancing to next coming Thursday (Monday through Sunday represented as 0 through 6)
                     notherDateRef += timedelta(days=1)
 
-                self.__thursPreRlsClause = (
-                    "If you have changes to make to the entry, please inform us by noon local time at %s on Thursday %s."
-                    % (
-                        processingSite,
-                        du.datetime_to_display(notherDateRef),
-                    )
+                self.__thursPreRlsClause = "If you have changes to make to the entry, please inform us by noon local time at %s on Thursday %s." % (
+                    processingSite,
+                    du.datetime_to_display(notherDateRef),
                 )
                 self.__thursWdrnClause = """
 If this is incorrect or if you have any questions please inform us by noon local time at %s on Thursday %s.""" % (
@@ -6881,11 +5108,7 @@ If this is incorrect or if you have any questions please inform us by noon local
 
             else:
                 # else today is Thursday before 11am, so need to tell depositor that they have to communicate any changes by noon today!
-                self.__thursPreRlsClause = (
-                    "If you have changes to make to the entry please inform us by today, noon local time at "
-                    + processingSite
-                    + "."
-                )
+                self.__thursPreRlsClause = "If you have changes to make to the entry please inform us by today, noon local time at " + processingSite + "."
                 self.__thursWdrnClause = (
                     """
 If you have changes to make to the entry please inform us by today, noon local time at """
@@ -6895,9 +5118,7 @@ If you have changes to make to the entry please inform us by today, noon local t
                 )
                 self.__thursObsClause = """If this is incorrect or if you have any questions please inform us by noon local time."""
 
-        self.__thursWdrnClauseEmMapOnly = (
-            self.__thursWdrnClause
-        )  # CS 2022-02-27 Add EM only withdrawn clause
+        self.__thursWdrnClauseEmMapOnly = self.__thursWdrnClause  # CS 2022-02-27 Add EM only withdrawn clause
 
         self.__thursWdrnClause += """
 Please use the latest annotated mmCIF file (attached) to start a new deposition if you need to redeposit the structure."""
@@ -6911,13 +5132,7 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
         #
         fileSource = str(self.__reqObj.getValue("filesource")).lower()
         #
-        if fileSource and fileSource in [
-            "archive",
-            "wf-archive",
-            "wf_archive",
-            "wf-instance",
-            "wf_instance",
-        ]:
+        if fileSource and fileSource in ["archive", "wf-archive", "wf_archive", "wf-instance", "wf_instance"]:
             # if the file source is any of the above then we are in the workflow manager environment
             return True
         else:
@@ -6925,6 +5140,7 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             return False
 
     def __validateEmail(self, email):
+
         if len(email) > 7:
             if re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None:
                 return True
@@ -6936,9 +5152,7 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
 class FileSizeLogger(object):
     """Simple class to support trace logging for file size before and after a given action"""
 
-    def __init__(
-        self, filePath, verbose=False, log=sys.stderr
-    ):  # pylint: disable=unused-argument
+    def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         """Prepare the file size logger. Specify the file to report on"""
         self.__filePath = filePath
         #
@@ -6950,21 +5164,11 @@ class FileSizeLogger(object):
     def __enter__(self):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
-            logger.debug(
-                "+%s -- filesize for %s before call: %s bytes.",
-                self.__class__.__name__,
-                self.__filePath,
-                filesize,
-            )
+            logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
 
         return self
 
     def __exit__(self, exc_type, value, tb):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
-            logger.debug(
-                "+%s -- filesize for %s after call: %s bytes.",
-                self.__class__.__name__,
-                self.__filePath,
-                filesize,
-            )
+            logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)

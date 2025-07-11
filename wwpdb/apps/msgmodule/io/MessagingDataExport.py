@@ -50,9 +50,7 @@ class MessagingDataExport(object):
 
     """
 
-    def __init__(
-        self, reqObj=None, verbose=False, log=sys.stderr
-    ):  # pylint: disable=unused-argument
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
         self.__reqObj = reqObj
         # self.__lfh = log
@@ -66,6 +64,7 @@ class MessagingDataExport(object):
         #
 
     def __setup(self):
+
         try:
             self.__sessionObj = self.__reqObj.getSessionObj()
             # self.__sessionPath = self.__sessionObj.getPath()
@@ -73,9 +72,7 @@ class MessagingDataExport(object):
             self.__instance = str(self.__reqObj.getValue("instance")).upper()
             self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
             self.__cI = ConfigInfo(self.__siteId)
-            self.__dpstStoragePath = os.path.join(
-                self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "deposit", self.__identifier
-            )
+            self.__dpstStoragePath = os.path.join(self.__cI.get("SITE_ARCHIVE_STORAGE_PATH"), "deposit", self.__identifier)
             self.__fileSource = "deposit"  # fixing value to "deposit" for now
             #
             # self.__fileSource  = str(self.__reqObj.getValue("filesource")).lower()
@@ -90,61 +87,32 @@ class MessagingDataExport(object):
             logger.exception("sessionId %s failed", self.__sessionObj.getId())
 
     def getFilePath(self, contentType, format):  # pylint: disable=redefined-builtin
-        return self.__getWfFilePath(
-            contentType=contentType,
-            fmt=format,
-            fileSource=self.__fileSource,
-            version="latest",
-        )
+        return self.__getWfFilePath(contentType=contentType, fmt=format, fileSource=self.__fileSource, version="latest")
 
-    def getFilePathExt(
-        self, contentType, format, fileSource="deposit", version="latest"
-    ):  # pylint: disable=redefined-builtin
-        return self.__getWfFilePath(
-            contentType=contentType, fmt=format, fileSource=fileSource, version=version
-        )
+    def getFilePathExt(self, contentType, format, fileSource="deposit", version="latest"):  # pylint: disable=redefined-builtin
+        return self.__getWfFilePath(contentType=contentType, fmt=format, fileSource=fileSource, version=version)
 
     # ########################--Milestone File Handling--########################################################
-    def getMileStoneFilePaths(
-        self, contentType, format, partitionNum=None
-    ):  # pylint: disable=redefined-builtin
+    def getMileStoneFilePaths(self, contentType, format, partitionNum=None):  # pylint: disable=redefined-builtin
         pathDict = {}
 
         try:
-            curFilePth = self.__getWfFilePath(
-                contentType=contentType,
-                fmt=format,
-                fileSource="archive",
-                version="latest",
-                partitionNum=partitionNum,
-            )
+            curFilePth = self.__getWfFilePath(contentType=contentType, fmt=format, fileSource="archive", version="latest", partitionNum=partitionNum)
             if os.path.exists(curFilePth):
                 curFileNm = os.path.basename(curFilePth)
                 curDpstFilePth = os.path.join(self.__dpstStoragePath, curFileNm)
-                logger.debug(
-                    "Found existing current path %s %s", curFilePth, curDpstFilePth
-                )
+                logger.debug("Found existing current path %s %s", curFilePth, curDpstFilePth)
             else:
                 logger.debug("Latest file not found %s %s", contentType, format)
                 curFilePth = None
                 curDpstFilePth = None
 
-            annotFilePth = self.__getWfFilePath(
-                contentType=contentType,
-                fmt=format,
-                fileSource="archive",
-                version="next",
-                partitionNum=partitionNum,
-            )
+            annotFilePth = self.__getWfFilePath(contentType=contentType, fmt=format, fileSource="archive", version="next", partitionNum=partitionNum)
             dpstFileNm = os.path.basename(annotFilePth)
             dpstFilePth = os.path.join(self.__dpstStoragePath, dpstFileNm)
 
         except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception(
-                "ERROR on getting milestone paths for contentType: '%s', format/file extension: '%s'",
-                contentType,
-                format,
-            )
+            logger.exception("ERROR on getting milestone paths for contentType: '%s', format/file extension: '%s'", contentType, format)
 
         pathDict["annotPth"] = annotFilePth
         pathDict["dpstPth"] = dpstFilePth
@@ -155,22 +123,9 @@ class MessagingDataExport(object):
 
     ###########################################################################################################
 
-    def __getWfFilePath(
-        self,
-        contentType,
-        fmt="pdbx",
-        fileSource="deposit",
-        version="next",
-        partitionNum=None,
-    ):
+    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="deposit", version="next", partitionNum=None):
         try:
-            fPath = self.__getWfFilePathRef(
-                contentType=contentType,
-                fmt=fmt,
-                fileSource=fileSource,
-                version=version,
-                partitionNum=partitionNum,
-            )
+            fPath = self.__getWfFilePathRef(contentType=contentType, fmt=fmt, fileSource=fileSource, version=version, partitionNum=partitionNum)
             logger.debug("checking %s path %s", contentType, fPath)
             if fPath is not None:
                 return fPath
@@ -180,14 +135,7 @@ class MessagingDataExport(object):
             logger.exception("Failed to getWfFilePathRef")
             return None
 
-    def __getWfFilePathRef(
-        self,
-        contentType,
-        fmt="pdbx",
-        fileSource="deposit",
-        version="next",
-        partitionNum=None,
-    ):
+    def __getWfFilePathRef(self, contentType, fmt="pdbx", fileSource="deposit", version="next", partitionNum=None):
         """Return the path to the latest version of the"""
 
         dfRef = DataFileReference(siteId=self.__siteId)
@@ -202,12 +150,7 @@ class MessagingDataExport(object):
             dfRef.setWorkflowInstanceId(self.__instance)
             dfRef.setStorageType("wf-instance")
         else:
-            logger.error(
-                "Bad file source for %s id %s wf id %s",
-                contentType,
-                self.__identifier,
-                self.__instance,
-            )
+            logger.error("Bad file source for %s id %s wf id %s", contentType, self.__identifier, self.__instance)
         #
         dfRef.setContentTypeAndFormat(contentType, fmt)
         dfRef.setVersionId(version)
@@ -223,12 +166,7 @@ class MessagingDataExport(object):
                 logger.debug("file directory path: %s", dP)
                 logger.debug("file           path: %s", fP)
         else:
-            logger.debug(
-                "bad reference for %s id %s wf id %s",
-                contentType,
-                self.__identifier,
-                self.__instance,
-            )
+            logger.debug("bad reference for %s id %s wf id %s", contentType, self.__identifier, self.__instance)
         #
         return fP
 
