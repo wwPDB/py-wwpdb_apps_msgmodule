@@ -218,9 +218,17 @@ class MessagingDatabaseConfig:
         """
         Check if database storage is enabled.
 
-        This allows for gradual rollout and easy fallback to file-based storage.
+        Database is automatically enabled if either database writes or reads are enabled.
+        This eliminates the need for a separate MSGDB_ENABLED flag.
         """
-        # Check environment variable first
+        # Check if any database operations are enabled via feature flags
+        writes_enabled = self.is_database_writes_enabled()
+        reads_enabled = self.is_database_reads_enabled()
+        
+        if writes_enabled or reads_enabled:
+            return True
+            
+        # Fallback: Check legacy environment variable for backward compatibility
         env_flag = os.getenv("MSGDB_ENABLED", "").lower()
         if env_flag in ["true", "1", "yes", "on"]:
             return True
