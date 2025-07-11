@@ -135,5 +135,6 @@ check_*.py
 
 # Demonstration scripts
 demo_*.py
+!demo_real_system.py
 show_*.py
 explain_*.py
