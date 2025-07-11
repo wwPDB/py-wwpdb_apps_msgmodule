@@ -62,24 +62,18 @@ class AutoMessage(object):
         self._sendReminderBulk(depidlist, p_tmplt="remind-unlocked")
 
     def sendRemindFeedback(self, depidlist):
-        """Sends a reminder that depositor has not responded to validation report"""
+        """ Sends a reminder that depositor has not responded to validation report """
         self._sendReminderBulk(depidlist, p_tmplt="reminder")
 
-    def sendRemindAuthToRel(
-        self, depidlist
-    ):  # CS 2024-09-09 Add function to send reminder on AUTH entry deposited as REL
-        """Sends a reminder that depositor has not responded to validation report on AUTH entries deposited as REL"""
+    def sendRemindAuthToRel(self, depidlist):  # CS 2024-09-09 Add function to send reminder on AUTH entry deposited as REL
+        """ Sends a reminder that depositor has not responded to validation report on AUTH entries deposited as REL """
         self._sendReminderBulk(depidlist, p_tmplt="reminder-auth-to-rel")
 
     def sendImplicitApproved(self, depidlist):
-        self._sendReminderBulk(
-            depidlist, p_tmplt="approval-impl"
-        )  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
+        self._sendReminderBulk(depidlist, p_tmplt="approval-impl")  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
 
     def sendExplicitApproved(self, depidlist):
-        self._sendReminderBulk(
-            depidlist, p_tmplt="approval-expl"
-        )  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
+        self._sendReminderBulk(depidlist, p_tmplt="approval-expl")  # CS 2024-04-04 change explicit-approved to approval-expl to match frontend drop-down
 
     def _sendReminderBulk(self, depidlist, p_tmplt):
         """Sends the bulk messages - handling setting EM flag"""
@@ -123,9 +117,7 @@ class AutoMessage(object):
                 pdbents.append(depid)
         return (pdbents, ements)
 
-    def sendSingleMessage(
-        self, depid, subject, msg, testemail=None, p_tmpltType="other"
-    ):
+    def sendSingleMessage(self, depid, subject, msg, testemail=None, p_tmpltType="other"):
         """Sends a message to depid, without using templates. No attachments.
 
         Args:
@@ -140,9 +132,7 @@ class AutoMessage(object):
         """
 
         mio = self.__getmsgio()
-        ret = mio.sendSingle(
-            depid, subject, msg, p_testemail=testemail, p_tmpltType=p_tmpltType
-        )
+        ret = mio.sendSingle(depid, subject, msg, p_testemail=testemail, p_tmpltType=p_tmpltType)
         # ret = True
         return ret
 
@@ -152,13 +142,7 @@ class AutoMessage(object):
         ret = True
         mio = self.__getmsgio(depId)
         for msgId in msgidlist:
-            msgStatusDict = {
-                "message_id": msgId,
-                "deposition_data_set_id": depId,
-                "read_status": "Y",
-                "action_reqd": actionReqd,
-                "for_release": forReleaseFlg,
-            }
+            msgStatusDict = {"message_id": msgId, "deposition_data_set_id": depId, "read_status": "Y", "action_reqd": actionReqd, "for_release": forReleaseFlg}
             bOk = mio.tagMsg(msgStatusDict)
             if not bOk:
                 ret = False

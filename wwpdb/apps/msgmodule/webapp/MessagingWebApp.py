@@ -99,9 +99,7 @@ logger = logging.getLogger(__name__)
 class MessagingWebApp(object):
     """Handle request and response object processing for the wwPDB messaging tool application."""
 
-    def __init__(
-        self, parameterDict=None, verbose=False, log=sys.stderr, siteId="WWPDB_DEV"
-    ):
+    def __init__(self, parameterDict=None, verbose=False, log=sys.stderr, siteId="WWPDB_DEV"):
         """
         Create an instance of `MessagingWebApp` to manage an messaging web request.
 
@@ -129,17 +127,11 @@ class MessagingWebApp(object):
             self.__myParameterDict = {}
 
         if self.__verbose:
-            logger.info(
-                "+MessagingWebApp.__init() - REQUEST STARTING ------------------------------------"
-            )
-            logger.info(
-                "+MessagingWebApp.__init() - dumping input parameter dictionary"
-            )
+            logger.info("+MessagingWebApp.__init() - REQUEST STARTING ------------------------------------")
+            logger.info("+MessagingWebApp.__init() - dumping input parameter dictionary")
             logger.info("%s", "".join(self.__dumpRequest()))
 
-        self.__reqObj = InputRequest(
-            self.__myParameterDict, verbose=self.__verbose, log=self.__lfh
-        )
+        self.__reqObj = InputRequest(self.__myParameterDict, verbose=self.__verbose, log=self.__lfh)
         #
         self.__reqObj.setValue("TopSessionPath", self.__topSessionPath)
         self.__reqObj.setValue("TemplatePath", self.__templatePath)
@@ -153,9 +145,7 @@ class MessagingWebApp(object):
             logger.info("-----------------------------------------------------")
             logger.info("+MessagingWebApp.__init() Leaving _init with request contents")
             logger.info("%s", str(self.__reqObj))
-            logger.info(
-                "---------------MessagingWebApp - done -------------------------------"
-            )
+            logger.info("---------------MessagingWebApp - done -------------------------------")
 
     def doOp(self):
         """Execute request and package results in response dictionary.
@@ -165,17 +155,12 @@ class MessagingWebApp(object):
              Minimally, the content of this dictionary will include the
              keys: CONTENT_TYPE and REQUEST_STRING.
         """
-        stw = MessagingWebAppWorker(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        stw = MessagingWebAppWorker(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         rC = stw.doOp()
         if self.__debug:
             rqp = self.__reqObj.getRequestPath()
             logger.debug("+MessagingWebApp.doOp() operation %s", rqp)
-            logger.debug(
-                "+MessagingWebApp.doOp() return format %s",
-                self.__reqObj.getReturnFormat(),
-            )
+            logger.debug("+MessagingWebApp.doOp() return format %s", self.__reqObj.getReturnFormat())
             if rC is not None:
                 logger.debug("%s", "".join(rC.dump()))
             else:
@@ -194,9 +179,7 @@ class MessagingWebApp(object):
             ``list`` of formatted text lines
         """
         retL = []
-        retL.append(
-            "\n-----------------MessagingWebApp().__dumpRequest()-----------------------------\n"
-        )
+        retL.append("\n-----------------MessagingWebApp().__dumpRequest()-----------------------------\n")
         retL.append("Parameter dictionary length = %d\n" % len(self.__myParameterDict))
         for k, vL in self.__myParameterDict.items():
             retL.append("Parameter %30r :" % k)
@@ -230,9 +213,7 @@ class MessagingWebAppWorker(object):
         # self.__cI = ConfigInfo(self.__siteId)
 
         # CS 2024-08-30 create class var for status DB api because such api is used multiple times
-        self.statusApi = StatusDbApi(
-            siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh
-        )
+        self.statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
         #
         # Added by ZF
         #
@@ -314,9 +295,7 @@ class MessagingWebAppWorker(object):
             reqPath = self.__reqObj.getRequestPath()
             if reqPath not in self.__appPathD:
                 # bail out if operation is unknown -
-                rC = ResponseContent(
-                    reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-                )
+                rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
                 rC.setError(errMsg="Unknown operation")
             else:
                 mth = getattr(self, self.__appPathD[reqPath], None)
@@ -324,9 +303,7 @@ class MessagingWebAppWorker(object):
             return rC
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In processing doOpException")
-            rC = ResponseContent(
-                reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-            )
+            rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
             rC.setError(errMsg="Operation failure")
             return rC
 
@@ -336,9 +313,7 @@ class MessagingWebAppWorker(object):
     # ------------------------------------------------------------------------------------------------------------
     #
     def _dumpOp(self):
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         rC.setHtmlList(self.__reqObj.dump(format="html"))
         return rC
 
@@ -364,14 +339,10 @@ class MessagingWebAppWorker(object):
         # depId = str(self.__reqObj.getValue("identifier")).upper()
         #
         self.__reqObj.setDefaultReturnFormat(return_format="html")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         if self.__verbose:
-            logger.info(
-                "+MessagingWebAppWorker._launchOp() workflow flag is %r", bIsWorkflow
-            )
+            logger.info("+MessagingWebAppWorker._launchOp() workflow flag is %r", bIsWorkflow)
 
         if bIsWorkflow:
             # Update WF status database --
@@ -387,10 +358,7 @@ class MessagingWebAppWorker(object):
                 pass
         #
         if self.__verbose:
-            logger.info(
-                "+MessagingWebAppWorker._launchOp() Call MessagingDepict with workflow %r",
-                bIsWorkflow,
-            )
+            logger.info("+MessagingWebAppWorker._launchOp() Call MessagingDepict with workflow %r", bIsWorkflow)
         #
         msgngDpct = MessagingDepict(self.__verbose, self.__lfh)
         msgngDpct.setSessionPaths(self.__reqObj)
@@ -400,6 +368,7 @@ class MessagingWebAppWorker(object):
         return rC
 
     def _verifyDepositionId(self):
+
         #
         rtrnDict = {}
         #
@@ -414,25 +383,15 @@ class MessagingWebAppWorker(object):
             logger.info("-- dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        pI = PathInfo(
-            siteId=self.__siteId,
-            sessionPath=self.__sessionPath,
-            verbose=self.__verbose,
-            log=self.__lfh,
-        )
+        pI = PathInfo(siteId=self.__siteId, sessionPath=self.__sessionPath, verbose=self.__verbose, log=self.__lfh)
         archivePth = pI.getArchivePath(depId)
         #
         if self.__verbose:
             logger.info(" -- archivePth is: %s", archivePth)
         if self.__verbose:
-            logger.info(
-                " -- os.access(archivePth,os.F_OK) is: %s",
-                os.access(archivePth, os.F_OK),
-            )
+            logger.info(" -- os.access(archivePth,os.F_OK) is: %s", os.access(archivePth, os.F_OK))
         #
         rtrnDict["found"] = "y" if (os.access(archivePth, os.F_OK)) else "n"
 
@@ -457,12 +416,8 @@ class MessagingWebAppWorker(object):
         self.__getSession()
         #
         self.__reqObj.setDefaultReturnFormat(return_format="html")
-        self.__reqObj.setValue(
-            "filesource", "archive"
-        )  # setting here for downstream processing
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        self.__reqObj.setValue("filesource", "archive")  # setting here for downstream processing
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgngDpct = MessagingDepict(self.__verbose, self.__lfh)
         msgngDpct.setSessionPaths(self.__reqObj)
@@ -510,16 +465,11 @@ class MessagingWebAppWorker(object):
             bUseThreadedRsltSet = True
             #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         rsltSetDict = msgingIo.getMsgRowList(
-            p_depDataSetId=depId,
-            p_sSendStatus=sendStatus,
-            p_bServerSide=False,
-            p_bThreadedRslts=bUseThreadedRsltSet,
+            p_depDataSetId=depId, p_sSendStatus=sendStatus, p_bServerSide=False, p_bThreadedRslts=bUseThreadedRsltSet
         )  # serverside False b/c only getting indentation info necessary for initial config
         #
         msgingDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
@@ -531,14 +481,10 @@ class MessagingWebAppWorker(object):
                 "CURRENT_NUM_MSGS_TO_DPSTR"
             ]  # adding member representing total #records of msgs to depositor (live AND draft)
         if "CURRENT_NUM_NOTES" in rsltSetDict:
-            dtblConfigDict["CURRENT_NUM_NOTES"] = rsltSetDict[
-                "CURRENT_NUM_NOTES"
-            ]  # adding member representing total #records of notes (live AND draft)
+            dtblConfigDict["CURRENT_NUM_NOTES"] = rsltSetDict["CURRENT_NUM_NOTES"]  # adding member representing total #records of notes (live AND draft)
         #
         if bUseThreadedRsltSet and "INDENT_DICT" in rsltSetDict:
-            dtblConfigDict["INDENT_DICT"] = rsltSetDict[
-                "INDENT_DICT"
-            ]  # adding member representing threading/indent-formatting defined per msgid
+            dtblConfigDict["INDENT_DICT"] = rsltSetDict["INDENT_DICT"]  # adding member representing threading/indent-formatting defined per msgid
         #
         rtrnDict["html"] = "".join(dataTblTmplt)
 
@@ -554,7 +500,7 @@ class MessagingWebAppWorker(object):
 
         :Helpers:
             wwpdb.apps.msgmodule.depict.MessagingDepict
-            wwpdb.apps.msgmodule.io.MessagingFactory
+            wwpdb.apps.msgmodule.io.MessagingIo
 
         :Returns:
             Operation output is packaged in a ResponseContent() object.
@@ -581,9 +527,7 @@ class MessagingWebAppWorker(object):
             logger.info(" -- dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         _bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
@@ -592,9 +536,7 @@ class MessagingWebAppWorker(object):
         # DataTables related query string params:
         iDisplayStart = int(self.__reqObj.getValue("iDisplayStart"))
         iDisplayLength = int(self.__reqObj.getValue("iDisplayLength"))
-        sEcho = int(
-            self.__reqObj.getValue("sEcho")
-        )  # casting to int as recommended by DataTables
+        sEcho = int(self.__reqObj.getValue("sEcho"))  # casting to int as recommended by DataTables
 
         ##################################################################
         # we need to accommodate any search filtering taking place
@@ -624,9 +566,7 @@ class MessagingWebAppWorker(object):
                 if srchString and len(srchString) > 1:
                     colSearchDict[n] = self.__encodeForSearching(srchString)
                     if self.__verbose and self.__debug:
-                        logger.debug(
-                            " -- search term for field[%s] is: %s", n, colSearchDict[n]
-                        )
+                        logger.debug(" -- search term for field[%s] is: %s", n, colSearchDict[n])
         ################################################################################################################################
         rsltSetDict = msgingIo.getMsgRowList(
             p_depDataSetId=depId,
@@ -647,9 +587,7 @@ class MessagingWebAppWorker(object):
         # """
         #
         msgngDpct = MessagingDepict(verbose=self.__verbose, log=self.__lfh)
-        dataTblDict = msgngDpct.getJsonDataTable(
-            msgRecordList, msgColList, iDisplayStart
-        )
+        dataTblDict = msgngDpct.getJsonDataTable(msgRecordList, msgColList, iDisplayStart)
         # if( sUseServerSide == 'true' ):
         dataTblDict["sEcho"] = sEcho
         dataTblDict["iTotalRecords"] = rsltSetDict["TOTAL_RECORDS"]
@@ -713,9 +651,7 @@ class MessagingWebAppWorker(object):
         bIsWorkflow = self.__isWorkflow()
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         bIsWorkflow = self.__isWorkflow()
         msgngDpct = MessagingDepict(self.__verbose, self.__lfh)
@@ -760,20 +696,13 @@ class MessagingWebAppWorker(object):
         activateNotesFlagging = self._getNotesFlaggingStatus()
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         bAllMsgsRead = self.__checkAllMsgsRead()
         bAllMsgsActioned = self.__checkAllMsgsActioned()
         bAnyFlagsForRelease = self.__checkAnyReleaseFlags()
         bAnyApproval = self.__checkAnyApprovalFlags()
-        (
-            bAnyNotesIncldngArchvdMsgs,
-            bAnnotNotes,
-            bBmrbNotes,
-            iNumNotesRecords,
-        ) = self.__checkAnyNotesExist()
+        bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords = self.__checkAnyNotesExist()
 
         # logger.info(("+%s.%s() -- bAnyNotesIncldngArchvdMsgs is '%s' -- bAnnotNotes is '%s' -- iNumNotesRecords is '%s' for DEPID %s \n" % (className, methodName,bAnyNotesIncldngArchvdMsgs,bAnnotNotes,iNumNotesRecords,depId))  # noqa: E501
 
@@ -820,9 +749,7 @@ class MessagingWebAppWorker(object):
 
         rtrnDict["num_notes_records"] = iNumNotesRecords
 
-        aggregateFlag = (
-            newMsgsFlag + msgsNeedActionFlag + msgsForReleaseFlag + approvalFlag
-        )
+        aggregateFlag = newMsgsFlag + msgsNeedActionFlag + msgsForReleaseFlag + approvalFlag
         #
         if activateNotesFlagging == "true":
             aggregateFlag += notesExistFlag
@@ -840,9 +767,7 @@ class MessagingWebAppWorker(object):
         #
         bSuccess = self._updateWfNotifyStatus(depId, aggregateFlag)
         if self.__verbose and bSuccess:
-            logger.info(
-                "-- NOTIFY status updated to '%s' for DEPID %s", aggregateFlag, depId
-            )
+            logger.info("-- NOTIFY status updated to '%s' for DEPID %s", aggregateFlag, depId)
 
         rC.addDictionaryItems(rtrnDict)
 
@@ -869,9 +794,7 @@ class MessagingWebAppWorker(object):
             logger.info("-- depId is: %s", depId)
             logger.info("+-- notes subtype: %s", subtype)
         #
-        notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(
-            subtype=subtype
-        )
+        notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(subtype=subtype)
         #
         if os.access(notesFlaggingStatusFilePathAbs, os.F_OK):
             try:
@@ -881,10 +804,7 @@ class MessagingWebAppWorker(object):
                 activateNotesFlagging = lines[0][:-1]
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        " -- problem reading notesFlaggingStatusFilePathAbs at:%s",
-                        notesFlaggingStatusFilePathAbs,
-                    )
+                    logger.info(" -- problem reading notesFlaggingStatusFilePathAbs at:%s", notesFlaggingStatusFilePathAbs)
         else:
             # file doesn't exist yet which is true if this is first time annotator is accessing messaging UI for the given depID
             # so we create the file and set default status of "ON"
@@ -900,9 +820,7 @@ class MessagingWebAppWorker(object):
         :Returns:
             Operation output is packaged in a ResponseContent() object.
         """
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         fstatus = self._toggleNotesFlagging()
         rC.setText(fstatus)
         return rC
@@ -933,20 +851,14 @@ class MessagingWebAppWorker(object):
         self.__getSession()
         #
         if len(subTypeRqstd) > 1:
-            activateNotesFlagging = str(
-                self.__reqObj.getValue("activate_notes_flagging_" + subTypeRqstd)
-            )
+            activateNotesFlagging = str(self.__reqObj.getValue("activate_notes_flagging_" + subTypeRqstd))
         else:
-            activateNotesFlagging = str(
-                self.__reqObj.getValue("activate_notes_flagging")
-            )
+            activateNotesFlagging = str(self.__reqObj.getValue("activate_notes_flagging"))
         #
         if self.__verbose:
             logger.info(" -- desired flag_status is: %s", activateNotesFlagging)
         #
-        notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(
-            subtype=subTypeRqstd
-        )
+        notesFlaggingStatusFilePathAbs = self.__getNotesFlaggingStatusFilePath(subtype=subTypeRqstd)
         #
         if os.access(notesFlaggingStatusFilePathAbs, os.F_OK):
             try:
@@ -955,10 +867,7 @@ class MessagingWebAppWorker(object):
                 fp.close()
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "-- problem writing to notesFlaggingStatusFilePathAbs at:%s",
-                        notesFlaggingStatusFilePathAbs,
-                    )
+                    logger.info("-- problem writing to notesFlaggingStatusFilePathAbs at:%s", notesFlaggingStatusFilePathAbs)
         else:
             fp = open(notesFlaggingStatusFilePathAbs, "w")
             fp.write("%s\n" % activateNotesFlagging)
@@ -1005,12 +914,7 @@ class MessagingWebAppWorker(object):
         #
         suffix = "_" + subtype.upper() if len(subtype) > 1 else ""
         #
-        pI = PathInfo(
-            siteId=self.__siteId,
-            sessionPath=self.__sessionPath,
-            verbose=self.__verbose,
-            log=self.__lfh,
-        )
+        pI = PathInfo(siteId=self.__siteId, sessionPath=self.__sessionPath, verbose=self.__verbose, log=self.__lfh)
         #
         # Added by ZF
         #
@@ -1019,15 +923,10 @@ class MessagingWebAppWorker(object):
         else:
             archivePth = pI.getArchivePath(depId)
         #
-        notesFlaggingStatusFilePathAbs = os.path.join(
-            archivePth, "NOTES_FLAGGING_STATUS" + suffix
-        )
+        notesFlaggingStatusFilePathAbs = os.path.join(archivePth, "NOTES_FLAGGING_STATUS" + suffix)
         #
         if self.__verbose:
-            logger.info(
-                " returning notesFlaggingStatusFilePathAbs as:%s",
-                notesFlaggingStatusFilePathAbs,
-            )
+            logger.info(" returning notesFlaggingStatusFilePathAbs as:%s", notesFlaggingStatusFilePathAbs)
         #
         return notesFlaggingStatusFilePathAbs
 
@@ -1151,35 +1050,19 @@ class MessagingWebAppWorker(object):
             # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
             groupId = str(self.__reqObj.getValue("groupid"))
             if groupId:
-                self.statusApi.runUpdate(
-                    table="batch_user_data",
-                    where={"dep_set_id": groupId.upper()},
-                    data={"notify": p_status},
-                )
+                self.statusApi.runUpdate(table="batch_user_data", where={"dep_set_id": groupId.upper()}, data={"notify": p_status})
                 entryList = self.statusApi.getEntryIdList(groupId=groupId)
                 for entry in entryList:
-                    self.statusApi.runUpdate(
-                        table="deposition",
-                        where={"dep_set_id": entry},
-                        data={"notify": p_status},
-                    )
+                    self.statusApi.runUpdate(table="deposition", where={"dep_set_id": entry}, data={"notify": p_status})
                 #
             else:
-                self.statusApi.runUpdate(
-                    table="deposition",
-                    where={"dep_set_id": p_depId.upper()},
-                    data={"notify": p_status},
-                )
+                self.statusApi.runUpdate(table="deposition", where={"dep_set_id": p_depId.upper()}, data={"notify": p_status})
             #
             bSuccess = True
         except:  # noqa: E722 pylint: disable=bare-except
             bSuccess = False
             if self.__verbose:
-                logger.info(
-                    " - TRACKING status, update to '%s' failed for depID %s",
-                    p_status,
-                    p_depId,
-                )
+                logger.info(" - TRACKING status, update to '%s' failed for depID %s", p_status, p_depId)
             logger.exception("In _updateWfNotifyStatus")
             #
         return bSuccess
@@ -1205,9 +1088,7 @@ class MessagingWebAppWorker(object):
             logger.info("dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         #
@@ -1240,9 +1121,7 @@ class MessagingWebAppWorker(object):
             logger.info(" dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO PARSE MODEL FILE AND FILTER
@@ -1258,7 +1137,7 @@ class MessagingWebAppWorker(object):
         """Get data for a single message
 
         :Helpers:
-            wwpdb.apps.msgmodule.io.MessagingFactory
+            wwpdb.apps.msgmodule.io.MessagingIo
 
         :Returns:
             JSON response representing a given message and its attributes
@@ -1279,9 +1158,7 @@ class MessagingWebAppWorker(object):
             logger.info(" dep_id is: %s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         msgDict = msgingIo.getMsg(msgId, depId)
@@ -1317,9 +1194,7 @@ class MessagingWebAppWorker(object):
         if self.__verbose:
             logger.info("dep_id is:%s", depId)
         #
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         msgDict = msgingIo.getMsg(msgId, depId)
@@ -1338,9 +1213,7 @@ class MessagingWebAppWorker(object):
             msgDict["parent_msg_dsply"] = ""
             msgDict["parent_msg_dsply"] = "displaynone"
 
-        msgDict["files_referenced"] = (msgingIo.getFilesRfrncd(depId, msgId)).get(
-            msgId, []
-        )
+        msgDict["files_referenced"] = (msgingIo.getFilesRfrncd(depId, msgId)).get(msgId, [])
         msgngDpct = MessagingDepict(self.__verbose, self.__lfh)
         msgngDpct.setSessionPaths(self.__reqObj)
         oL = msgngDpct.doRenderDisplayMsg(self.__reqObj, bIsWorkflow, msgDict)
@@ -1385,30 +1258,19 @@ class MessagingWebAppWorker(object):
         elif id_to_check.startswith("EMD-"):  # format of EMDB ID
             emdb_id = id_to_check
             if db_da_internal.verifyEmdbId(emdb_id):
-                logger.debug(
-                    "%s is valid EMDB ID, convert it to deposition id", emdb_id
-                )
-                return db_da_internal.convertEmdbIdToDepId(
-                    emdb_id
-                )  # EMDB->dep conversion
+                logger.debug("%s is valid EMDB ID, convert it to deposition id", emdb_id)
+                return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
-        elif (
-            id_to_check.startswith("PDB_") and len(id_to_check) == 12
-        ):  # format of extended PDB ID
+        elif id_to_check.startswith("PDB_") and len(id_to_check) == 12:  # format of extended PDB ID
             # pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
             # if db_da_internal.verifyPdbId(pdb_id):
             #     logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
             #     return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             pdb_ext_id = id_to_check
             if db_da_internal.verifyExtendedPdbId(pdb_ext_id):
-                logger.debug(
-                    "%s is valid extended PDB ID, convert it to deposition id",
-                    pdb_ext_id,
-                )
-                return db_da_internal.convertExtendedPdbIdToDepId(
-                    pdb_ext_id
-                )  # PDB extended->dep conversion
+                logger.debug("%s is valid extended PDB ID, convert it to deposition id", pdb_ext_id)
+                return db_da_internal.convertExtendedPdbIdToDepId(pdb_ext_id)  # PDB extended->dep conversion
             else:
                 return None
         elif len(id_to_check) == 4:  # format of PDB ID
@@ -1448,9 +1310,7 @@ class MessagingWebAppWorker(object):
             msgType = msgType + "_flag"
         #
         subject = self.__reqObj.getRawValue("subject")
-        subject = (
-            subject if subject is not None and len(subject) > 1 else "test subject"
-        )
+        subject = subject if subject is not None and len(subject) > 1 else "test subject"
         #
         if actionType == "archive":
             subjPrefix = "ARCHIVED: "
@@ -1459,37 +1319,21 @@ class MessagingWebAppWorker(object):
             subjPrefix = "FWD: "
         #
         # setting below request parameters for downstream processing
-        self.__reqObj.setValue(
-            "subject", subjPrefix + subject
-        )  # setting here for downstream processing
-        self.__reqObj.setValue(
-            "send_status", "Y"
-        )  # setting here for downstream processing
-        self.__reqObj.setValue(
-            "filesource", "archive"
-        )  # setting here for downstream processing
-        self.__reqObj.setValue(
-            "message_type", msgType
-        )  # setting here for downstream processing
-        self.__reqObj.setValue(
-            "orig_identifier", origDepId
-        )  # only used when archive action is via "manual" mode
+        self.__reqObj.setValue("subject", subjPrefix + subject)  # setting here for downstream processing
+        self.__reqObj.setValue("send_status", "Y")  # setting here for downstream processing
+        self.__reqObj.setValue("filesource", "archive")  # setting here for downstream processing
+        self.__reqObj.setValue("message_type", msgType)  # setting here for downstream processing
+        self.__reqObj.setValue("orig_identifier", origDepId)  # only used when archive action is via "manual" mode
         contentType = "notes" if (actionType == "archive") else "msgs"
-        self.__reqObj.setValue(
-            "content_type", contentType
-        )  # setting here for downstream processing (as opposed to "msgs")
-        self.__reqObj.setValue(
-            "message_state", "livemsg"
-        )  # setting here for downstream processing
+        self.__reqObj.setValue("content_type", contentType)  # setting here for downstream processing (as opposed to "msgs")
+        self.__reqObj.setValue("message_state", "livemsg")  # setting here for downstream processing
         #
         rtrnDict = {}
         rtrnDict["success"] = {}
         rtrnDict["success"]["job"] = "error"
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         #
@@ -1503,21 +1347,15 @@ class MessagingWebAppWorker(object):
         for depId in depIdLst:
             depId = depId.strip()
             logger.debug("start processing %s", depId)
-            depId_2 = self._verifyOrConvertId(
-                depId
-            )  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
+            depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
             logger.debug("verified or converted id %s", depId_2)
 
             if not depId_2:
-                logger.error(
-                    "fail to verify or convert the input id %s", depId
-                )  # skip unverified id
+                logger.error("fail to verify or convert the input id %s", depId)  # skip unverified id
                 rtrnDict["success"][depId] = "false"
                 continue
 
-            self.__reqObj.setValue(
-                "identifier", depId_2
-            )  # setting here for downstream processing
+            self.__reqObj.setValue("identifier", depId_2)  # setting here for downstream processing
             #
             # Added by ZF for GroupDep group message
             #
@@ -1548,22 +1386,12 @@ class MessagingWebAppWorker(object):
         # typically only notes actually authored by annotators trigger the Notes indicator in the WFM UI, but annotators have
         # requested that notes generated via emails archived/flagged from BMRB should also trigger the indicator
         #
-        if (
-            (bOk is True)
-            and (contentType == "notes")
-            and (self._getNotesFlaggingStatus() == "false")
-            and (flagMsg == "y")
-        ):
+        if (bOk is True) and (contentType == "notes") and (self._getNotesFlaggingStatus() == "false") and (flagMsg == "y"):
             self.__reqObj.setValue("activate_notes_flagging", "true")
             self._toggleNotesFlagging()
             bGlobalStatusCheckReqd = True
         #
-        if (
-            (bOk is True)
-            and (contentType == "notes")
-            and (self._getNotesFlaggingStatus("bmrb") == "false")
-            and (flagMsg == "y")
-        ):
+        if (bOk is True) and (contentType == "notes") and (self._getNotesFlaggingStatus("bmrb") == "false") and (flagMsg == "y"):
             self.__reqObj.setValue("activate_notes_flagging_bmrb", "true")
             self._toggleNotesFlagging("bmrb")
             bGlobalStatusCheckReqd = True
@@ -1600,20 +1428,14 @@ class MessagingWebAppWorker(object):
         if self.__reqObj.getValue("context_type") == "vldtn":
             if not self.__reqObj.getValue("context_value").strip():
                 message_text = self.__reqObj.getValue("message")
-                if re.search("major issue", message_text.lower()) and re.search(
-                    "outstanding issue", message_text.lower()
-                ):
+                if re.search("major issue", message_text.lower()) and re.search("outstanding issue", message_text.lower()):
                     self.__reqObj.setValue("context_value", "major-issue-in-validation")
         # CS 2024-04-04 end
 
         self.__reqObj.setReturnFormat(return_format="json")
-        self.__reqObj.setValue(
-            "message_state", p_msgState
-        )  # setting here for downstream processing, used only for processing purposes
+        self.__reqObj.setValue("message_state", p_msgState)  # setting here for downstream processing, used only for processing purposes
         # NOTE: this field is not part of the PdbxMessage data structure, and thus is not persisted to data file.
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgObj = Message.fromReqObj(self.__reqObj, self.__verbose, self.__lfh)
         #
@@ -1640,9 +1462,7 @@ class MessagingWebAppWorker(object):
         #
         if bOk:
             rtrnDict["success"] = "true"
-            if (msgObj.contentType == "notes") and (
-                self._getNotesFlaggingStatus() == "false"
-            ):
+            if (msgObj.contentType == "notes") and (self._getNotesFlaggingStatus() == "false"):
                 self.__reqObj.setValue("activate_notes_flagging", "true")
                 self._toggleNotesFlagging()
         else:
@@ -1651,9 +1471,7 @@ class MessagingWebAppWorker(object):
         rtrnDict["pdbx_model_updated"] = "true" if bPdbxMdlFlUpdtd else "false"
         rtrnDict["append_msg"] = ""
         if (not bOk) and (len(failedFileRefs) > 0):
-            sMsg = "Failure to associate message with the following file types: " + (
-                ", ".join(failedFileRefs)
-            )
+            sMsg = "Failure to associate message with the following file types: " + (", ".join(failedFileRefs))
             if "aux-file" in failedFileRefs:
                 sMsg += "\nIf you are attaching an auxiliary file, please ensure that the file name ends with a known file extension/type."
             rtrnDict["append_msg"] = sMsg
@@ -1687,9 +1505,7 @@ class MessagingWebAppWorker(object):
         rtrnDict = {}
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         wfApi = WfDbApi(verbose=True)
         pw = getdepUIPassword(wfApi, depId)
@@ -1752,14 +1568,10 @@ class MessagingWebAppWorker(object):
             logger.info(" -- dep_id is:%s", depId)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         actionReqd = "Y" if (actionReqd is None or len(actionReqd) < 1) else actionReqd
-        forReleaseFlg = (
-            "N" if (forReleaseFlg is None or len(forReleaseFlg) < 1) else forReleaseFlg
-        )
+        forReleaseFlg = "N" if (forReleaseFlg is None or len(forReleaseFlg) < 1) else forReleaseFlg
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         msgStatusDict = {
@@ -1805,9 +1617,7 @@ class MessagingWebAppWorker(object):
             logger.info(" -- forReleaseFlg is:%s", forReleaseFlg)
         #
         self.__reqObj.setReturnFormat(return_format="json")
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
         msgStatusDict = {
@@ -1898,10 +1708,7 @@ class MessagingWebAppWorker(object):
         #
         #
         if self.__verbose:
-            logger.info(
-                " - file upload starting at %s",
-                time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-            )
+            logger.info(" - file upload starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
 
         rawFile = None
         fileName = ""
@@ -1935,11 +1742,7 @@ class MessagingWebAppWorker(object):
                 auxFl = "aux-file" + str(cnt)
 
                 if fileTag == auxFl:
-                    fileType = (
-                        os.path.splitext(fileName)[1].strip(".")
-                        if len(os.path.splitext(fileName)[1]) > 1
-                        else "n/a"
-                    )
+                    fileType = os.path.splitext(fileName)[1].strip(".") if len(os.path.splitext(fileName)[1]) > 1 else "n/a"
                     if fileType.startswith("V") and fileType.split("V")[1].isdigit():
                         fileType = (fileName.rsplit(".V")[0]).rsplit(".")[1]
                         if fileType == "cif":
@@ -1957,9 +1760,7 @@ class MessagingWebAppWorker(object):
 
         except:  # noqa: E722 pylint: disable=bare-except
             if self.__verbose:
-                logger.info(
-                    "File upload processing failed for %s", str(rawFile.filename)
-                )
+                logger.info("File upload processing failed for %s", str(rawFile.filename))
                 logger.exception("In __uploadFile")
 
             return False
@@ -1992,9 +1793,7 @@ class MessagingWebAppWorker(object):
             state = "waiting"
         else:
             state = "unknown"
-            logger.error(
-                "+MessagingWebAppWorker.__exitMessagingMod() unknown mode: %s", mode
-            )
+            logger.error("+MessagingWebAppWorker.__exitMessagingMod() unknown mode: %s", mode)
         #
         bIsWorkflow = self.__isWorkflow()
         #
@@ -2007,29 +1806,16 @@ class MessagingWebAppWorker(object):
         #
         if self.__verbose:
             logger.info("--------------------------------------------\n")
-            logger.info(
-                "+MessagingWebAppWorker.__exitMessagingMod() - depId   %s", depId
-            )
-            logger.info(
-                "+MessagingWebAppWorker.__exitMessagingMod() - instId  %s", instId
-            )
-            logger.info(
-                "+MessagingWebAppWorker.__exitMessagingMod() - classID %s", classId
-            )
-            logger.info(
-                "+MessagingWebAppWorker.__exitMessagingMod() - sessionID %s", sessionId
-            )
-            logger.info(
-                "+MessagingWebAppWorker.__exitMessagingMod() - filesource %r",
-                fileSource,
-            )
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - depId   %s", depId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - instId  %s", instId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - classID %s", classId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - sessionID %s", sessionId)
+            logger.info("+MessagingWebAppWorker.__exitMessagingMod() - filesource %r", fileSource)
 
         #
         self.__reqObj.setReturnFormat("json")
         #
-        rC = ResponseContent(
-            reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh
-        )
+        rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
         # Update WF status database and persist chem comp assignment states -- ONLY if lig module was running in context of wf-engine
         #
@@ -2039,66 +1825,34 @@ class MessagingWebAppWorker(object):
                 if bOkay:
                     bSuccess = self.__updateWfTrackingDb(state)
                     if not bSuccess:
-                        rC.setError(
-                            errMsg="+MessagingWebAppWorker.__exitMessagingMod() - TRACKING status, update to '%s' failed for session %s \n"
-                            % (state, sessionId)
-                        )
+                        rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - TRACKING status, update to '%s' failed for session %s \n" % (state, sessionId))
                 else:
-                    rC.setError(
-                        errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file"
-                    )
+                    rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file"
-                    )
+                    logger.info("+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
                 traceback.print_exc(file=self.__lfh)
-                rC.setError(
-                    errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file"
-                )
+                rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file")
 
         else:
             try:
                 bOkay = self.__saveMessagingModState()
                 if bOkay:
                     if self.__verbose:
-                        logger.info(
-                            "successfully saved cif file to session directory %s at %s",
-                            self.__sessionPath,
-                            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                        )
+                        logger.info("successfully saved cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
                 else:
                     if self.__verbose:
-                        logger.info(
-                            "failed to save cif file to session directory %s at %s",
-                            self.__sessionPath,
-                            time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                        )
-                    rC.setError(
-                        errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file"
-                    )
+                        logger.info("failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+                    rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - problem saving cif file")
 
             except:  # noqa: E722 pylint: disable=bare-except
                 if self.__verbose:
-                    logger.info(
-                        "failed to save cif file to session directory %s at %s",
-                        self.__sessionPath,
-                        time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                    )
-                logger.exception(
-                    "Failed to save cif file to session directory %s at %s",
-                    self.__sessionPath,
-                    time.strftime("%Y %m %d %H:%M:%S", time.localtime()),
-                )
-                rC.setError(
-                    errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file"
-                )
+                    logger.info("failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+                logger.exception("Failed to save cif file to session directory %s at %s", self.__sessionPath, time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
+                rC.setError(errMsg="+MessagingWebAppWorker.__exitMessagingMod() - exception thrown on saving cif file")
             if self.__verbose:
-                logger.info(
-                    "+MessagingWebAppWorker.__exitMessagingMod() - Not in WF environ so skipping status update to TRACKING database for session %s",
-                    sessionId,
-                )
+                logger.info("+MessagingWebAppWorker.__exitMessagingMod() - Not in WF environ so skipping status update to TRACKING database for session %s", sessionId)
         #
         return rC
 
@@ -2215,16 +1969,12 @@ class MessagingWebAppWorker(object):
         # Gracefully exit if no file is provide in the request object -
         fs = self.__reqObj.getRawValue(fileTag)
         if self.__verbose and self.__debug:
-            logger.debug(
-                "+MessagingWebApp.__isFileUpload() - type of 'fs' is %s", type(fs)
-            )
+            logger.debug("+MessagingWebApp.__isFileUpload() - type of 'fs' is %s", type(fs))
 
         if (fs is None) or isinstance(fs, stringtypes):
             return False
         if self.__verbose and self.__debug:
-            logger.debug(
-                "+MessagingWebApp.__isFileUpload() - file upload is found to be True"
-            )
+            logger.debug("+MessagingWebApp.__isFileUpload() - file upload is found to be True")
         return True
 
     def __getSession(self):
@@ -2236,14 +1986,9 @@ class MessagingWebAppWorker(object):
         # self.__rltvSessionPath = self.__sObj.getRelativePath()
         if self.__verbose:
             logger.info("------------------------------------------------------")
-            logger.info(
-                "+MessagingWebApp.__getSession() - creating/joining session %s",
-                self.__sessionId,
-            )
+            logger.info("+MessagingWebApp.__getSession() - creating/joining session %s", self.__sessionId)
             # logger.info("+MessagingWebApp.__getSession() - workflow storage path    %s\n" % self.__workflowStoragePath)
-            logger.info(
-                "+MessagingWebApp.__getSession() - session path %s", self.__sessionPath
-            )
+            logger.info("+MessagingWebApp.__getSession() - session path %s", self.__sessionPath)
 
     # def __setSemaphore(self):
     #     sVal = str(time.strftime("TMP_%Y%m%d%H%M%S", time.localtime()))
@@ -2323,19 +2068,11 @@ class MessagingWebAppWorker(object):
         fileSource = str(self.__reqObj.getValue("filesource")).lower()
         #
         if self.__verbose:
-            logger.info(
-                "+MessagingWebAppWorker.__isWorkflow() - filesource is %s", fileSource
-            )
+            logger.info("+MessagingWebAppWorker.__isWorkflow() - filesource is %s", fileSource)
         #
         # add wf_archive to fix PDBe wfm issue -- jdw 2011-06-30
         #
-        if fileSource in [
-            "archive",
-            "wf-archive",
-            "wf_archive",
-            "wf-instance",
-            "wf_instance",
-        ]:
+        if fileSource in ["archive", "wf-archive", "wf_archive", "wf-instance", "wf_instance"]:
             # if the file source is any of the above then we are in the workflow manager environment
             return True
         else:

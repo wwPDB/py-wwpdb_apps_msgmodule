@@ -43,12 +43,7 @@ class MyRequestApp(object):
     and Response objects.
     """
 
-    def __init__(
-        self,
-        textString="doServiceRequest() - WebOb version",
-        verbose=True,
-        log=sys.stderr,
-    ):
+    def __init__(self, textString="doServiceRequest() - WebOb version", verbose=True, log=sys.stderr):
         """ """
         self.__text = textString
         self.__verbose = verbose
@@ -57,9 +52,7 @@ class MyRequestApp(object):
     def __dumpEnv(self, request):
         outL = []
         # outL.append('<pre align="left">')
-        outL.append(
-            "\n------------------doServiceRequest()------------------------------\n"
-        )
+        outL.append("\n------------------doServiceRequest()------------------------------\n")
         outL.append("Web server request data content:\n")
         outL.append("Text initialization:   %s\n" % self.__text)
         try:
@@ -86,10 +79,7 @@ class MyRequestApp(object):
         try:
             if "WWPDB_SITE_ID" in environment:
                 siteId = environment["WWPDB_SITE_ID"]
-                self.__lfh.write(
-                    "+MyRequestApp.__call__() - WWPDB_SITE_ID environ variable captured as %s\n"
-                    % siteId
-                )
+                self.__lfh.write("+MyRequestApp.__call__() - WWPDB_SITE_ID environ variable captured as %s\n" % siteId)
             # """
             # for name,value in environment.items():
             #     self.__lfh.write("+MyRequestApp.__call__() - ENVIRON parameter:    %s:  %r\n" % (name,value))
@@ -98,10 +88,7 @@ class MyRequestApp(object):
                 if name not in myParameterDict:
                     myParameterDict[name] = []
                 myParameterDict[name].append(value)
-                self.__lfh.write(
-                    "+MyRequestApp.__call__() - REQUEST parameter:    %s:  %r\n"
-                    % (name, value)
-                )
+                self.__lfh.write("+MyRequestApp.__call__() - REQUEST parameter:    %s:  %r\n" % (name, value))
             myParameterDict["request_path"] = [myRequest.path.lower()]
         except:  # noqa: E722 pylint: disable=bare-except
             traceback.print_exc(file=self.__lfh)
@@ -118,12 +105,7 @@ class MyRequestApp(object):
         #   Application specific functionality called here --
         #   Application receives path and parameter info only!
         ###
-        msgmodule = MessagingWebApp(
-            parameterDict=myParameterDict,
-            verbose=self.__verbose,
-            log=self.__lfh,
-            siteId=siteId,
-        )
+        msgmodule = MessagingWebApp(parameterDict=myParameterDict, verbose=self.__verbose, log=self.__lfh, siteId=siteId)
         rspD = msgmodule.doOp()
         myResponse.content_type = rspD["CONTENT_TYPE"]
 
@@ -143,6 +125,4 @@ class MyRequestApp(object):
 ##
 #   NOTE -  verbose setting is set here ONLY!
 ##
-application = MyRequestApp(
-    textString="doServiceRequest() - WebOb version", verbose=True, log=sys.stderr
-)
+application = MyRequestApp(textString="doServiceRequest() - WebOb version", verbose=True, log=sys.stderr)

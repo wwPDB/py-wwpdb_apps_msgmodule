@@ -108,14 +108,10 @@ class EmHeaderUtils(object):
         #
         try:
             translator = CifEMDBTranslator()
-            translator.set_logger_logging(
-                log_error=True, error_log_file_name=logFilePath
-            )
+            translator.set_logger_logging(log_error=True, error_log_file_name=logFilePath)
             translator.read_emd_map_v2_cif_file()
             if validateXml:
-                translator.translate_and_validate(
-                    in_cif=inpFilePath, out_xml=outFilePath
-                )
+                translator.translate_and_validate(in_cif=inpFilePath, out_xml=outFilePath)
             else:
                 translator.translate(in_cif=inpFilePath, out_xml=outFilePath)
             # This will close the output file
