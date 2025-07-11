@@ -96,6 +96,52 @@ Scripts are integrated with the Makefile system:
 - `make validate-integration`: Integration validation using validate_integration.py
 - Database initialization and migration can be added as Makefile targets
 
+## Backend Selection in Scripts
+
+All scripts now use the dual-mode backend selection logic via the messaging factory. The backend (CIF-only, database-only, or dual-mode) is chosen at runtime based on four independent feature flags:
+
+### Feature Flags
+
+- **`MSGDB_WRITES_ENABLED`** - Enable database writes (`true`/`false`)
+- **`MSGDB_READS_ENABLED`** - Enable database reads (`true`/`false`)  
+- **`MSGCIF_WRITES_ENABLED`** - Enable CIF file writes (`true`/`false`)
+- **`MSGCIF_READS_ENABLED`** - Enable CIF file reads (`true`/`false`)
+
+### Backend Modes
+
+1. **📄 CIF-only** (default): Only CIF operations enabled
+2. **🗃️ Database-only**: Only database operations enabled
+3. **🔄 Dual-mode**: Both backends enabled (for migration scenarios)
+
+**Always use the factory pattern through `MessagingFactory.create_messaging_service()` or `create_messaging_service()` - direct instantiation of MessagingDb/MessagingIo/MessagingDualMode is discouraged.**
+
+## Migration Support Scripts
+
+The dual-mode architecture supports gradual migration with these helper scripts:
+
+- **`backend_config.py`** - Configure backend modes and show current status
+- **`makefile_utils.py`** - Enhanced to show dual-mode feature flags and health
+- **`validate_integration.py`** - Validates all backend modes and configurations
+
+### Quick Backend Configuration
+
+```bash
+# Show current backend configuration
+python scripts/backend_config.py show
+
+# Configure for migration phases
+python scripts/backend_config.py dual-write-cif-read   # Phase 1
+python scripts/backend_config.py dual-write-db-read    # Phase 2  
+python scripts/backend_config.py db-only               # Phase 3
+```
+
+## Troubleshooting
+
+- Use `python scripts/backend_config.py show` to see current configuration
+- Use `make backend-info` or `make feature-flags` to check Makefile integration
+- Use the `--verbose` flag on scripts to see backend selection details
+- Check that all four feature flags are set correctly for your desired mode
+
 ## Removed Scripts
 
 The following scripts were removed during cleanup:
