@@ -9,6 +9,10 @@ from .config import (
     MessagingDatabaseConfig,
     get_messaging_database_config,
     is_messaging_database_enabled,
+    is_messaging_database_writes_enabled,
+    is_messaging_database_reads_enabled,
+    is_messaging_cif_writes_enabled,
+    is_messaging_cif_reads_enabled,
 )
 
 from .messaging_dal import (
@@ -23,6 +27,10 @@ __all__ = [
     "MessagingDatabaseConfig",
     "get_messaging_database_config",
     "is_messaging_database_enabled",
+    "is_messaging_database_writes_enabled",
+    "is_messaging_database_reads_enabled",
+    "is_messaging_cif_writes_enabled",
+    "is_messaging_cif_reads_enabled",
     "MessagingDatabaseService",
     "MessageRecord",
     "MessageFileReference",

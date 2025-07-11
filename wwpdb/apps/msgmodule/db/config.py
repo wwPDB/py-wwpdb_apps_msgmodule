@@ -238,6 +238,98 @@ class MessagingDatabaseConfig:
         # Default to disabled for safety
         return False
 
+    def is_database_writes_enabled(self) -> bool:
+        """
+        Check if database writes are enabled.
+        Separate from general database enabling to allow read-only database mode.
+        """
+        # Check environment variable first
+        env_flag = os.getenv("MSGDB_WRITES_ENABLED", "").lower()
+        if env_flag in ["true", "1", "yes", "on"]:
+            return True
+        elif env_flag in ["false", "0", "no", "off"]:
+            return False
+
+        # Check ConfigInfo if available
+        if self.config_info:
+            try:
+                config_flag = self.config_info.get("MESSAGING_DB_WRITES_ENABLED", "false")
+                return str(config_flag).lower() in ["true", "1", "yes", "on"]
+            except Exception:
+                pass
+
+        # Default to same as general database enabled
+        return self.is_database_enabled()
+
+    def is_database_reads_enabled(self) -> bool:
+        """
+        Check if database reads are enabled.
+        Separate from general database enabling to allow gradual migration.
+        """
+        # Check environment variable first
+        env_flag = os.getenv("MSGDB_READS_ENABLED", "").lower()
+        if env_flag in ["true", "1", "yes", "on"]:
+            return True
+        elif env_flag in ["false", "0", "no", "off"]:
+            return False
+
+        # Check ConfigInfo if available
+        if self.config_info:
+            try:
+                config_flag = self.config_info.get("MESSAGING_DB_READS_ENABLED", "false")
+                return str(config_flag).lower() in ["true", "1", "yes", "on"]
+            except Exception:
+                pass
+
+        # Default to same as general database enabled
+        return self.is_database_enabled()
+
+    def is_cif_writes_enabled(self) -> bool:
+        """
+        Check if CIF writes are enabled.
+        Allows for dual-write scenarios during migration.
+        """
+        # Check environment variable first
+        env_flag = os.getenv("MSGCIF_WRITES_ENABLED", "").lower()
+        if env_flag in ["true", "1", "yes", "on"]:
+            return True
+        elif env_flag in ["false", "0", "no", "off"]:
+            return False
+
+        # Check ConfigInfo if available
+        if self.config_info:
+            try:
+                config_flag = self.config_info.get("MESSAGING_CIF_WRITES_ENABLED", "false")
+                return str(config_flag).lower() in ["true", "1", "yes", "on"]
+            except Exception:
+                pass
+
+        # Default to enabled when database writes are not enabled (for backwards compatibility)
+        return not self.is_database_writes_enabled()
+
+    def is_cif_reads_enabled(self) -> bool:
+        """
+        Check if CIF reads are enabled.
+        Allows for gradual migration from CIF to database.
+        """
+        # Check environment variable first
+        env_flag = os.getenv("MSGCIF_READS_ENABLED", "").lower()
+        if env_flag in ["true", "1", "yes", "on"]:
+            return True
+        elif env_flag in ["false", "0", "no", "off"]:
+            return False
+
+        # Check ConfigInfo if available
+        if self.config_info:
+            try:
+                config_flag = self.config_info.get("MESSAGING_CIF_READS_ENABLED", "false")
+                return str(config_flag).lower() in ["true", "1", "yes", "on"]
+            except Exception:
+                pass
+
+        # Default to enabled when database reads are not enabled (for backwards compatibility)
+        return not self.is_database_reads_enabled()
+
 
 def get_messaging_database_config(site_id: str = None, config_info=None) -> Dict:
     """
@@ -272,3 +364,63 @@ def is_messaging_database_enabled(site_id: str = None, config_info=None) -> bool
     """
     db_config = MessagingDatabaseConfig(site_id, config_info)
     return db_config.is_database_enabled()
+
+
+def is_messaging_database_writes_enabled(site_id: str = None, config_info=None) -> bool:
+    """
+    Convenience function to check if messaging database writes are enabled.
+
+    Args:
+        site_id: Site identifier
+        config_info: ConfigInfo instance
+
+    Returns:
+        True if database writes are enabled
+    """
+    db_config = MessagingDatabaseConfig(site_id, config_info)
+    return db_config.is_database_writes_enabled()
+
+
+def is_messaging_database_reads_enabled(site_id: str = None, config_info=None) -> bool:
+    """
+    Convenience function to check if messaging database reads are enabled.
+
+    Args:
+        site_id: Site identifier
+        config_info: ConfigInfo instance
+
+    Returns:
+        True if database reads are enabled
+    """
+    db_config = MessagingDatabaseConfig(site_id, config_info)
+    return db_config.is_database_reads_enabled()
+
+
+def is_messaging_cif_writes_enabled(site_id: str = None, config_info=None) -> bool:
+    """
+    Convenience function to check if messaging CIF writes are enabled.
+
+    Args:
+        site_id: Site identifier
+        config_info: ConfigInfo instance
+
+    Returns:
+        True if CIF writes are enabled
+    """
+    db_config = MessagingDatabaseConfig(site_id, config_info)
+    return db_config.is_cif_writes_enabled()
+
+
+def is_messaging_cif_reads_enabled(site_id: str = None, config_info=None) -> bool:
+    """
+    Convenience function to check if messaging CIF reads are enabled.
+
+    Args:
+        site_id: Site identifier
+        config_info: ConfigInfo instance
+
+    Returns:
+        True if CIF reads are enabled
+    """
+    db_config = MessagingDatabaseConfig(site_id, config_info)
+    return db_config.is_cif_reads_enabled()
