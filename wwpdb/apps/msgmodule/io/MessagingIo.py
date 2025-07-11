@@ -146,6 +146,13 @@ import sys
 import textwrap
 import time
 
+# Ensure MySQLdb compatibility before importing modules that need it
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass  # PyMySQL not available, MySQLdb imports will fail gracefully
+
 try:
     from html import unescape
 except ImportError:
@@ -175,7 +182,7 @@ from wwpdb.apps.msgmodule.io.DateUtil import DateUtil
 from wwpdb.utils.dp.RcsbDpUtility import RcsbDpUtility
 from wwpdb.utils.dp.DataFileAdapter import DataFileAdapter
 from wwpdb.utils.wf.dbapi.dbAPI import dbAPI
-from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
+# NmrDpUtility imported lazily when needed
 
 #
 from mmcif_utils.persist.PdbxPersist import PdbxPersist
@@ -2685,7 +2692,13 @@ class MessagingIo(object):
             logOutPath1 = os.path.join(self.__sessionPath, p_depId + "-logstrstr.json")  # output log for converted NMR-STAR file in "nmr-str2nef-release" op
             strOut = os.path.join(self.__sessionPath, p_depId + "-str.str")
 
-            np = NmrDpUtility()
+            # Import NmrDpUtility lazily when needed
+            try:
+                from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
+                np = NmrDpUtility()
+            except ImportError:
+                logger.error("NmrDpUtility not available - cannot convert NEF files")
+                return bOk
             # Must be before setDestination
 
             np.setSource(reviewAnnotMilestoneFilePth)
