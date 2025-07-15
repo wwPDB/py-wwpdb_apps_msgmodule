@@ -5,7 +5,7 @@ wwpdb.utils.wf >= 0.8
 mmcif
 mmcif.utils
 wwpdb.utils.dp
-wwpdb.utils.emdb ~= 0.17
+wwpdb.utils.emdb ~= 1.13
 wwpdb.apps.wf_engine
 wwpdb.utils.nmr
 

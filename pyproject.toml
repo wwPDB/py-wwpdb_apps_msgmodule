@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wwpdb.apps.msgmodule"
+description = "OneDep Messaging Application with database-primary operations for efficient message handling and storage."
+authors = [
+    { name="Ezra Peisach", email="ezra.peisach@rcsb.org" },
+    { name="Lucas Carrijo de Oliveira", email="lucas@ebi.ac.uk" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+license = { text = "Apache-2.0" }
+urls = { Homepage = "https://github.com/rcsb/py-wwpdb_apps_ann_tasks_v2" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7"
+]
+dependencies = [
+    "oslo.concurrency",
+    "wwpdb.io",
+    "wwpdb.utils.config~=0.39",
+    "wwpdb.utils.db",
+    "wwpdb.utils.session",
+    "wwpdb.utils.wf>=0.8",
+    "mmcif",
+    "mmcif.utils",
+    "wwpdb.utils.dp",
+    "wwpdb.utils.emdb>=1.13",
+    "wwpdb.apps.wf_engine",
+    "wwpdb.utils.nmr"
+]
+
+[project.optional-dependencies]
+dev = ["check-manifest"]
+test = ["coverage", "tox"]
+
+[tool.setuptools]
+# Exclude test and mock-data packages from distribution
+packages = { find = { exclude = ["wwpdb.apps.tests-msgmodule", "mock-data"] } }
+package-data = { "*" = ["*.md", "*.rst", "*.txt", "*.cfg"] }
+zip-safe = false
+
+[tool.setuptools_scm]
+# Uncomment to write version to a file
+# write_to = "wwpdb/apps/msgmodule/_version.py"
