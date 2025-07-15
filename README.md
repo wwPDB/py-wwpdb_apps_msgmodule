@@ -373,7 +373,7 @@ Validates:
 4. **Validation**: Run integration validation
 5. **Monitoring**: Set up health check monitoring
 
-See `scripts/SCRIPTS_README.md` for detailed script documentation.
+See `scripts/README.md` for detailed script documentation.
 
 ## Contributing
 

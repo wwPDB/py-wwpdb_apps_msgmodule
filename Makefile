@@ -82,7 +82,7 @@ install-minimal: ## Install minimal dependencies (without cmake-dependent packag
 	@echo "wwpdb.apps.wf_engine" >> requirements-minimal.txt
 	@echo "# wwpdb.utils.nmr" >> requirements-minimal.txt
 	@echo "# wwpdb.utils.align" >> requirements-minimal.txt
-	@echo "mysql-connector-python>=8.0.32" >> requirements-minimal.txt
+	@echo "mysql-connector-python>=8.0.12" >> requirements-minimal.txt
 	@$(PIP) install -r requirements-minimal.txt
 	@echo "$(GREEN)Creating necessary directories...$(NC)"
 	@mkdir -p logs tmp backups

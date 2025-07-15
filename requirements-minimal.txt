@@ -10,4 +10,4 @@ wwpdb.utils.emdb~=0.17
 wwpdb.apps.wf_engine
 # wwpdb.utils.nmr
 # wwpdb.utils.align
-mysql-connector-python>=8.0.32
+mysql-connector-python>=8.0.12
