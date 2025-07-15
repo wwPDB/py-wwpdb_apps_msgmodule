@@ -4,7 +4,7 @@
 
 set -e  # Exit on any error
 
-echo "🚀 wwPDB Communication Module Phase 2 - Quick Setup"
+echo "🚀 wwPDB Communication Module - Quick Setup"
 echo "=================================================="
 
 # Colors for output
@@ -96,8 +96,8 @@ python3 -c "import wwpdb.apps.msgmodule; print('Package import successful')" || 
     exit 1
 }
 
-# Run Phase 2 validation
-print_status "Running Phase 2 validation..."
+# Run validation
+print_status "Running validation..."
 python3 scripts/validate_phase2_integration.py || {
     print_warning "Phase 2 validation had some issues, but installation completed"
 }
@@ -106,8 +106,8 @@ python3 scripts/validate_phase2_integration.py || {
 print_status "Setup completed successfully!"
 echo ""
 echo "🎉 Quick Start Commands:"
-echo "  make validate-phase2    # Validate Phase 2 implementation"
-echo "  make test-phase2       # Run Phase 2 tests"
+echo "  make validate-phase2    # Validate implementation"
+echo "  make test-phase2       # Run tests"
 echo "  make feature-flags     # Show feature flag status"
 echo "  make health           # Check system health"
 echo "  make help             # Show all available commands"
