@@ -142,16 +142,6 @@ python scripts/backend_config.py db-only               # Phase 3
 - Use the `--verbose` flag on scripts to see backend selection details
 - Check that all four feature flags are set correctly for your desired mode
 
-## Removed Scripts
-
-The following scripts were removed during cleanup:
-
-- `debug_database_integration.py` - Referenced obsolete database classes
-- `phase2_integration_demo.py` - Referenced removed hybrid/dual-write functionality  
-- `validate_phase2.py` - Superseded by validate_integration.py
-- `workflow_demo.py` - Demo script, not production code
-- `generate_test_coverage_report.py` - Replaced by proper pytest/tox coverage
-
 ## Best Practices
 
 1. **Always test scripts in development** before running in production
