@@ -55,6 +55,22 @@ def create_database_if_not_exists(config):
         raise
 
 
+def drop_database_if_exists(config):
+    """Drop the database if it exists (DANGER: destructive operation!)"""
+    try:
+        conn_config = config.copy()
+        database_name = conn_config.pop("database")
+        connection = mysql.connector.connect(**conn_config)
+        cursor = connection.cursor()
+        cursor.execute(f"DROP DATABASE IF EXISTS {database_name}")
+        logger.info(f"Database '{database_name}' dropped (if it existed)")
+        cursor.close()
+        connection.close()
+    except Exception as e:
+        logger.error(f"Error dropping database: {e}")
+        raise
+
+
 def get_create_table_statements():
     """Return SQL statements to create all messaging tables"""
 
@@ -238,6 +254,7 @@ def main():
         action="store_true",
         help="Only verify existing tables, do not create",
     )
+    parser.add_argument("--drop-and-recreate", action="store_true", help="Drop and recreate the database (DANGEROUS: all data will be lost!)")
     parser.add_argument("--host", help="Database host")
     parser.add_argument("--port", type=int, help="Database port")
     parser.add_argument("--user", help="Database user")
@@ -266,6 +283,8 @@ def main():
     )
 
     try:
+        if args.drop_and_recreate:
+            drop_database_if_exists(config)
         if not args.verify_only:
             # Create database if needed
             create_database_if_not_exists(config)

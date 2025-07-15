@@ -36,6 +36,53 @@ class MessageRecord:
     message_type: str = "text"
     send_status: str = "Y"
     content_type: str = "msgs"  # 'msgs' or 'notes'
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    # Add property aliases for compatibility with Message class interface
+    @property
+    def messageId(self):
+        return self.message_id
+
+    @property
+    def depositionId(self):
+        return self.deposition_data_set_id
+
+    @property
+    def groupId(self):
+        return self.group_id
+
+    @property
+    def messageSubject(self):
+        return self.message_subject
+
+    @property
+    def messageText(self):
+        return self.message_text
+
+    @property
+    def messageType(self):
+        return self.message_type
+
+    @property
+    def sendStatus(self):
+        return self.send_status
+
+    @property
+    def contentType(self):
+        return self.content_type
+
+    @property
+    def parentMessageId(self):
+        return self.parent_message_id
+
+    @property
+    def contextType(self):
+        return self.context_type
+
+    @property
+    def contextValue(self):
+        return self.context_value
 
 
 @dataclass
@@ -53,6 +100,36 @@ class MessageFileReference:
     upload_file_name: Optional[str] = None
     file_path: Optional[str] = None
     file_size: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+    # Aliases for compatibility
+    @property
+    def depositionId(self):
+        return self.deposition_data_set_id
+
+    @property
+    def contentType(self):
+        return self.content_type
+
+    @property
+    def contentFormat(self):
+        return self.content_format
+
+    @property
+    def fileSource(self):
+        return self.file_source
+
+    @property
+    def uploadFileName(self):
+        return self.upload_file_name
+
+    @property
+    def filePath(self):
+        return self.file_path
+
+    @property
+    def fileSize(self):
+        return self.file_size
 
 
 @dataclass
@@ -67,30 +144,51 @@ class MessageStatus:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+    # Aliases for compatibility
+    @property
+    def messageId(self):
+        return self.message_id
+
+    @property
+    def depositionId(self):
+        return self.deposition_data_set_id
+
+    @property
+    def readStatus(self):
+        return self.read_status
+
+    @property
+    def actionReqd(self):
+        return self.action_reqd
+
+    @property
+    def forRelease(self):
+        return self.for_release
+
 
 class DatabaseBackend(ABC):
     """Abstract base class for database backends"""
-    
+
     @abstractmethod
     def connect(self, config: Dict[str, Any]) -> Any:
         """Establish database connection"""
         pass
-    
+
     @abstractmethod
     def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
         """Execute a query and return results"""
         pass
-    
+
     @abstractmethod
     def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute an insert query and return the inserted ID"""
         pass
-    
+
     @abstractmethod
     def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute an update query and return affected rows count"""
         pass
-    
+
     @abstractmethod
     def close_connection(self, connection: Any) -> None:
         """Close database connection"""
@@ -110,7 +208,7 @@ class DatabaseConnectionManager:
     def _get_backend(self) -> DatabaseBackend:
         """Get the appropriate database backend based on configuration"""
         db_type = self.config.get("type", "mysql").lower()
-        
+
         if db_type == "mysql":
             return MySQLBackend()
         elif db_type == "postgresql":
@@ -144,7 +242,7 @@ class DatabaseConnectionManager:
 
 class InMemoryBackend(DatabaseBackend):
     """In-memory database backend for testing and development"""
-    
+
     def __init__(self):
         self._data = {
             'messages': [],
@@ -152,17 +250,17 @@ class InMemoryBackend(DatabaseBackend):
             'message_status': []
         }
         self._next_id = 1
-    
+
     def connect(self, config: Dict[str, Any]) -> Dict:
         """Return a mock connection object"""
         return {'backend': self, 'data': self._data}
-    
+
     def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
         """Execute a query against in-memory data"""
         # Simple implementation - just return all data for now
         table_name = self._extract_table_name(query)
         return self._data.get(table_name, [])
-    
+
     def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute an insert against in-memory data"""
         table_name = self._extract_table_name(query)
@@ -173,16 +271,16 @@ class InMemoryBackend(DatabaseBackend):
             self._data[table_name].append(record)
             return record['id']
         return 0
-    
+
     def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute an update against in-memory data"""
         # Simple implementation - return 1 to indicate success
         return 1
-    
+
     def close_connection(self, connection: Any) -> None:
         """Close connection (no-op for in-memory)"""
         pass
-    
+
     def _extract_table_name(self, query: str) -> str:
         """Extract table name from SQL query"""
         query_lower = query.lower()
@@ -196,7 +294,7 @@ class InMemoryBackend(DatabaseBackend):
 
 class MySQLBackend(DatabaseBackend):
     """MySQL database backend"""
-    
+
     def connect(self, config: Dict[str, Any]) -> Any:
         """Establish MySQL connection"""
         try:
@@ -204,7 +302,7 @@ class MySQLBackend(DatabaseBackend):
             import pymysql
             pymysql.install_as_MySQLdb()
             import MySQLdb
-            
+
             return MySQLdb.connect(
                 host=config.get('host', 'localhost'),
                 port=config.get('port', 3306),
@@ -216,7 +314,7 @@ class MySQLBackend(DatabaseBackend):
         except ImportError:
             logger.warning("MySQL backend not available, falling back to in-memory")
             return InMemoryBackend().connect(config)
-    
+
     def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
         """Execute MySQL query"""
         try:
@@ -229,7 +327,7 @@ class MySQLBackend(DatabaseBackend):
         except Exception as e:
             logger.error(f"MySQL query failed: {e}")
             return []
-    
+
     def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute MySQL insert"""
         try:
@@ -242,7 +340,7 @@ class MySQLBackend(DatabaseBackend):
         except Exception as e:
             logger.error(f"MySQL insert failed: {e}")
             return 0
-    
+
     def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         """Execute MySQL update"""
         try:
@@ -255,7 +353,7 @@ class MySQLBackend(DatabaseBackend):
         except Exception as e:
             logger.error(f"MySQL update failed: {e}")
             return 0
-    
+
     def close_connection(self, connection: Any) -> None:
         """Close MySQL connection"""
         try:
@@ -266,40 +364,40 @@ class MySQLBackend(DatabaseBackend):
 
 class PostgreSQLBackend(DatabaseBackend):
     """PostgreSQL database backend (placeholder for future implementation)"""
-    
+
     def connect(self, config: Dict[str, Any]) -> Any:
         logger.warning("PostgreSQL backend not implemented, falling back to in-memory")
         return InMemoryBackend().connect(config)
-    
+
     def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
         return InMemoryBackend().execute_query(connection, query, params)
-    
+
     def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         return InMemoryBackend().execute_insert(connection, query, params)
-    
+
     def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         return InMemoryBackend().execute_update(connection, query, params)
-    
+
     def close_connection(self, connection: Any) -> None:
         pass
 
 
 class SQLiteBackend(DatabaseBackend):
     """SQLite database backend (placeholder for future implementation)"""
-    
+
     def connect(self, config: Dict[str, Any]) -> Any:
         logger.warning("SQLite backend not implemented, falling back to in-memory")
         return InMemoryBackend().connect(config)
-    
+
     def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
         return InMemoryBackend().execute_query(connection, query, params)
-    
+
     def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         return InMemoryBackend().execute_insert(connection, query, params)
-    
+
     def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
         return InMemoryBackend().execute_update(connection, query, params)
-    
+
     def close_connection(self, connection: Any) -> None:
         pass
 
@@ -355,8 +453,7 @@ class BaseDAO:
         finally:
             if cursor:
                 cursor.close()
-            if connection:
-                connection.close()
+            # Don't close the connection - it's managed by the pool
 
 
 class MessageDAO(BaseDAO):
@@ -552,7 +649,7 @@ class MessageStatusDAO(BaseDAO):
         """Get all message statuses for a deposition"""
         query = "SELECT * FROM message_status WHERE deposition_data_set_id = %s"
         results = self.execute_query(query, (deposition_id,), fetch_all=True)
-        return [MessageStatus(**row) for row in results] if results else []
+        return [MessageStatus(**result) for result in results] if results else []
 
     def mark_message_read(self, message_id: str, read_status: str = "Y") -> bool:
         """Mark a message as read/unread"""

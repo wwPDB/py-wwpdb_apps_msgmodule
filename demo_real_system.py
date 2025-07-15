@@ -18,6 +18,15 @@ import sqlite3
 import logging
 from pathlib import Path
 
+# Try to import MySQL connector for connection testing
+try:
+    import mysql.connector
+except ImportError:
+    mysql = None
+    mysql_connector_available = False
+else:
+    mysql_connector_available = True
+
 # Add project to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -26,8 +35,30 @@ sys.path.insert(0, str(project_root))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def try_mysql_connection(host, user, password, database, port=3306):
+    """Try to connect to MySQL database. Return True if successful, False otherwise."""
+    if not mysql_connector_available:
+        logger.warning("MySQL connector not available, cannot test MySQL connection.")
+        return False
+    try:
+        conn = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port,
+            connection_timeout=5
+        )
+        conn.close()
+        logger.info("✅ Successfully connected to MySQL database.")
+        return True
+    except Exception as e:
+        logger.warning(f"❌ Could not connect to MySQL database: {e}")
+        return False
+
+
 def setup_test_environment():
-    """Set up temporary directories and database for testing"""
+    """Set up temporary directories and database for testing. Prefer MySQL, fallback to SQLite."""
     # Create temporary directory for this demo
     demo_dir = tempfile.mkdtemp(prefix="wwpdb_real_demo_")
     logger.info(f"📁 Demo directory: {demo_dir}")
@@ -39,16 +70,49 @@ def setup_test_environment():
     
     for dir_path in [session_dir, data_dir, db_dir]:
         os.makedirs(dir_path, exist_ok=True)
-    
-    # Set up SQLite database
-    db_path = os.path.join(db_dir, "messaging.db")
-    setup_sqlite_database(db_path)
+
+    # MySQL connection parameters (should match your created DB)
+    mysql_params = {
+        "host": os.environ.get("MSGDB_HOST", "localhost"),
+        "user": os.environ.get("MSGDB_USER", "demo_user"),
+        "password": os.environ.get("MSGDB_PASS", "demo_pass"),
+        "database": os.environ.get("MSGDB_NAME", "messaging_demo"),
+        "port": int(os.environ.get("MSGDB_PORT", "3306")),
+    }
+
+    # Try MySQL first
+    use_mysql = try_mysql_connection(**mysql_params)
+    if use_mysql:
+        logger.info("Using MySQL backend for messaging database.")
+        db_backend = "mysql"
+        db_path = None
+        # Set environment variables for MySQL
+        os.environ["MSGDB_WRITES_ENABLED"] = "true"
+        os.environ["MSGDB_READS_ENABLED"] = "true"
+        os.environ["MSGCIF_WRITES_ENABLED"] = "false"
+        os.environ["MSGCIF_READS_ENABLED"] = "false"
+        os.environ["MSGDB_CHARSET"] = "utf8mb4"
+        os.environ["MSGDB_POOL_SIZE"] = "5"
+        os.environ["MSGDB_TIMEOUT"] = "30"
+    else:
+        logger.info("Falling back to SQLite backend for messaging database.")
+        db_backend = "sqlite"
+        db_path = os.path.join(db_dir, "messaging.db")
+        setup_sqlite_database(db_path)
+        # Set environment variables for SQLite
+        os.environ["MSGDB_WRITES_ENABLED"] = "true"
+        os.environ["MSGDB_READS_ENABLED"] = "true"
+        os.environ["MSGCIF_WRITES_ENABLED"] = "false"
+        os.environ["MSGCIF_READS_ENABLED"] = "false"
+        os.environ["MSGDB_SQLITE_PATH"] = db_path
     
     return {
         "demo_dir": demo_dir,
         "session_dir": session_dir,
         "data_dir": data_dir,
-        "db_path": db_path
+        "db_dir": db_dir,
+        "db_path": db_path,
+        "db_backend": db_backend
     }
 
 def setup_sqlite_database(db_path):
@@ -143,26 +207,30 @@ def create_real_request(session_dir, site_id="DEMO"):
         return SimpleRequest(session_dir, site_id)
 
 def create_real_message(deposition_id="D_1234567890", message_type="to-depositor"):
-    """Create a real message object using wwPDB Message class"""
+    """Create a real message object using wwPDB Message class, using only the real interface (no patching)."""
+    import uuid
     try:
         # Use real wwPDB Message class
         from wwpdb.apps.msgmodule.models.Message import Message
         
-        # Create a message dictionary (required by Message constructor)
+        # Create a complete message dictionary with all required fields for Message class
         msg_dict = {
+            'message_id': f"MSG_{uuid.uuid4().hex[:12]}",  # Unique message_id for MySQL schema
             'deposition_data_set_id': deposition_id,
-            'message_type': message_type,
+            'message_type': 'text',  # Required by Message class
             'message_text': "This is a test message from the real system demo.",
             'message_subject': "Real Demo Message - System Test",
+            'send_status': 'Y',  # Required: Y=sent, N=draft
             'sender': "demo@wwpdb.org",
             'timestamp': "2025-07-11T10:00:00",
-            'read_status': "N"
+            'read_status': "N",
+            'content_type': 'msgs',  # Required by Message class
+            'message_state': 'livemsg'  # Required by Message class properties
         }
         
         # Create a real message object
         msg = Message(msg_dict)
-        
-        logger.info(f"✅ Created real Message object for {deposition_id}")
+        logger.info(f"✅ Created real Message object for {deposition_id} with message_id {msg_dict['message_id']}")
         return msg
         
     except (ImportError, AttributeError, TypeError) as e:
@@ -170,39 +238,15 @@ def create_real_message(deposition_id="D_1234567890", message_type="to-depositor
         # Fallback to a simple message-like object
         class SimpleMessage:
             def __init__(self, deposition_id, message_type):
-                self.deposition_id = deposition_id
+                self.message_id = f"MSG_{uuid.uuid4().hex[:12]}"
+                self.deposition_data_set_id = deposition_id
                 self.message_type = message_type
                 self.message_text = "This is a test message from the real system demo."
-                self.subject = "Real Demo Message - System Test"
+                self.message_subject = "Real Demo Message - System Test"
                 self.sender = "demo@wwpdb.org"
                 self.timestamp = "2025-07-11T10:00:00"
                 self.read_status = "N"
                 self.messages = []
-            
-            def getDepositionDataSetId(self):
-                return self.deposition_id
-            
-            def getMessageType(self):
-                return self.message_type
-            
-            def getMessageText(self):
-                return self.message_text
-            
-            def getMessageSubject(self):
-                return self.subject
-            
-            def getSender(self):
-                return self.sender
-            
-            def getTimestamp(self):
-                return self.timestamp
-            
-            def getAllMessages(self):
-                return self.messages
-            
-            def setDepositionDataSetId(self, value):
-                self.deposition_id = value
-        
         return SimpleMessage(deposition_id, message_type)
 
 def test_database_backend_real(env_info):
@@ -216,23 +260,23 @@ def test_database_backend_real(env_info):
     os.environ["MSGDB_WRITES_ENABLED"] = "true"
     os.environ["MSGDB_READS_ENABLED"] = "true"
     
-    # Configure database connection
-    os.environ["MSGDB_HOST"] = "localhost"
-    os.environ["MSGDB_NAME"] = "messaging_demo"
-    os.environ["MSGDB_USER"] = "demo_user"
-    os.environ["MSGDB_PASS"] = "demo_pass"
-    os.environ["MSGDB_PORT"] = "3306"
+    # Use environment variables for database connection
+    db_host = os.environ.get("MSGDB_HOST", "localhost")
+    db_name = os.environ.get("MSGDB_NAME", "messaging_demo")
+    db_user = os.environ.get("MSGDB_USER", "demo_user")
+    db_pass = os.environ.get("MSGDB_PASS", "demo_pass")
+    db_port = os.environ.get("MSGDB_PORT", "3306")
     
     # Also set required environment variables for the database configuration
-    os.environ["MSGDB_CHARSET"] = "utf8mb4"
-    os.environ["MSGDB_POOL_SIZE"] = "5"
-    os.environ["MSGDB_TIMEOUT"] = "30"
+    os.environ["MSGDB_CHARSET"] = os.environ.get("MSGDB_CHARSET", "utf8mb4")
+    os.environ["MSGDB_POOL_SIZE"] = os.environ.get("MSGDB_POOL_SIZE", "5")
+    os.environ["MSGDB_TIMEOUT"] = os.environ.get("MSGDB_TIMEOUT", "30")
     
     # Debug: Print what we actually set
-    logger.info(f"   🔧 Database config set: {os.environ.get('MSGDB_HOST')}:{os.environ.get('MSGDB_PORT')}")
-    logger.info(f"   🔧 Database name: {os.environ.get('MSGDB_NAME')}")
-    logger.info(f"   🔧 Database user: {os.environ.get('MSGDB_USER')}")
-    logger.info(f"   🔧 Database pass: {'***' if os.environ.get('MSGDB_PASS') else 'None'}")
+    logger.info(f"   🔧 Database config set: {db_host}:{db_port}")
+    logger.info(f"   🔧 Database name: {db_name}")
+    logger.info(f"   Database user: {db_user}")
+    logger.info(f"   Database pass: {'***' if db_pass else 'None'}")
     
     try:
         logger.info("📦 Step 1: Import messaging factory")
@@ -288,12 +332,12 @@ def test_backend_info():
         os.environ["MSGCIF_WRITES_ENABLED"] = "false"
         os.environ["MSGCIF_READS_ENABLED"] = "false"
         
-        # Set the same database configuration
-        os.environ["MSGDB_HOST"] = "localhost"
-        os.environ["MSGDB_NAME"] = "messaging_demo"
-        os.environ["MSGDB_USER"] = "demo_user"
-        os.environ["MSGDB_PASS"] = "demo_pass"
-        os.environ["MSGDB_PORT"] = "3306"
+        # Use environment variables for database connection
+        db_host = os.environ.get("MSGDB_HOST", "localhost")
+        db_name = os.environ.get("MSGDB_NAME", "messaging_demo")
+        db_user = os.environ.get("MSGDB_USER", "demo_user")
+        db_pass = os.environ.get("MSGDB_PASS", "demo_pass")
+        db_port = os.environ.get("MSGDB_PORT", "3306")
         
         info = MessagingFactory.get_backend_info(req_obj=None)
         

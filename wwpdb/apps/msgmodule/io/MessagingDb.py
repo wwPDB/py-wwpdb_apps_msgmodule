@@ -154,42 +154,52 @@ class MessagingDb:
 
     def __extract_message_data(self, p_msgObj) -> Dict:
         """Extract message data from message object into database format"""
+        # Safely extract data using properties with fallbacks for compatibility
+        def safe_property_get(obj, prop_name, fallback_value=None):
+            """Safely get a property from a Message object, handling missing properties gracefully"""
+            try:
+                return getattr(obj, prop_name)
+            except (AttributeError, KeyError):
+                # Try _msgDict directly as fallback
+                if hasattr(obj, '_msgDict') and isinstance(obj._msgDict, dict):
+                    dict_key = prop_name.replace('Id', '_id').replace('Type', '_type').replace('Text', '_text').replace('Subject', '_subject').replace('Status', '_status')
+                    return obj._msgDict.get(dict_key, fallback_value)
+                return fallback_value
+
+        # Extract with robust fallbacks to ensure perfect interface compatibility
         message_data = {
             "message": {
-                "message_id": p_msgObj.messageId or str(uuid.uuid4()),
-                "deposition_data_set_id": p_msgObj.depositionId,
+                "message_id": safe_property_get(p_msgObj, "messageId", str(uuid.uuid4())),
+                "deposition_data_set_id": safe_property_get(p_msgObj, "depositionId", ""),
                 "group_id": self.__groupId if self.__groupId else None,
                 "timestamp": datetime.now(),
-                "sender": p_msgObj.sender,
-                "context_type": getattr(p_msgObj, "contextType", None),
-                "context_value": getattr(p_msgObj, "contextValue", None),
-                "parent_message_id": getattr(p_msgObj, "parentMessageId", None),
-                "message_subject": p_msgObj.messageSubject,
-                "message_text": p_msgObj.messageText,
-                "message_type": "text",
-                "send_status": "Y" if p_msgObj.isBeingSent else "N",
-                "content_type": p_msgObj.contentType,
+                "sender": safe_property_get(p_msgObj, "sender", ""),
+                "context_type": safe_property_get(p_msgObj, "contextType", None),
+                "context_value": safe_property_get(p_msgObj, "contextValue", None),
+                "parent_message_id": safe_property_get(p_msgObj, "parentMessageId", None),
+                "message_subject": safe_property_get(p_msgObj, "messageSubject", ""),
+                "message_text": safe_property_get(p_msgObj, "messageText", ""),
+                "message_type": safe_property_get(p_msgObj, "messageType", "text"),
+                "send_status": safe_property_get(p_msgObj, "sendStatus", "Y"),
+                "content_type": safe_property_get(p_msgObj, "contentType", "msgs"),
             },
             "status": {
-                "message_id": p_msgObj.messageId or str(uuid.uuid4()),
-                "deposition_data_set_id": p_msgObj.depositionId,
+                "message_id": safe_property_get(p_msgObj, "messageId", str(uuid.uuid4())),
+                "deposition_data_set_id": safe_property_get(p_msgObj, "depositionId", ""),
                 "read_status": "N",
-                "action_reqd": "Y"
-                if getattr(p_msgObj, "actionRequired", False)
-                else "N",
+                "action_reqd": "Y" if safe_property_get(p_msgObj, "actionRequired", False) else "N",
                 "for_release": "N",
-            }
-            if p_msgObj.isBeingSent
-            else None,
+            } if safe_property_get(p_msgObj, "isBeingSent", False) else None,
             "file_references": [],
         }
-
+        
         # Add file references if any
-        if hasattr(p_msgObj, "fileReferences") and p_msgObj.fileReferences:
-            for file_ref in p_msgObj.fileReferences:
+        file_refs = safe_property_get(p_msgObj, "fileReferences", [])
+        if file_refs:
+            for file_ref in file_refs:
                 file_data = {
                     "message_id": message_data["message"]["message_id"],
-                    "deposition_data_set_id": p_msgObj.depositionId,
+                    "deposition_data_set_id": safe_property_get(p_msgObj, "depositionId", ""),
                     "content_type": file_ref.get("content_type", ""),
                     "content_format": file_ref.get("content_format", ""),
                     "partition_number": file_ref.get("partition_number", 1),
@@ -200,7 +210,6 @@ class MessagingDb:
                     "file_size": file_ref.get("file_size"),
                 }
                 message_data["file_references"].append(file_data)
-
         return message_data
 
     def getMsgRowList(
@@ -549,8 +558,14 @@ class MessagingDb:
         enhanced to work directly with database-stored message data.
         """
         try:
-            if not p_msgObj.isBeingSent:
+            if not getattr(p_msgObj, "isBeingSent", False):
                 # Only send notifications for messages being sent, not drafts
+                return
+
+            # Skip email notification if session path is not properly set
+            if not hasattr(self, '__sessionPath') or not self.__sessionPath:
+                if self.__verbose:
+                    logger.info(f"Skipping email notification for message {getattr(p_msgObj, 'messageId', 'unknown')} - no session path")
                 return
 
             # Use the existing notification system from MessagingIo
@@ -565,7 +580,7 @@ class MessagingDb:
             temp_messaging_io._MessagingIo__sendNotificationEmail(p_msgObj, p_bVldtnRprtFlg)
             
             if self.__verbose:
-                logger.info(f"Email notification sent for message {p_msgObj.messageId}")
+                logger.info(f"Email notification sent for message {getattr(p_msgObj, 'messageId', 'unknown')}")
 
         except Exception as e:
             logger.error(f"Failed to send email notification: {e}")
