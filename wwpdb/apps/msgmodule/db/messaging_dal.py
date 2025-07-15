@@ -2,9 +2,8 @@
 Database Access Layer (DAL) for wwPDB Communication Module
 
 This module provides database-agnostic abstraction for message storage,
-supporting multiple database backends as per the revised Phase 2 migration plan.
-The system is designed to be database-neutral and can work with any
-SQL-compatible database backend.
+supporting multiple database backends. Now uses SQLAlchemy ORM for better 
+maintainability and type safety while maintaining the original interface.
 """
 
 import logging
@@ -13,13 +12,87 @@ from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
 from datetime import datetime
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
+
+# SQLAlchemy imports
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, Session
+from sqlalchemy.sql import func
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
+
+# Create SQLAlchemy base
+Base = declarative_base()
+
+
+# SQLAlchemy Models (replacing raw SQL)
+class MessageRecordModel(Base):
+    """SQLAlchemy model for message records"""
+    __tablename__ = 'messages'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(String(255), unique=True, nullable=False, index=True)
+    deposition_data_set_id = Column(String(50), nullable=False, index=True)
+    group_id = Column(String(50), nullable=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    sender = Column(String(100), nullable=False, index=True)
+    recipient = Column(String(100), nullable=True)
+    context_type = Column(String(50), nullable=True, index=True)
+    context_value = Column(String(255), nullable=True)
+    parent_message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=True, index=True)
+    message_subject = Column(Text, nullable=False)
+    message_text = Column(Text, nullable=False)
+    message_type = Column(String(20), nullable=True, default='text')
+    send_status = Column(CHAR(1), nullable=True, default='Y')
+    content_type = Column(String(20), nullable=False, default='msgs', index=True)
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp(), index=True)
+    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    
+    # Relationships
+    status = relationship("MessageStatusModel", back_populates="message", uselist=False, cascade="all, delete-orphan")
+    file_references = relationship("MessageFileReferenceModel", back_populates="message", cascade="all, delete-orphan")
+
+class MessageFileReferenceModel(Base):
+    """SQLAlchemy model for message file references"""
+    __tablename__ = 'message_file_references'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=False, index=True)
+    deposition_data_set_id = Column(String(50), nullable=False, index=True)
+    content_type = Column(String(50), nullable=False, index=True)
+    content_format = Column(String(20), nullable=False)
+    partition_number = Column(Integer, nullable=True, default=1)
+    version_id = Column(Integer, nullable=True, default=1)
+    file_source = Column(String(20), nullable=True, default='archive', index=True)
+    upload_file_name = Column(String(255), nullable=True)
+    file_path = Column(Text, nullable=True)
+    file_size = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
+    
+    # Relationships
+    message = relationship("MessageRecordModel", back_populates="file_references")
+
+class MessageStatusModel(Base):
+    """SQLAlchemy model for message status"""
+    __tablename__ = 'message_status'
+    
+    message_id = Column(String(255), ForeignKey('messages.message_id'), primary_key=True)
+    deposition_data_set_id = Column(String(50), nullable=False, index=True)
+    read_status = Column(CHAR(1), nullable=True, default='N', index=True)
+    action_reqd = Column(CHAR(1), nullable=True, default='N', index=True)
+    for_release = Column(CHAR(1), nullable=True, default='N', index=True)
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
+    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    
+    # Relationships
+    message = relationship("MessageRecordModel", back_populates="status")
 
 
 @dataclass
 class MessageRecord:
-    """Data class representing a message record"""
+    """Data class representing a message record (keeping original interface)"""
 
     id: Optional[int] = None
     message_id: str = ""
@@ -166,331 +239,175 @@ class MessageStatus:
         return self.for_release
 
 
-class DatabaseBackend(ABC):
-    """Abstract base class for database backends"""
-
-    @abstractmethod
-    def connect(self, config: Dict[str, Any]) -> Any:
-        """Establish database connection"""
-        pass
-
-    @abstractmethod
-    def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
-        """Execute a query and return results"""
-        pass
-
-    @abstractmethod
-    def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute an insert query and return the inserted ID"""
-        pass
-
-    @abstractmethod
-    def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute an update query and return affected rows count"""
-        pass
-
-    @abstractmethod
-    def close_connection(self, connection: Any) -> None:
-        """Close database connection"""
-        pass
-
-
 class DatabaseConnectionManager:
-    """Database-agnostic connection manager for the messaging system"""
+    """SQLAlchemy-based connection manager (replacing legacy backends)"""
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.backend = self._get_backend()
-        self._connection_pool = []
-        self._pool_size = config.get("pool_size", 5)
-        self._initialize_pool()
+        self.engine = self._create_engine()
+        self.Session = sessionmaker(bind=self.engine)
 
-    def _get_backend(self) -> DatabaseBackend:
-        """Get the appropriate database backend based on configuration"""
+    def _create_engine(self):
+        """Create SQLAlchemy engine from configuration"""
         db_type = self.config.get("type", "mysql").lower()
-
+        
         if db_type == "mysql":
-            return MySQLBackend()
+            username = self.config.get('user', self.config.get('username', 'root'))
+            password = self.config.get('password', '')
+            host = self.config.get('host', 'localhost')
+            port = self.config.get('port', 3306)
+            database = self.config.get('database', 'messages')
+            charset = self.config.get('charset', 'utf8mb4')
+            
+            connection_string = f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}?charset={charset}"
+            
         elif db_type == "postgresql":
-            return PostgreSQLBackend()
+            username = self.config.get('user', self.config.get('username', 'postgres'))
+            password = self.config.get('password', '')
+            host = self.config.get('host', 'localhost')
+            port = self.config.get('port', 5432)
+            database = self.config.get('database', 'messages')
+            
+            connection_string = f"postgresql://{username}:{password}@{host}:{port}/{database}"
+            
         elif db_type == "sqlite":
-            return SQLiteBackend()
+            db_path = self.config.get('database', self.config.get('path', ':memory:'))
+            connection_string = f"sqlite:///{db_path}"
+            
         else:
-            # Default to in-memory implementation for testing
-            return InMemoryBackend()
-
-    def _initialize_pool(self):
-        """Initialize the connection pool"""
+            # Default to SQLite in-memory for testing
+            connection_string = "sqlite:///:memory:"
+        
+        # Engine configuration
+        engine_config = {
+            'echo': self.config.get('echo', False),
+            'pool_size': self.config.get('pool_size', 5),
+            'pool_timeout': self.config.get('pool_timeout', 30),
+            'pool_recycle': self.config.get('pool_recycle', 3600),
+            'pool_pre_ping': self.config.get('pool_pre_ping', True),
+        }
+        
+        # Remove SQLite incompatible options
+        if db_type == 'sqlite':
+            engine_config = {k: v for k, v in engine_config.items() 
+                           if k not in ['pool_size', 'pool_timeout', 'pool_recycle', 'pool_pre_ping']}
+        
         try:
-            for _ in range(self._pool_size):
-                conn = self.backend.connect(self.config)
-                self._connection_pool.append(conn)
-            logger.info(f"Database connection pool initialized with {self._pool_size} connections")
+            engine = create_engine(connection_string, **engine_config)
+            logger.info(f"Created SQLAlchemy engine for {db_type} database")
+            return engine
         except Exception as e:
-            logger.error(f"Failed to initialize database connection pool: {e}")
-            # Fall back to in-memory backend for testing
-            self.backend = InMemoryBackend()
-            self._connection_pool = [self.backend.connect({})]
+            logger.error(f"Failed to create database engine: {e}")
+            # Fallback to in-memory SQLite
+            logger.warning("Falling back to in-memory SQLite database")
+            return create_engine("sqlite:///:memory:", echo=False)
+
+    @contextmanager
+    def session_scope(self):
+        """Provide a transactional scope around a series of operations"""
+        session = self.Session()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def get_connection(self):
-        """Get a connection from the pool"""
-        if self._connection_pool:
-            return self._connection_pool[0]  # Simple round-robin for now
-        else:
-            return self.backend.connect(self.config)
+        """Get a session (for compatibility with legacy interface)"""
+        return self.Session()
 
-
-class InMemoryBackend(DatabaseBackend):
-    """In-memory database backend for testing and development"""
-
-    def __init__(self):
-        self._data = {
-            'messages': [],
-            'message_file_refs': [],
-            'message_status': []
-        }
-        self._next_id = 1
-
-    def connect(self, config: Dict[str, Any]) -> Dict:
-        """Return a mock connection object"""
-        return {'backend': self, 'data': self._data}
-
-    def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
-        """Execute a query against in-memory data"""
-        # Simple implementation - just return all data for now
-        table_name = self._extract_table_name(query)
-        return self._data.get(table_name, [])
-
-    def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute an insert against in-memory data"""
-        table_name = self._extract_table_name(query)
-        if table_name in self._data:
-            # Create a record from params
-            record = {'id': self._next_id}
-            self._next_id += 1
-            self._data[table_name].append(record)
-            return record['id']
-        return 0
-
-    def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute an update against in-memory data"""
-        # Simple implementation - return 1 to indicate success
-        return 1
-
-    def close_connection(self, connection: Any) -> None:
-        """Close connection (no-op for in-memory)"""
-        pass
-
-    def _extract_table_name(self, query: str) -> str:
-        """Extract table name from SQL query"""
-        query_lower = query.lower()
-        if 'message_file_refs' in query_lower:
-            return 'message_file_refs'
-        elif 'message_status' in query_lower:
-            return 'message_status'
-        else:
-            return 'messages'
-
-
-class MySQLBackend(DatabaseBackend):
-    """MySQL database backend"""
-
-    def connect(self, config: Dict[str, Any]) -> Any:
-        """Establish MySQL connection"""
+    def create_tables(self):
+        """Create all database tables"""
         try:
-            # Try to import and use PyMySQL as MySQLdb
-            import pymysql
-            pymysql.install_as_MySQLdb()
-            import MySQLdb
-
-            return MySQLdb.connect(
-                host=config.get('host', 'localhost'),
-                port=config.get('port', 3306),
-                user=config.get('user', config.get('username', 'root')),
-                passwd=config.get('password', ''),
-                db=config.get('database', 'messages'),
-                charset=config.get('charset', 'utf8mb4')
-            )
-        except ImportError:
-            logger.warning("MySQL backend not available, falling back to in-memory")
-            return InMemoryBackend().connect(config)
-
-    def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
-        """Execute MySQL query"""
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params or ())
-            columns = [desc[0] for desc in cursor.description]
-            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-            cursor.close()
-            return results
+            Base.metadata.create_all(self.engine)
+            logger.info("Database tables created successfully")
         except Exception as e:
-            logger.error(f"MySQL query failed: {e}")
-            return []
-
-    def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute MySQL insert"""
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params or ())
-            insert_id = cursor.lastrowid
-            connection.commit()
-            cursor.close()
-            return insert_id
-        except Exception as e:
-            logger.error(f"MySQL insert failed: {e}")
-            return 0
-
-    def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        """Execute MySQL update"""
-        try:
-            cursor = connection.cursor()
-            cursor.execute(query, params or ())
-            affected_rows = cursor.rowcount
-            connection.commit()
-            cursor.close()
-            return affected_rows
-        except Exception as e:
-            logger.error(f"MySQL update failed: {e}")
-            return 0
-
-    def close_connection(self, connection: Any) -> None:
-        """Close MySQL connection"""
-        try:
-            connection.close()
-        except Exception as e:
-            logger.error(f"Error closing MySQL connection: {e}")
+            logger.error(f"Failed to create database tables: {e}")
+            raise
 
 
-class PostgreSQLBackend(DatabaseBackend):
-    """PostgreSQL database backend (placeholder for future implementation)"""
+# Helper functions for ORM conversion
+def model_to_dataclass(model_instance, dataclass_type):
+    """Convert SQLAlchemy model instance to dataclass"""
+    if not model_instance:
+        return None
+    
+    # Get all fields from the dataclass
+    model_data = {}
+    for field_name in dataclass_type.__dataclass_fields__.keys():
+        if hasattr(model_instance, field_name):
+            model_data[field_name] = getattr(model_instance, field_name)
+    
+    return dataclass_type(**model_data)
 
-    def connect(self, config: Dict[str, Any]) -> Any:
-        logger.warning("PostgreSQL backend not implemented, falling back to in-memory")
-        return InMemoryBackend().connect(config)
+def dataclass_to_model_data(dataclass_instance):
+    """Convert dataclass to dict for model creation"""
+    # Exclude None/empty id fields for auto-increment
+    data = {}
+    for field, value in dataclass_instance.__dict__.items():
+        if field == 'id' and (value is None or value == 0):
+            continue
+        data[field] = value
+    return data
 
-    def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
-        return InMemoryBackend().execute_query(connection, query, params)
-
-    def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        return InMemoryBackend().execute_insert(connection, query, params)
-
-    def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        return InMemoryBackend().execute_update(connection, query, params)
-
-    def close_connection(self, connection: Any) -> None:
-        pass
-
-
-class SQLiteBackend(DatabaseBackend):
-    """SQLite database backend (placeholder for future implementation)"""
-
-    def connect(self, config: Dict[str, Any]) -> Any:
-        logger.warning("SQLite backend not implemented, falling back to in-memory")
-        return InMemoryBackend().connect(config)
-
-    def execute_query(self, connection: Any, query: str, params: Optional[Tuple] = None) -> List[Dict]:
-        return InMemoryBackend().execute_query(connection, query, params)
-
-    def execute_insert(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        return InMemoryBackend().execute_insert(connection, query, params)
-
-    def execute_update(self, connection: Any, query: str, params: Optional[Tuple] = None) -> int:
-        return InMemoryBackend().execute_update(connection, query, params)
-
-    def close_connection(self, connection: Any) -> None:
-        pass
+def dataclass_to_model(dataclass_instance, model_class):
+    """Convert dataclass to SQLAlchemy model instance"""
+    data = {}
+    for field, value in dataclass_instance.__dict__.items():
+        if field == 'id' and (value is None or value == 0):
+            continue
+        if hasattr(model_class, field):
+            data[field] = value
+    return model_class(**data)
 
 
 class BaseDAO:
-    """Base Data Access Object with common functionality"""
+    """Base Data Access Object with SQLAlchemy ORM functionality"""
 
     def __init__(self, connection_manager: DatabaseConnectionManager):
         self.connection_manager = connection_manager
 
-    def execute_query(
-        self,
-        query: str,
-        params: Tuple = None,
-        fetch_one: bool = False,
-        fetch_all: bool = False,
-        commit: bool = False,
-    ) -> Optional[any]:
-        """Execute a database query with proper connection handling"""
-        connection = None
-        cursor = None
-        try:
-            connection = self.connection_manager.get_connection()
-            cursor = connection.cursor()
-
-            cursor.execute(query, params or ())
-
-            if commit:
-                connection.commit()
-                return cursor.lastrowid
-            elif fetch_one:
-                # Convert row to dictionary for PyMySQL compatibility
-                row = cursor.fetchone()
-                if row and cursor.description:
-                    columns = [desc[0] for desc in cursor.description]
-                    return dict(zip(columns, row))
-                return row
-            elif fetch_all:
-                # Convert rows to dictionaries for PyMySQL compatibility
-                rows = cursor.fetchall()
-                if rows and cursor.description:
-                    columns = [desc[0] for desc in cursor.description]
-                    return [dict(zip(columns, row)) for row in rows]
-                return rows
-            else:
-                return cursor.rowcount
-
-        except Exception as e:
-            if connection:
-                connection.rollback()
-            logger.error(f"Database query failed: {query[:100]}... Error: {e}")
-            raise
-        finally:
-            if cursor:
-                cursor.close()
-            # Don't close the connection - it's managed by the pool
-
 
 class MessageDAO(BaseDAO):
-    """Data Access Object for message operations"""
+    """Data Access Object for message operations using SQLAlchemy ORM"""
 
     def create_message(self, message: MessageRecord) -> int:
-        """Create a new message record"""
-        query = """
-        INSERT INTO messages (
-            message_id, deposition_data_set_id, group_id, timestamp, sender,
-            recipient, context_type, context_value, parent_message_id,
-            message_subject, message_text, message_type, send_status, content_type
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        params = (
-            message.message_id,
-            message.deposition_data_set_id,
-            message.group_id,
-            message.timestamp,
-            message.sender,
-            message.recipient,
-            message.context_type,
-            message.context_value,
-            message.parent_message_id,
-            message.message_subject,
-            message.message_text,
-            message.message_type,
-            message.send_status,
-            message.content_type,
-        )
-        return self.execute_query(query, params, commit=True)
+        """Create a new message record using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                # Convert dataclass to model data
+                model_data = dataclass_to_model_data(message)
+                
+                # Create model instance
+                message_model = MessageRecordModel(**model_data)
+                
+                # Add and flush to get the ID
+                session.add(message_model)
+                session.flush()
+                
+                logger.debug(f"Created message with ID: {message_model.id}")
+                return message_model.id
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to create message: {e}")
+                raise
 
     def get_message_by_id(self, message_id: str) -> Optional[MessageRecord]:
-        """Retrieve a message by its ID"""
-        query = "SELECT * FROM messages WHERE message_id = %s"
-        result = self.execute_query(query, (message_id,), fetch_one=True)
-        return MessageRecord(**result) if result else None
+        """Retrieve a message by its ID using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                message_model = session.query(MessageRecordModel).filter(
+                    MessageRecordModel.message_id == message_id
+                ).first()
+                
+                return model_to_dataclass(message_model, MessageRecord)
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to retrieve message {message_id}: {e}")
+                raise
 
     def get_messages_by_deposition(
         self,
@@ -499,74 +416,99 @@ class MessageDAO(BaseDAO):
         limit: int = None,
         offset: int = 0,
     ) -> List[MessageRecord]:
-        """Retrieve messages for a deposition"""
-        query = "SELECT * FROM messages WHERE deposition_data_set_id = %s"
-        params = [deposition_id]
+        """Retrieve messages for a deposition using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                query = session.query(MessageRecordModel).filter(
+                    MessageRecordModel.deposition_data_set_id == deposition_id
+                )
 
-        if content_type:
-            query += " AND content_type = %s"
-            params.append(content_type)
+                if content_type:
+                    query = query.filter(MessageRecordModel.content_type == content_type)
 
-        query += " ORDER BY timestamp DESC"
+                query = query.order_by(MessageRecordModel.timestamp.desc())
 
-        if limit:
-            query += " LIMIT %s OFFSET %s"
-            params.extend([limit, offset])
+                if limit:
+                    query = query.limit(limit).offset(offset)
 
-        results = self.execute_query(query, tuple(params), fetch_all=True)
-        return [MessageRecord(**row) for row in results] if results else []
+                message_models = query.all()
+                return [model_to_dataclass(model, MessageRecord) for model in message_models]
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to retrieve messages for deposition {deposition_id}: {e}")
+                raise
 
     def update_message(self, message_id: str, updates: Dict) -> bool:
-        """Update a message record"""
-        if not updates:
-            return False
+        """Update a message record using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                message_model = session.query(MessageRecordModel).filter(
+                    MessageRecordModel.message_id == message_id
+                ).first()
+                
+                if not message_model:
+                    return False
 
-        set_clauses = []
-        params = []
+                # Apply updates
+                for field, value in updates.items():
+                    if hasattr(message_model, field):
+                        setattr(message_model, field, value)
 
-        for field, value in updates.items():
-            set_clauses.append(f"{field} = %s")
-            params.append(value)
-
-        params.append(message_id)
-        query = f"UPDATE messages SET {', '.join(set_clauses)} WHERE message_id = %s"
-
-        rows_affected = self.execute_query(query, tuple(params), commit=True)
-        return rows_affected > 0
+                # SQLAlchemy will automatically handle the updated_at timestamp
+                session.flush()
+                return True
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to update message {message_id}: {e}")
+                raise
 
     def delete_message(self, message_id: str) -> bool:
-        """Delete a message record"""
-        query = "DELETE FROM messages WHERE message_id = %s"
-        rows_affected = self.execute_query(query, (message_id,), commit=True)
-        return rows_affected > 0
+        """Delete a message record using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                message_model = session.query(MessageRecordModel).filter(
+                    MessageRecordModel.message_id == message_id
+                ).first()
+                
+                if not message_model:
+                    return False
+
+                session.delete(message_model)
+                session.flush()
+                return True
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to delete message {message_id}: {e}")
+                raise
 
     def search_messages(self, search_criteria: Dict) -> List[MessageRecord]:
-        """Search messages based on various criteria"""
-        conditions = []
-        params = []
+        """Search messages based on various criteria using ORM"""
+        with self.connection_manager.session_scope() as session:
+            try:
+                query = session.query(MessageRecordModel)
 
-        for field, value in search_criteria.items():
-            if field == "text_search":
-                conditions.append("(message_subject LIKE %s OR message_text LIKE %s)")
-                search_term = f"%{value}%"
-                params.extend([search_term, search_term])
-            elif field == "date_from":
-                conditions.append("timestamp >= %s")
-                params.append(value)
-            elif field == "date_to":
-                conditions.append("timestamp <= %s")
-                params.append(value)
-            else:
-                conditions.append(f"{field} = %s")
-                params.append(value)
+                for field, value in search_criteria.items():
+                    if field == "text_search":
+                        search_term = f"%{value}%"
+                        query = query.filter(
+                            (MessageRecordModel.message_subject.like(search_term)) |
+                            (MessageRecordModel.message_text.like(search_term))
+                        )
+                    elif field == "date_from":
+                        query = query.filter(MessageRecordModel.timestamp >= value)
+                    elif field == "date_to":
+                        query = query.filter(MessageRecordModel.timestamp <= value)
+                    elif hasattr(MessageRecordModel, field):
+                        query = query.filter(getattr(MessageRecordModel, field) == value)
 
-        query = "SELECT * FROM messages"
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY timestamp DESC"
-
-        results = self.execute_query(query, tuple(params), fetch_all=True)
-        return [MessageRecord(**row) for row in results] if results else []
+                query = query.order_by(MessageRecordModel.timestamp.desc())
+                message_models = query.all()
+                
+                return [model_to_dataclass(model, MessageRecord) for model in message_models]
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to search messages: {e}")
+                raise
 
 
 class MessageFileDAO(BaseDAO):
@@ -574,44 +516,52 @@ class MessageFileDAO(BaseDAO):
 
     def create_file_reference(self, file_ref: MessageFileReference) -> int:
         """Create a new file reference"""
-        query = """
-        INSERT INTO message_file_references (
-            message_id, deposition_data_set_id, content_type, content_format,
-            partition_number, version_id, file_source, upload_file_name,
-            file_path, file_size
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        params = (
-            file_ref.message_id,
-            file_ref.deposition_data_set_id,
-            file_ref.content_type,
-            file_ref.content_format,
-            file_ref.partition_number,
-            file_ref.version_id,
-            file_ref.file_source,
-            file_ref.upload_file_name,
-            file_ref.file_path,
-            file_ref.file_size,
-        )
-        return self.execute_query(query, params, commit=True)
+        with self.connection_manager.session_scope() as session:
+            try:
+                # Convert dataclass to model data
+                model_data = dataclass_to_model_data(file_ref)
+                
+                # Create model instance
+                file_model = MessageFileReferenceModel(**model_data)
+                
+                # Add and flush to get the ID
+                session.add(file_model)
+                session.flush()
+                
+                logger.debug(f"Created file reference with ID: {file_model.id}")
+                return file_model.id
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to create file reference: {e}")
+                raise
 
     def get_file_references_by_message(
         self, message_id: str
     ) -> List[MessageFileReference]:
         """Get all file references for a message"""
-        query = "SELECT * FROM message_file_references WHERE message_id = %s"
-        results = self.execute_query(query, (message_id,), fetch_all=True)
-        return [MessageFileReference(**row) for row in results] if results else []
+        with self.connection_manager.session_scope() as session:
+            try:
+                file_models = session.query(MessageFileReferenceModel).filter(
+                    MessageFileReferenceModel.message_id == message_id
+                ).all()
+                return [model_to_dataclass(model, MessageFileReference) for model in file_models]
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to get file references by message: {e}")
+                raise
 
     def get_file_references_by_deposition(
         self, deposition_id: str
     ) -> List[MessageFileReference]:
         """Get all file references for a deposition"""
-        query = (
-            "SELECT * FROM message_file_references WHERE deposition_data_set_id = %s"
-        )
-        results = self.execute_query(query, (deposition_id,), fetch_all=True)
-        return [MessageFileReference(**row) for row in results] if results else []
+        with self.connection_manager.session_scope() as session:
+            try:
+                file_models = session.query(MessageFileReferenceModel).filter(
+                    MessageFileReferenceModel.deposition_data_set_id == deposition_id
+                ).all()
+                return [model_to_dataclass(model, MessageFileReference) for model in file_models]
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to get file references by deposition: {e}")
+                raise
 
 
 class MessageStatusDAO(BaseDAO):
@@ -619,61 +569,91 @@ class MessageStatusDAO(BaseDAO):
 
     def create_or_update_status(self, status: MessageStatus) -> bool:
         """Create or update message status"""
-        query = """
-        INSERT INTO message_status (
-            message_id, deposition_data_set_id, read_status, action_reqd, for_release
-        ) VALUES (%s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            read_status = VALUES(read_status),
-            action_reqd = VALUES(action_reqd),
-            for_release = VALUES(for_release),
-            updated_at = CURRENT_TIMESTAMP
-        """
-        params = (
-            status.message_id,
-            status.deposition_data_set_id,
-            status.read_status,
-            status.action_reqd,
-            status.for_release,
-        )
-        rows_affected = self.execute_query(query, params, commit=True)
-        return rows_affected > 0
+        with self.connection_manager.session_scope() as session:
+            try:
+                # Check if status already exists
+                existing_status = session.query(MessageStatusModel).filter(
+                    MessageStatusModel.message_id == status.message_id
+                ).first()
+                
+                if existing_status:
+                    # Update existing status
+                    existing_status.read_status = status.read_status
+                    existing_status.action_reqd = status.action_reqd
+                    existing_status.for_release = status.for_release
+                    existing_status.updated_at = datetime.utcnow()
+                else:
+                    # Create new status
+                    model_data = dataclass_to_model_data(status)
+                    status_model = MessageStatusModel(**model_data)
+                    session.add(status_model)
+                
+                session.flush()
+                return True
+                
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to create or update status: {e}")
+                raise
 
     def get_status_by_message(self, message_id: str) -> Optional[MessageStatus]:
         """Get status for a specific message"""
-        query = "SELECT * FROM message_status WHERE message_id = %s"
-        result = self.execute_query(query, (message_id,), fetch_one=True)
-        return MessageStatus(**result) if result else None
+        with self.connection_manager.session_scope() as session:
+            try:
+                status_model = session.query(MessageStatusModel).filter(
+                    MessageStatusModel.message_id == message_id
+                ).first()
+                return model_to_dataclass(status_model, MessageStatus)
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to get status by message: {e}")
+                raise
 
     def get_statuses_by_deposition(self, deposition_id: str) -> List[MessageStatus]:
         """Get all message statuses for a deposition"""
-        query = "SELECT * FROM message_status WHERE deposition_data_set_id = %s"
-        results = self.execute_query(query, (deposition_id,), fetch_all=True)
-        return [MessageStatus(**result) for result in results] if results else []
+        with self.connection_manager.session_scope() as session:
+            try:
+                status_models = session.query(MessageStatusModel).filter(
+                    MessageStatusModel.deposition_data_set_id == deposition_id
+                ).all()
+                return [model_to_dataclass(model, MessageStatus) for model in status_models]
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to get statuses by deposition: {e}")
+                raise
 
     def mark_message_read(self, message_id: str, read_status: str = "Y") -> bool:
         """Mark a message as read/unread"""
-        query = """
-        UPDATE message_status 
-        SET read_status = %s, updated_at = CURRENT_TIMESTAMP 
-        WHERE message_id = %s
-        """
-        rows_affected = self.execute_query(
-            query, (read_status, message_id), commit=True
-        )
-        return rows_affected > 0
+        with self.connection_manager.session_scope() as session:
+            try:
+                status_model = session.query(MessageStatusModel).filter(
+                    MessageStatusModel.message_id == message_id
+                ).first()
+                
+                if status_model:
+                    status_model.read_status = read_status
+                    status_model.updated_at = datetime.utcnow()
+                    session.flush()
+                    return True
+                return False
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to mark message read: {e}")
+                raise
 
     def set_action_required(self, message_id: str, action_reqd: str = "Y") -> bool:
         """Set action required flag for a message"""
-        query = """
-        UPDATE message_status 
-        SET action_reqd = %s, updated_at = CURRENT_TIMESTAMP 
-        WHERE message_id = %s
-        """
-        rows_affected = self.execute_query(
-            query, (action_reqd, message_id), commit=True
-        )
-        return rows_affected > 0
+        with self.connection_manager.session_scope() as session:
+            try:
+                status_model = session.query(MessageStatusModel).filter(
+                    MessageStatusModel.message_id == message_id
+                ).first()
+                
+                if status_model:
+                    status_model.action_reqd = action_reqd
+                    status_model.updated_at = datetime.utcnow()
+                    session.flush()
+                    return True
+                return False
+            except SQLAlchemyError as e:
+                logger.error(f"Failed to set action required: {e}")
+                raise
 
 
 class MessagingDatabaseService:
