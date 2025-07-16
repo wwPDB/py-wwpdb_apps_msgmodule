@@ -1,9 +1,8 @@
 """
 Configuration management for messaging database integration.
 
-This module handles database configuration for the messaging module,
-integrating with the existing wwPDB ConfigInfo system while providing
-fallback mechanisms for development and testing.
+Simple configuration - no dual-mode complexity.
+Either use database OR CIF files, controlled by environment variable.
 """
 
 import os
@@ -13,61 +12,8 @@ from typing import Dict, Optional, Tuple, List, Any
 logger = logging.getLogger(__name__)
 
 
-class DatabaseConfig:
-    """Simple database configuration class for Phase 2 compatibility"""
-
-    def __init__(self):
-        """Initialize database configuration"""
-        self.config = self._load_config()
-
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from environment variables"""
-        return {
-            "enabled": os.getenv("MSGDB_ENABLED", "false").lower() == "true",
-            "host": os.getenv("MSGDB_HOST", "localhost"),
-            "port": int(os.getenv("MSGDB_PORT", "3306")),
-            "database": os.getenv("MSGDB_NAME", "wwpdb_messaging"),
-            "user": os.getenv("MSGDB_USER", "msgdb_user"),
-            "password": os.getenv("MSGDB_PASS", ""),
-            "pool_size": int(os.getenv("MSGDB_POOL_SIZE", "10")),
-            "pool_recycle": int(os.getenv("MSGDB_POOL_RECYCLE", "3600")),
-            "autocommit": True,
-            "charset": "utf8mb4",
-        }
-
-    def is_enabled(self) -> bool:
-        """Check if database is enabled"""
-        return self.config.get("enabled", False)
-
-    def get_config(self) -> Dict[str, Any]:
-        """Get the complete configuration"""
-        return dict(self.config)
-
-    def validate(self) -> Tuple[bool, List[str]]:
-        """Validate the configuration"""
-        errors = []
-
-        if self.is_enabled():
-            if not self.config.get("host"):
-                errors.append("Missing required database configuration: host")
-
-            if not self.config.get("database"):
-                errors.append("Missing required database configuration: database")
-
-            if not self.config.get("user"):
-                errors.append("Missing required database configuration: user")
-
-            if (
-                not isinstance(self.config.get("port"), int)
-                or self.config.get("port") <= 0
-            ):
-                errors.append("Database port must be a positive integer")
-
-        return len(errors) == 0, errors
-
-
 class MessagingDatabaseConfig:
-    """Manages database configuration for the messaging module"""
+    """Simple database configuration for the messaging module"""
 
     def __init__(self, site_id: str = None, config_info=None):
         """
@@ -134,55 +80,92 @@ class MessagingDatabaseConfig:
 
     def _get_config_info_config(self) -> Optional[Dict]:
         """Get configuration from ConfigInfo system"""
+        if not self.config_info:
+            return None
+
         try:
-            # These would be the expected configuration keys in the ConfigInfo system
-            # Adjust these based on actual wwPDB configuration naming conventions
-            config_keys = {
-                "host": "MESSAGING_DB_HOST",
-                "port": "MESSAGING_DB_PORT",
-                "database": "MESSAGING_DB_NAME",
-                "username": "MESSAGING_DB_USER",
-                "password": "MESSAGING_DB_PASSWORD",
-                "charset": "MESSAGING_DB_CHARSET",
-                "pool_size": "MESSAGING_DB_POOL_SIZE",
-                "timeout": "MESSAGING_DB_TIMEOUT",
+            return {
+                "host": self.config_info.get("MESSAGING_DB_HOST"),
+                "port": int(self.config_info.get("MESSAGING_DB_PORT", "3306")),
+                "database": self.config_info.get("MESSAGING_DB_NAME"),
+                "username": self.config_info.get("MESSAGING_DB_USER"),
+                "password": self.config_info.get("MESSAGING_DB_PASS"),
+                "pool_size": int(self.config_info.get("MESSAGING_DB_POOL_SIZE", "10")),
+                "pool_recycle": int(self.config_info.get("MESSAGING_DB_POOL_RECYCLE", "3600")),
+                "charset": "utf8mb4",
             }
-
-            config = {}
-            for key, config_key in config_keys.items():
-                value = self.config_info.get(config_key)
-                if value:
-                    if key in ["port", "pool_size", "timeout"]:
-                        config[key] = int(value)
-                    else:
-                        config[key] = value
-
-            # Check if we have minimum required configuration
-            if all(key in config for key in ["host", "database", "username"]):
-                # Set defaults for optional values
-                config.setdefault("port", 3306)
-                config.setdefault("charset", "utf8mb4")
-                config.setdefault("pool_size", 20)
-                config.setdefault("timeout", 30)
-                config.setdefault("password", "")
-                return config
-
         except Exception as e:
-            logger.warning(f"Could not get database config from ConfigInfo: {e}")
+            logger.error(f"Failed to read database config from ConfigInfo: {e}")
+            return None
+        # Try ConfigInfo system (production)
+        if self.config_info:
+            logger.info("Using database configuration from ConfigInfo")
+            try:
+                config_info_config = self._get_config_info_config()
+                if config_info_config:
+                    config.update(config_info_config)
+                    return config
+            except Exception as e:
+                logger.warning(f"Failed to get configuration from ConfigInfo: {e}")
 
-        return None
+        # Use defaults as fallback
+        logger.info("Using default database configuration")
+        config.update(self._get_default_config())
+        return config
+
+    def _get_env_config(self) -> Optional[Dict]:
+        """Get configuration from environment variables"""
+        # Check if any database env vars are set
+        env_vars = [
+            "MSGDB_HOST", "MSGDB_PORT", "MSGDB_NAME", 
+            "MSGDB_USER", "MSGDB_PASS"
+        ]
+        
+        if not any(os.getenv(var) for var in env_vars):
+            return None
+
+        return {
+            "host": os.getenv("MSGDB_HOST", "localhost"),
+            "port": int(os.getenv("MSGDB_PORT", "3306")),
+            "database": os.getenv("MSGDB_NAME", "wwpdb_messaging"),
+            "username": os.getenv("MSGDB_USER", "msgdb_user"),
+            "password": os.getenv("MSGDB_PASS", ""),
+            "pool_size": int(os.getenv("MSGDB_POOL_SIZE", "10")),
+            "pool_recycle": int(os.getenv("MSGDB_POOL_RECYCLE", "3600")),
+            "charset": "utf8mb4",
+        }
+
+    def _get_config_info_config(self) -> Optional[Dict]:
+        """Get configuration from ConfigInfo system"""
+        if not self.config_info:
+            return None
+
+        try:
+            return {
+                "host": self.config_info.get("MESSAGING_DB_HOST"),
+                "port": int(self.config_info.get("MESSAGING_DB_PORT", "3306")),
+                "database": self.config_info.get("MESSAGING_DB_NAME"),
+                "username": self.config_info.get("MESSAGING_DB_USER"),
+                "password": self.config_info.get("MESSAGING_DB_PASS"),
+                "pool_size": int(self.config_info.get("MESSAGING_DB_POOL_SIZE", "10")),
+                "pool_recycle": int(self.config_info.get("MESSAGING_DB_POOL_RECYCLE", "3600")),
+                "charset": "utf8mb4",
+            }
+        except Exception as e:
+            logger.error(f"Failed to read database config from ConfigInfo: {e}")
+            return None
 
     def _get_default_config(self) -> Dict:
-        """Get fallback default configuration"""
+        """Get default configuration (for development)"""
         return {
             "host": "localhost",
             "port": 3306,
-            "database": "wwpdb_messaging_test",
-            "username": "msgmodule_test",
+            "database": "wwpdb_messaging",
+            "username": "msgdb_user",
             "password": "",
+            "pool_size": 10,
+            "pool_recycle": 3600,
             "charset": "utf8mb4",
-            "pool_size": 5,
-            "timeout": 30,
         }
 
     def validate_config(self, config: Dict) -> bool:
@@ -190,13 +173,14 @@ class MessagingDatabaseConfig:
         Validate database configuration.
 
         Args:
-            config: Database configuration dictionary
+            config: Configuration dictionary to validate
 
         Returns:
             True if configuration is valid
         """
         required_keys = ["host", "port", "database", "username"]
 
+        # Check required keys
         for key in required_keys:
             if key not in config:
                 logger.error(f"Missing required database configuration: {key}")
@@ -213,130 +197,6 @@ class MessagingDatabaseConfig:
                 return False
 
         return True
-
-    def is_database_enabled(self) -> bool:
-        """
-        Check if database storage is enabled.
-
-        Database is automatically enabled if either database writes or reads are enabled.
-        This eliminates the need for a separate MSGDB_ENABLED flag.
-        """
-        # Check if any database operations are enabled via feature flags
-        writes_enabled = self.is_database_writes_enabled()
-        reads_enabled = self.is_database_reads_enabled()
-        
-        if writes_enabled or reads_enabled:
-            return True
-            
-        # Fallback: Check legacy environment variable for backward compatibility
-        env_flag = os.getenv("MSGDB_ENABLED", "").lower()
-        if env_flag in ["true", "1", "yes", "on"]:
-            return True
-        elif env_flag in ["false", "0", "no", "off"]:
-            return False
-
-        # Check ConfigInfo if available
-        if self.config_info:
-            try:
-                config_flag = self.config_info.get("MESSAGING_DB_ENABLED", "false")
-                return str(config_flag).lower() in ["true", "1", "yes", "on"]
-            except Exception:
-                pass
-
-        # Default to disabled for safety
-        return False
-
-    def is_database_writes_enabled(self) -> bool:
-        """
-        Check if database writes are enabled.
-        Separate from general database enabling to allow read-only database mode.
-        """
-        # Check environment variable first
-        env_flag = os.getenv("MSGDB_WRITES_ENABLED", "").lower()
-        if env_flag in ["true", "1", "yes", "on"]:
-            return True
-        elif env_flag in ["false", "0", "no", "off"]:
-            return False
-
-        # Check ConfigInfo if available
-        if self.config_info:
-            try:
-                config_flag = self.config_info.get("MESSAGING_DB_WRITES_ENABLED", "false")
-                return str(config_flag).lower() in ["true", "1", "yes", "on"]
-            except Exception:
-                pass
-
-        # Default to same as general database enabled
-        return self.is_database_enabled()
-
-    def is_database_reads_enabled(self) -> bool:
-        """
-        Check if database reads are enabled.
-        Separate from general database enabling to allow gradual migration.
-        """
-        # Check environment variable first
-        env_flag = os.getenv("MSGDB_READS_ENABLED", "").lower()
-        if env_flag in ["true", "1", "yes", "on"]:
-            return True
-        elif env_flag in ["false", "0", "no", "off"]:
-            return False
-
-        # Check ConfigInfo if available
-        if self.config_info:
-            try:
-                config_flag = self.config_info.get("MESSAGING_DB_READS_ENABLED", "false")
-                return str(config_flag).lower() in ["true", "1", "yes", "on"]
-            except Exception:
-                pass
-
-        # Default to same as general database enabled
-        return self.is_database_enabled()
-
-    def is_cif_writes_enabled(self) -> bool:
-        """
-        Check if CIF writes are enabled.
-        Allows for dual-write scenarios during migration.
-        """
-        # Check environment variable first
-        env_flag = os.getenv("MSGCIF_WRITES_ENABLED", "").lower()
-        if env_flag in ["true", "1", "yes", "on"]:
-            return True
-        elif env_flag in ["false", "0", "no", "off"]:
-            return False
-
-        # Check ConfigInfo if available
-        if self.config_info:
-            try:
-                config_flag = self.config_info.get("MESSAGING_CIF_WRITES_ENABLED", "false")
-                return str(config_flag).lower() in ["true", "1", "yes", "on"]
-            except Exception:
-                pass
-
-        # Default to enabled when database writes are not enabled (for backwards compatibility)
-        return not self.is_database_writes_enabled()
-
-    def is_cif_reads_enabled(self) -> bool:
-        """
-        Check if CIF reads are enabled.
-        Allows for gradual migration from CIF to database.
-        """
-        # Check environment variable first
-        env_flag = os.getenv("MSGCIF_READS_ENABLED", "").lower()
-        if env_flag in ["true", "1", "yes", "on"]:
-            return True
-        elif env_flag in ["false", "0", "no", "off"]:
-            return False
-
-        # Check ConfigInfo if available
-        if self.config_info:
-            try:
-                config_flag = self.config_info.get("MESSAGING_CIF_READS_ENABLED", "false")
-                return str(config_flag).lower() in ["true", "1", "yes", "on"]
-            except Exception:
-                pass
-
-        # Default to enabled when database reads are not enabled (for backwards compatibility)
-        return not self.is_database_reads_enabled()
 
 
 def get_messaging_database_config(site_id: str = None, config_info=None) -> Dict:
@@ -361,74 +221,14 @@ def get_messaging_database_config(site_id: str = None, config_info=None) -> Dict
 
 def is_messaging_database_enabled(site_id: str = None, config_info=None) -> bool:
     """
-    Convenience function to check if messaging database is enabled.
-
+    Check if database backend is enabled via environment variable.
+    
     Args:
-        site_id: Site identifier
-        config_info: ConfigInfo instance
-
+        site_id: Site identifier (ignored in simplified version)
+        config_info: ConfigInfo instance (ignored in simplified version)
+        
     Returns:
-        True if database storage is enabled
+        True if database backend is enabled, False otherwise
     """
-    db_config = MessagingDatabaseConfig(site_id, config_info)
-    return db_config.is_database_enabled()
-
-
-def is_messaging_database_writes_enabled(site_id: str = None, config_info=None) -> bool:
-    """
-    Convenience function to check if messaging database writes are enabled.
-
-    Args:
-        site_id: Site identifier
-        config_info: ConfigInfo instance
-
-    Returns:
-        True if database writes are enabled
-    """
-    db_config = MessagingDatabaseConfig(site_id, config_info)
-    return db_config.is_database_writes_enabled()
-
-
-def is_messaging_database_reads_enabled(site_id: str = None, config_info=None) -> bool:
-    """
-    Convenience function to check if messaging database reads are enabled.
-
-    Args:
-        site_id: Site identifier
-        config_info: ConfigInfo instance
-
-    Returns:
-        True if database reads are enabled
-    """
-    db_config = MessagingDatabaseConfig(site_id, config_info)
-    return db_config.is_database_reads_enabled()
-
-
-def is_messaging_cif_writes_enabled(site_id: str = None, config_info=None) -> bool:
-    """
-    Convenience function to check if messaging CIF writes are enabled.
-
-    Args:
-        site_id: Site identifier
-        config_info: ConfigInfo instance
-
-    Returns:
-        True if CIF writes are enabled
-    """
-    db_config = MessagingDatabaseConfig(site_id, config_info)
-    return db_config.is_cif_writes_enabled()
-
-
-def is_messaging_cif_reads_enabled(site_id: str = None, config_info=None) -> bool:
-    """
-    Convenience function to check if messaging CIF reads are enabled.
-
-    Args:
-        site_id: Site identifier
-        config_info: ConfigInfo instance
-
-    Returns:
-        True if CIF reads are enabled
-    """
-    db_config = MessagingDatabaseConfig(site_id, config_info)
-    return db_config.is_cif_reads_enabled()
+    backend = os.environ.get("WWPDB_MESSAGING_BACKEND", "cif").lower().strip()
+    return backend == "database"
