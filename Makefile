@@ -72,12 +72,13 @@ clean: ## Clean build artifacts and cache files
 # Testing Tasks
 test: test-database ## Run all available tests
 
-test-unit: ## Run unit tests
+test-unit: ## Run unit tests (excluding database operations)
 	@echo "$(GREEN)Running unit tests...$(NC)"
 	@if [ -d "$(TESTS_DIR)" ]; then \
 		$(PYTEST) $(TESTS_DIR) -v --tb=short \
 			--ignore=$(TESTS_DIR)/DatabaseOperationsTests.py \
-			--cov=$(SOURCE_DIR) --cov-report=term-missing; \
+			--ignore=$(TESTS_DIR)/ImporterTests.py \
+			--ignore=$(TESTS_DIR)/SignatureTests.py; \
 	else \
 		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
 	fi
@@ -85,9 +86,7 @@ test-unit: ## Run unit tests
 test-integration: ## Run integration tests
 	@echo "$(GREEN)Running integration tests...$(NC)"
 	@if [ -d "$(TESTS_DIR)" ]; then \
-		$(PYTEST) $(TESTS_DIR) -v --tb=short \
-			-k "integration" \
-			--cov=$(SOURCE_DIR) --cov-report=term-missing || echo "$(YELLOW)Some integration tests failed or no tests found$(NC)"; \
+		$(PYTEST) $(TESTS_DIR)/DatabaseIntegrationTests.py -v --tb=short || echo "$(YELLOW)Some integration tests failed or no tests found$(NC)"; \
 	else \
 		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
 	fi

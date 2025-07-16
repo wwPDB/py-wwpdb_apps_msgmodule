@@ -184,11 +184,16 @@ messages = messaging.get(deposition_id="D_1234567890")
 ### Testing
 
 ```bash
-make test              # Run all tests
-make test-unit         # Run unit tests only
-make test-integration  # Run integration tests only  
+make test              # Run all tests (currently database operations only)
+make test-unit         # Run unit tests (DateUtil, ExtractMessage, etc.)
+make test-integration  # Run integration tests (DatabaseIntegration)  
 make test-database     # Run database operations tests only
 ```
+
+**Test Coverage:**
+- **Database operations**: 9 tests (core database functionality)
+- **Unit tests**: 21 tests (utilities, data models, message extraction)
+- **Integration tests**: 6 tests (database configuration and data models)
 
 ### Validation
 
