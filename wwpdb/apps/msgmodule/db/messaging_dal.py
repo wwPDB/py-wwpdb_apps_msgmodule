@@ -2,241 +2,26 @@
 Database Access Layer (DAL) for wwPDB Communication Module
 
 This module provides database-agnostic abstraction for message storage,
-supporting multiple database backends. Now uses SQLAlchemy ORM for better 
+supporting multiple database backends. Uses SQLAlchemy ORM for better 
 maintainability and type safety while maintaining the original interface.
 """
 
 import logging
-import time
-from typing import List, Dict, Optional, Tuple, Any
-from dataclasses import dataclass
+from typing import List, Dict, Optional, Any
 from datetime import datetime
-from abc import ABC, abstractmethod
 from contextlib import contextmanager
 
 # SQLAlchemy imports
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, Session
-from sqlalchemy.sql import func
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 
+# Import models and utilities from models module
+from ..models.DatabaseModels import Base, MessageRecordModel, MessageFileReferenceModel, MessageStatusModel
+from ..models.DataModels import MessageRecord, MessageFileReference, MessageStatus
+from ..models.ModelUtils import model_to_dataclass, dataclass_to_model_data, dataclass_to_model
+
 logger = logging.getLogger(__name__)
-
-# Create SQLAlchemy base
-Base = declarative_base()
-
-
-# SQLAlchemy Models (replacing raw SQL)
-class MessageRecordModel(Base):
-    """SQLAlchemy model for message records"""
-    __tablename__ = 'messages'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    message_id = Column(String(255), unique=True, nullable=False, index=True)
-    deposition_data_set_id = Column(String(50), nullable=False, index=True)
-    group_id = Column(String(50), nullable=True)
-    timestamp = Column(DateTime, nullable=False, index=True)
-    sender = Column(String(100), nullable=False, index=True)
-    recipient = Column(String(100), nullable=True)
-    context_type = Column(String(50), nullable=True, index=True)
-    context_value = Column(String(255), nullable=True)
-    parent_message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=True, index=True)
-    message_subject = Column(Text, nullable=False)
-    message_text = Column(Text, nullable=False)
-    message_type = Column(String(20), nullable=True, default='text')
-    send_status = Column(CHAR(1), nullable=True, default='Y')
-    content_type = Column(String(20), nullable=False, default='msgs', index=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp(), index=True)
-    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
-    
-    # Relationships
-    status = relationship("MessageStatusModel", back_populates="message", uselist=False, cascade="all, delete-orphan")
-    file_references = relationship("MessageFileReferenceModel", back_populates="message", cascade="all, delete-orphan")
-
-class MessageFileReferenceModel(Base):
-    """SQLAlchemy model for message file references"""
-    __tablename__ = 'message_file_references'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=False, index=True)
-    deposition_data_set_id = Column(String(50), nullable=False, index=True)
-    content_type = Column(String(50), nullable=False, index=True)
-    content_format = Column(String(20), nullable=False)
-    partition_number = Column(Integer, nullable=True, default=1)
-    version_id = Column(Integer, nullable=True, default=1)
-    file_source = Column(String(20), nullable=True, default='archive', index=True)
-    upload_file_name = Column(String(255), nullable=True)
-    file_path = Column(Text, nullable=True)
-    file_size = Column(Integer, nullable=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
-    
-    # Relationships
-    message = relationship("MessageRecordModel", back_populates="file_references")
-
-class MessageStatusModel(Base):
-    """SQLAlchemy model for message status"""
-    __tablename__ = 'message_status'
-    
-    message_id = Column(String(255), ForeignKey('messages.message_id'), primary_key=True)
-    deposition_data_set_id = Column(String(50), nullable=False, index=True)
-    read_status = Column(CHAR(1), nullable=True, default='N', index=True)
-    action_reqd = Column(CHAR(1), nullable=True, default='N', index=True)
-    for_release = Column(CHAR(1), nullable=True, default='N', index=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
-    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
-    
-    # Relationships
-    message = relationship("MessageRecordModel", back_populates="status")
-
-
-@dataclass
-class MessageRecord:
-    """Data class representing a message record (keeping original interface)"""
-
-    id: Optional[int] = None
-    message_id: str = ""
-    deposition_data_set_id: str = ""
-    group_id: Optional[str] = None
-    timestamp: datetime = None
-    sender: str = ""
-    recipient: Optional[str] = None
-    context_type: Optional[str] = None
-    context_value: Optional[str] = None
-    parent_message_id: Optional[str] = None
-    message_subject: str = ""
-    message_text: str = ""
-    message_type: str = "text"
-    send_status: str = "Y"
-    content_type: str = "msgs"  # 'msgs' or 'notes'
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    # Add property aliases for compatibility with Message class interface
-    @property
-    def messageId(self):
-        return self.message_id
-
-    @property
-    def depositionId(self):
-        return self.deposition_data_set_id
-
-    @property
-    def groupId(self):
-        return self.group_id
-
-    @property
-    def messageSubject(self):
-        return self.message_subject
-
-    @property
-    def messageText(self):
-        return self.message_text
-
-    @property
-    def messageType(self):
-        return self.message_type
-
-    @property
-    def sendStatus(self):
-        return self.send_status
-
-    @property
-    def contentType(self):
-        return self.content_type
-
-    @property
-    def parentMessageId(self):
-        return self.parent_message_id
-
-    @property
-    def contextType(self):
-        return self.context_type
-
-    @property
-    def contextValue(self):
-        return self.context_value
-
-
-@dataclass
-class MessageFileReference:
-    """Data class representing a file reference"""
-
-    id: Optional[int] = None
-    message_id: str = ""
-    deposition_data_set_id: str = ""
-    content_type: str = ""
-    content_format: str = ""
-    partition_number: int = 1
-    version_id: int = 1
-    file_source: str = "archive"
-    upload_file_name: Optional[str] = None
-    file_path: Optional[str] = None
-    file_size: Optional[int] = None
-    created_at: Optional[datetime] = None
-
-    # Aliases for compatibility
-    @property
-    def depositionId(self):
-        return self.deposition_data_set_id
-
-    @property
-    def contentType(self):
-        return self.content_type
-
-    @property
-    def contentFormat(self):
-        return self.content_format
-
-    @property
-    def fileSource(self):
-        return self.file_source
-
-    @property
-    def uploadFileName(self):
-        return self.upload_file_name
-
-    @property
-    def filePath(self):
-        return self.file_path
-
-    @property
-    def fileSize(self):
-        return self.file_size
-
-
-@dataclass
-class MessageStatus:
-    """Data class representing message status"""
-
-    message_id: str = ""
-    deposition_data_set_id: str = ""
-    read_status: str = "N"
-    action_reqd: str = "N"
-    for_release: str = "N"
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    # Aliases for compatibility
-    @property
-    def messageId(self):
-        return self.message_id
-
-    @property
-    def depositionId(self):
-        return self.deposition_data_set_id
-
-    @property
-    def readStatus(self):
-        return self.read_status
-
-    @property
-    def actionReqd(self):
-        return self.action_reqd
-
-    @property
-    def forRelease(self):
-        return self.for_release
 
 
 class DatabaseConnectionManager:
@@ -327,42 +112,6 @@ class DatabaseConnectionManager:
         except Exception as e:
             logger.error(f"Failed to create database tables: {e}")
             raise
-
-
-# Helper functions for ORM conversion
-def model_to_dataclass(model_instance, dataclass_type):
-    """Convert SQLAlchemy model instance to dataclass"""
-    if not model_instance:
-        return None
-    
-    # Get all fields from the dataclass
-    model_data = {}
-    for field_name in dataclass_type.__dataclass_fields__.keys():
-        if hasattr(model_instance, field_name):
-            model_data[field_name] = getattr(model_instance, field_name)
-    
-    return dataclass_type(**model_data)
-
-def dataclass_to_model_data(dataclass_instance):
-    """Convert dataclass to dict for model creation"""
-    # Exclude None/empty id fields for auto-increment
-    data = {}
-    for field, value in dataclass_instance.__dict__.items():
-        if field == 'id' and (value is None or value == 0):
-            continue
-        data[field] = value
-    return data
-
-def dataclass_to_model(dataclass_instance, model_class):
-    """Convert dataclass to SQLAlchemy model instance"""
-    data = {}
-    for field, value in dataclass_instance.__dict__.items():
-        if field == 'id' and (value is None or value == 0):
-            continue
-        if hasattr(model_class, field):
-            data[field] = value
-    return model_class(**data)
-
 
 class BaseDAO:
     """Base Data Access Object with SQLAlchemy ORM functionality"""
