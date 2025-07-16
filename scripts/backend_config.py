@@ -7,13 +7,13 @@ No more complex dual-mode configuration - just a single environment variable!
 
 Usage:
     # Use CIF files (default)
-    python simple_backend_config.py cif
+    python scripts/backend_config.py cif
     
     # Use database
-    python simple_backend_config.py database
+    python scripts/backend_config.py database
     
     # Show current status
-    python simple_backend_config.py status
+    python scripts/backend_config.py status
 """
 
 import os
