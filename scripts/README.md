@@ -1,10 +1,10 @@
-# Scripts Directory - Database Operations
+# Scripts Directory - Essential Operations
 
-This directory contains essential scripts for the wwPDB Communication Module database operations.
+This directory contains essential scripts for the wwPDB Communication Module.
 
 ## Available Scripts
 
-### Production Scripts
+### Core Operations
 
 #### `init_messaging_database.py`
 
@@ -41,64 +41,54 @@ python scripts/migrate_cif_to_db.py --batch --limit 100
 - Incremental migration of specific depositions
 - Data recovery and synchronization
 
-#### `validate_integration.py`
+## Backend Configuration
 
-**Purpose**: Validate database operations integration
-
-**Usage**:
+No additional scripts needed! Backend selection is now controlled by a single environment variable:
 
 ```bash
-python scripts/validate_integration.py
+# Use CIF files (default)
+export WWPDB_MESSAGING_BACKEND=cif
+
+# Use database backend  
+export WWPDB_MESSAGING_BACKEND=database
 ```
-
-**When to use**:
-
-- Pre-deployment validation
-- Post-deployment verification
-- Continuous monitoring and health checks
-- Troubleshooting integration issues
-
-### Utility Scripts
-
-#### `makefile_utils.py`
-
-**Purpose**: Utilities for Makefile operations and system health checks
-
-**Usage**: Typically called from Makefile targets
-
-```bash
-make health    # Uses this script for health reporting
-make status    # Uses this script for system status
-```
-
-**When to use**:
-
-- Automated health checks
-- Build system operations
-- System status reporting
 
 ## Environment Configuration
 
-All scripts respect standard environment variables:
+The scripts respect standard database environment variables:
 
-- `MSGDB_ENABLED`: Enable/disable database operations
 - `MSGDB_HOST`: Database host
-- `MSGDB_PORT`: Database port
+- `MSGDB_PORT`: Database port  
 - `MSGDB_NAME`: Database name
 - `MSGDB_USER`: Database user
 - `MSGDB_PASS`: Database password
 
-## Integration with Makefile
+## Script Integration
 
-Scripts are integrated with the Makefile system:
+Both scripts work seamlessly with the simplified messaging architecture:
 
-- `make health`: System health check using makefile_utils.py
-- `make validate-integration`: Integration validation using validate_integration.py
-- Database initialization and migration can be added as Makefile targets
+- **Database initialization** sets up the schema for database operations
+- **Migration script** moves data from CIF files to database storage
+- **Backend selection** happens automatically via `WWPDB_MESSAGING_BACKEND`
 
-## Backend Selection in Scripts
+## Quick Start
 
-All scripts now use the simplified backend selection logic via the messaging factory. The backend (CIF or database) is chosen at runtime based on a single environment variable:
+1. **Initialize database** (first time setup):
+   ```bash
+   python scripts/init_messaging_database.py
+   ```
+
+2. **Migrate existing data** (optional):
+   ```bash
+   python scripts/migrate_cif_to_db.py --batch
+   ```
+
+3. **Switch to database backend**:
+   ```bash
+   export WWPDB_MESSAGING_BACKEND=database
+   ```
+
+That's it! The system will now use the database for all messaging operations.
 
 ### Configuration
 
@@ -112,31 +102,11 @@ All scripts now use the simplified backend selection logic via the messaging fac
 
 **Always use the factory pattern through `MessagingFactory.create_messaging_service()` or `create_messaging_service()` - direct instantiation of MessagingDb/MessagingIo is discouraged.**
 
-## Migration Support Scripts
-
-The simplified architecture supports clean migration with these helper scripts:
-
-- **`backend_config.py`** - Configure backend modes and show current status  
-- **`makefile_utils.py`** - Enhanced to show backend configuration and health
-- **`validate_integration.py`** - Validates all backend modes and configurations
-
-### Quick Backend Configuration
-
-```bash
-# Show current backend configuration
-python scripts/backend_config.py status
-
-# Configure backend modes
-python scripts/backend_config.py cif       # Use CIF files
-python scripts/backend_config.py database  # Use database
-```
-
 ## Troubleshooting
 
-- Use `python scripts/backend_config.py show` to see current configuration
-- Use `make backend-info` or `make backend-status` to check Makefile integration
-- Use the `--verbose` flag on scripts to see backend selection details
-- Check that the WWPDB_MESSAGING_BACKEND environment variable is set correctly
+- Check that the `WWPDB_MESSAGING_BACKEND` environment variable is set correctly
+- Use the `--verbose` flag on scripts to see detailed output
+- Monitor script logs for errors during database operations
 
 ## Best Practices
 

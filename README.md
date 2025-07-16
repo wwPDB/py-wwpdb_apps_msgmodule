@@ -2,19 +2,19 @@
 
 # wwPDB Communication Module
 
-OneDep Messaging Application with database-primary operations for efficient message handling and storage.
+OneDep Messaging Application with dual backend support for efficient message handling and storage.
 
 ## Overview
 
-The wwPDB Communication Module provides messaging capabilities for the OneDep deposition and annotation system. This implementation features a clean, database-primary architecture with minimal complexity and maximum maintainability.
+The wwPDB Communication Module provides messaging capabilities for the OneDep deposition and annotation system. This implementation features a clean, dual-backend architecture with minimal complexity and maximum maintainability.
 
 ### Key Features
 
 - **Simple Backend Selection**: Clean choice between CIF and database storage
-- **Gradual Migration Support**: Easy migration from CIF to database with single environment variable
-- **Intelligent Backend Selection**: Configuration-driven backend selection with factory pattern
+- **Easy Migration Support**: Migration from CIF to database with single environment variable
+- **Factory Pattern**: Configuration-driven backend selection
 - **Production-Ready**: Robust configuration, clean error handling, and comprehensive validation
-- **Migration Tools**: Complete CIF-to-database migration and validation utilities
+- **Migration Tools**: Complete CIF-to-database migration utilities
 
 ## Architecture
 
@@ -60,7 +60,7 @@ unset WWPDB_MESSAGING_BACKEND
 
 ### Migration Steps
 
-#### Phase 1: Test Database Backend
+#### Test Environment Setup
 ```bash
 # In test environment
 export WWPDB_MESSAGING_BACKEND=database
@@ -69,7 +69,7 @@ export MSGDB_NAME=wwpdb_messaging_test
 # Test and validate database operations
 ```
 
-#### Phase 2: Production Deployment
+#### Production Deployment
 ```bash
 # In production when ready
 export WWPDB_MESSAGING_BACKEND=database
@@ -78,7 +78,7 @@ export MSGDB_NAME=wwpdb_messaging
 # Full database operations
 ```
 
-#### Phase 3: Rollback (if needed)
+#### Rollback (if needed)
 ```bash
 # Immediate rollback to CIF files
 unset WWPDB_MESSAGING_BACKEND
@@ -90,34 +90,18 @@ export WWPDB_MESSAGING_BACKEND=cif
 
 ```bash
 # Show current configuration
-make backend-info
+make backend-status
 
-# Configure specific modes
-make backend-cif-only              # CIF-only mode
-make backend-db-only               # Database-only mode  
-make backend-status                # Show current backend configuration
+# Initialize database (first time)
+make init-database
 
-# Migration helpers
-make migration-phase-1             # Start Phase 1
-make migration-phase-2             # Start Phase 2
-make migration-phase-3             # Start Phase 3
+# Migrate existing data
+make migrate-data
 
-# Show migration guide
-make backend-migration-guide
-```
-
-### Backend Configuration
-
-```bash
-# Show current configuration
-make backend-info                    # Show detailed backend configuration
-make backend-status                  # Show current backend status  
-make health                         # Check system health
-
-# Configure backend modes
-make backend-cif-only               # Configure CIF-only mode
-make backend-db-only                # Configure database-only mode
-
+# Development workflow
+make dev-setup                     # Setup development environment
+make test                         # Run all tests
+make validate                     # Run validations
 ```
 
 **All messaging operations use the factory entry point:**
@@ -131,9 +115,9 @@ messaging = create_messaging_service(req_obj, verbose=True)
 
 ## Troubleshooting Backend Selection
 
-- Use `make backend-info` to see current configuration
-- Use `MessagingFactory.get_backend_info(req_obj)` to debug backend selection
-- Check that WWPDB_MESSAGING_BACKEND environment variable is set correctly
+- Use `make backend-status` to see current configuration
+- Check that `WWPDB_MESSAGING_BACKEND` environment variable is set correctly
+- Use `MessagingFactory.create_messaging_service()` for consistent backend selection
 
 ## Quick Start
 
@@ -200,20 +184,16 @@ messages = messaging.get(deposition_id="D_1234567890")
 ### Testing
 
 ```bash
-make test              # Run all database and integration tests
-make test-unit         # Run unit tests only (excluding database tests)
-make test-integration  # Run integration tests only
+make test              # Run all tests
+make test-unit         # Run unit tests only
+make test-integration  # Run integration tests only  
 make test-database     # Run database operations tests only
-make test-coverage     # Generate test coverage report
-make test-tox          # Run tests across multiple Python versions
 ```
 
 ### Validation
 
 ```bash
-make validate              # Run integration validation, lint, and security checks
-make validate-integration  # Run only integration validation
-make validate-config       # Validate configuration files
+make validate          # Run validation checks
 ```
 
 ### Development
@@ -223,9 +203,6 @@ make lint           # Run code linting (pylint, flake8)
 make format         # Format code with black
 make check-format   # Check code formatting without making changes
 make security       # Run security checks (safety, bandit)
-make docs           # Generate documentation
-make serve-docs     # Serve documentation locally (if using mkdocs)
-make docs-check     # Check documentation for issues
 ```
 
 ### Deployment
@@ -233,23 +210,7 @@ make docs-check     # Check documentation for issues
 ```bash
 make deploy             # Deploy to environment (ENV=development|staging|production)
 make deploy-dev         # Deploy to development environment
-make deploy-staging     # Deploy to staging environment
 make deploy-production  # Deploy to production environment
-```
-
-### Monitoring and Health
-
-```bash
-make health    # System health check
-make status    # Show current system status
-make monitor   # Start monitoring (placeholder)
-```
-
-### Backup and Restore
-
-```bash
-make backup                # Create backup of configuration and data
-make restore BACKUP=dir    # Restore from backup directory
 ```
 
 ### Development Workflow
@@ -258,20 +219,6 @@ make restore BACKUP=dir    # Restore from backup directory
 make dev-setup     # Setup complete development environment
 make dev-test      # Quick development test cycle
 make dev-commit    # Run checks before committing
-```
-
-### CI/CD
-
-```bash
-make ci-test    # Run CI test pipeline
-make ci-deploy  # Run CI deployment pipeline
-```
-
-### Troubleshooting
-
-```bash
-make troubleshoot   # Show troubleshooting information
-make logs           # Show recent logs
 ```
 
 ## Project Structure
@@ -290,11 +237,9 @@ wwpdb/apps/msgmodule/
 ├── webapp/                # Web application components
 └── depict/               # Message rendering and templates
 
-scripts/                   # Operational scripts
+scripts/                   # Essential operational scripts
 ├── init_messaging_database.py
-├── migrate_cif_to_db.py
-├── validate_integration.py
-└── makefile_utils.py
+└── migrate_cif_to_db.py
 
 wwpdb/apps/tests-msgmodule/ # Test suite
 ```
@@ -314,32 +259,18 @@ python scripts/migrate_cif_to_db.py --depositions-file deposition_list.txt
 python scripts/migrate_cif_to_db.py --directory /path/to/cif/files
 ```
 
-## Monitoring and Health Checks
-
-### Built-in Health Check
+## Validation and Testing
 
 ```bash
-make health    # System health check
-```
-
-Provides real-time status on:
-
-- Backend configuration status
-- Database connectivity (when using database backend)
-- System resource utilization
-
-### Integration Validation
-
-```bash
-python scripts/validate_integration.py
+make test
 ```
 
 Validates:
 
-- Database backend functionality
-- CIF backend availability
+- Database backend functionality  
+- CIF backend functionality
 - Backend selection logic
-- Test suite execution
+- Complete test suite execution
 
 ## Production Deployment
 
