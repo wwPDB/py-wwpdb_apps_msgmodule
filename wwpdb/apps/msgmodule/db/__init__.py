@@ -29,9 +29,6 @@ from ..models.DataModels import (
 # Database Backend Implementation
 from .MessagingDb import MessagingDb
 
-# Bridge for Message model compatibility
-from .message_bridge import MessageModelBridge
-
 __all__ = [
     # Configuration
     "MessagingDatabaseConfig",
@@ -47,7 +44,4 @@ __all__ = [
     
     # Database Backend
     "MessagingDb",
-    
-    # Model Bridge
-    "MessageModelBridge",
 ]
