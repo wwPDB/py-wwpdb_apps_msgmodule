@@ -13,17 +13,18 @@ from .config import (
     is_messaging_database_enabled,
 )
 
-# Data Access Layer (with your SQLAlchemy ORM)
+# Data Access Layer (with SQLAlchemy ORM)
 from .messaging_dal import (
     MessagingDatabaseService,
     DatabaseConnectionManager,
 )
 
-# Import data models from models module for backward compatibility
-from ..models.DataModels import (
-    MessageRecord,
-    MessageFileReference,
-    MessageStatus,
+# Import SQLAlchemy models directly
+from ..models.DatabaseModels import (
+    Base,
+    MessageRecordModel,
+    MessageFileReferenceModel,
+    MessageStatusModel,
 )
 
 # Database Backend Implementation
@@ -37,10 +38,13 @@ __all__ = [
     
     # Data Access Layer (SQLAlchemy ORM)
     "MessagingDatabaseService",
-    "MessageRecord",
-    "MessageFileReference", 
-    "MessageStatus",
     "DatabaseConnectionManager",
+    
+    # SQLAlchemy Models
+    "Base",
+    "MessageRecordModel",
+    "MessageFileReferenceModel", 
+    "MessageStatusModel",
     
     # Database Backend
     "MessagingDb",

@@ -16,11 +16,13 @@ from typing import List, Dict, Optional, Tuple
 # Import the new database layer
 from wwpdb.apps.msgmodule.db import (
     MessagingDatabaseService,
-    MessageRecord,
-    MessageStatus,
-    MessageFileReference,
     get_messaging_database_config,
     is_messaging_database_enabled,
+)
+from wwpdb.apps.msgmodule.models.DatabaseModels import (
+    MessageRecordModel,
+    MessageStatusModel,
+    MessageFileReferenceModel,
 )
 
 # Existing imports (unchanged)
@@ -113,19 +115,38 @@ class MessagingDb:
     def __processMsg_database(self, p_msgObj):
         """Process message using database storage"""
         try:
-            # Extract message data from message object
-            message_data = self.__extract_message_data(p_msgObj)
-
-            # Create database records
-            message_record = MessageRecord(**message_data["message"])
-            status_record = (
-                MessageStatus(**message_data["status"])
-                if message_data["status"]
-                else None
-            )
-            file_references = [
-                MessageFileReference(**fr) for fr in message_data["file_references"]
-            ]
+            # Create database records directly from message object
+            message_record = MessageRecordModel.from_message_obj(p_msgObj)
+            
+            # Create status record if needed
+            status_record = None
+            if hasattr(p_msgObj, 'isBeingSent') and p_msgObj.isBeingSent:
+                status_record = MessageStatusModel(
+                    message_id=message_record.message_id,
+                    deposition_data_set_id=message_record.deposition_data_set_id,
+                    read_status="N",
+                    action_reqd="Y" if hasattr(p_msgObj, 'actionRequired') and p_msgObj.actionRequired else "N",
+                    for_release="N"
+                )
+            
+            # Create file reference records from file reference data
+            file_references = []
+            if hasattr(p_msgObj, 'fileReferences') and p_msgObj.fileReferences:
+                for file_ref in p_msgObj.fileReferences:
+                    if isinstance(file_ref, dict):
+                        file_record = MessageFileReferenceModel(
+                            message_id=message_record.message_id,
+                            deposition_data_set_id=message_record.deposition_data_set_id,
+                            content_type=file_ref.get("content_type", ""),
+                            content_format=file_ref.get("content_format", ""),
+                            partition_number=file_ref.get("partition_number", 1),
+                            version_id=file_ref.get("version_id", 1),
+                            file_source=file_ref.get("file_source", "archive"),
+                            upload_file_name=file_ref.get("upload_file_name"),
+                            file_path=file_ref.get("file_path"),
+                            file_size=file_ref.get("file_size")
+                        )
+                        file_references.append(file_record)
 
             # Handle file references (still need to copy files for attachments)
             bSuccess, msgFileRefs, failedFileRefs = self.__handleFileReferences(
