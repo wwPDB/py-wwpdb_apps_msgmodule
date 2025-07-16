@@ -102,6 +102,7 @@ class TestDataModels(unittest.TestCase):
             message_subject="Test Subject",
             message_text="Test message content",
             content_type="msgs",
+            send_status="Y",  # Explicitly set for test
         )
 
         self.assertEqual(message.message_id, "test-msg-001")
@@ -132,10 +133,10 @@ class TestDataModels(unittest.TestCase):
         self.assertEqual(status.for_release, "Y")
 
     def test_message_file_reference_creation(self):
-        """Test MessageFileReference data model"""
-        from wwpdb.apps.msgmodule.db import MessageFileReference
+        """Test FileReference data model"""
+        from wwpdb.apps.msgmodule.db import FileReference
 
-        file_ref = MessageFileReference(
+        file_ref = FileReference(
             message_id="test-msg-001",
             deposition_data_set_id="D_1000000001",
             content_type="validation-report",
