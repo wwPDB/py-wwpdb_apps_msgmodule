@@ -42,7 +42,7 @@ class MessagingFactory:
                 if verbose:
                     logger.info("�️ SELECTED: Database backend (MessagingDb)")
                 
-                from wwpdb.apps.msgmodule.io.MessagingDb import MessagingDb
+                from wwpdb.apps.msgmodule.db.MessagingDb import MessagingDb
                 return MessagingDb(req_obj, verbose=verbose, log=log)
             
             else:
