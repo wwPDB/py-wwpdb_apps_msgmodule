@@ -53,3 +53,9 @@ zip-safe = false
 [tool.setuptools_scm]
 # Uncomment to write version to a file
 # write_to = "wwpdb/apps/msgmodule/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = ["wwpdb/apps/tests-msgmodule"]
+python_files = ["*Tests.py", "test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
