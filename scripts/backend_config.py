@@ -1,186 +1,130 @@
 #!/usr/bin/env python3
 """
-Backend configuration utility for dual-mode messaging system.
+Simple Backend Configuration Script
+
+This script shows how to configure the simplified messaging backend system.
+No more complex dual-mode configuration - just a single environment variable!
+
+Usage:
+    # Use CIF files (default)
+    python simple_backend_config.py cif
+    
+    # Use database
+    python simple_backend_config.py database
+    
+    # Show current status
+    python simple_backend_config.py status
 """
 
 import os
 import sys
+from pathlib import Path
 
-# Add project root to path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
-
-
-def set_cif_only_mode():
-    """Configure CIF-only mode"""
-    print("🔧 Configuring CIF-only mode...")
-    
-    # Clear all dual-mode flags
-    for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                 "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-        if flag in os.environ:
-            del os.environ[flag]
-    
-    # Set CIF-only flags
-    os.environ["MSGCIF_WRITES_ENABLED"] = "true"
-    os.environ["MSGCIF_READS_ENABLED"] = "true"
-    
-    print("✅ CIF-only mode configured")
-    show_current_config()
+# Add project to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
 
-def set_db_only_mode():
-    """Configure database-only mode"""
-    print("🔧 Configuring database-only mode...")
+def set_backend_mode(mode: str):
+    """Set the backend mode via environment variable"""
+    if mode.lower() not in ["cif", "database"]:
+        print(f"❌ Invalid mode '{mode}'. Must be 'cif' or 'database'")
+        return False
     
-    # Clear all dual-mode flags
-    for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                 "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-        if flag in os.environ:
-            del os.environ[flag]
+    if mode.lower() == "cif":
+        # Remove the environment variable to use default CIF mode
+        if "WWPDB_MESSAGING_BACKEND" in os.environ:
+            del os.environ["WWPDB_MESSAGING_BACKEND"]
+        print("✅ Backend set to CIF mode (default)")
+        print("   - Messages will be stored in CIF files")
+        print("   - This is the traditional legacy mode")
+    else:
+        # Set environment variable for database mode
+        os.environ["WWPDB_MESSAGING_BACKEND"] = "database"
+        print("✅ Backend set to database mode")
+        print("   - Messages will be stored in the database")
+        print("   - Requires database configuration")
     
-    # Set database-only flags
-    os.environ["MSGDB_WRITES_ENABLED"] = "true"
-    os.environ["MSGDB_READS_ENABLED"] = "true"
-    
-    print("✅ Database-only mode configured")
-    show_current_config()
+    return True
 
 
-def set_dual_write_cif_read():
-    """Configure dual-write, CIF-read mode (Migration Phase 1)"""
-    print("🔧 Configuring dual-write, CIF-read mode (Migration Phase 1)...")
-    
-    # Clear all dual-mode flags
-    for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                 "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-        if flag in os.environ:
-            del os.environ[flag]
-    
-    # Set dual-write, CIF-read flags
-    os.environ["MSGDB_WRITES_ENABLED"] = "true"
-    os.environ["MSGCIF_WRITES_ENABLED"] = "true"
-    os.environ["MSGCIF_READS_ENABLED"] = "true"
-    
-    print("✅ Dual-write, CIF-read mode configured")
-    show_current_config()
-
-
-def set_dual_write_db_read():
-    """Configure dual-write, DB-read mode (Migration Phase 2)"""
-    print("🔧 Configuring dual-write, DB-read mode (Migration Phase 2)...")
-    
-    # Clear all dual-mode flags
-    for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                 "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-        if flag in os.environ:
-            del os.environ[flag]
-    
-    # Set dual-write, DB-read flags
-    os.environ["MSGDB_WRITES_ENABLED"] = "true"
-    os.environ["MSGDB_READS_ENABLED"] = "true"
-    os.environ["MSGCIF_WRITES_ENABLED"] = "true"
-    
-    print("✅ Dual-write, DB-read mode configured")
-    show_current_config()
-
-
-def show_current_config():
+def show_status():
     """Show current backend configuration"""
+    current_mode = os.environ.get("WWPDB_MESSAGING_BACKEND", "cif")
+    
+    print("📊 Current Backend Configuration")
+    print("=" * 40)
+    print(f"Backend Mode: {current_mode.upper()}")
+    print(f"Environment Variable: WWPDB_MESSAGING_BACKEND={os.environ.get('WWPDB_MESSAGING_BACKEND', 'not set')}")
+    
+    if current_mode.lower() == "database":
+        print("\n🗃️ Database Mode Active")
+        print("   - Messages stored in database")
+        print("   - Requires MSGDB_* environment variables")
+        
+        # Check database configuration
+        db_vars = ["MSGDB_HOST", "MSGDB_NAME", "MSGDB_USER", "MSGDB_PASS"]
+        print("\n📋 Database Configuration:")
+        for var in db_vars:
+            value = os.environ.get(var, "not set")
+            if var == "MSGDB_PASS" and value != "not set":
+                value = "***"  # Hide password
+            print(f"   {var}: {value}")
+    else:
+        print("\n📄 CIF Mode Active")
+        print("   - Messages stored in CIF files")
+        print("   - Traditional legacy mode")
+        print("   - No additional configuration required")
+
+
+def test_backend_selection():
+    """Test the simplified backend selection"""
     try:
-        from wwpdb.apps.msgmodule.db.config import MessagingDatabaseConfig
-        config = MessagingDatabaseConfig()
+        from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
         
-        db_writes = config.is_database_writes_enabled()
-        db_reads = config.is_database_reads_enabled()
-        cif_writes = config.is_cif_writes_enabled()
-        cif_reads = config.is_cif_reads_enabled()
+        # Create a mock request object
+        class MockReqObj:
+            def getValue(self, key):
+                return None
         
-        print("\n📋 Current Configuration:")
-        print(f"   DB writes:  {db_writes}")
-        print(f"   DB reads:   {db_reads}")
-        print(f"   CIF writes: {cif_writes}")
-        print(f"   CIF reads:  {cif_reads}")
+        req_obj = MockReqObj()
         
-        # Determine mode
-        if (db_writes or db_reads) and (cif_writes or cif_reads):
-            mode = "🔄 Dual-mode"
-        elif db_writes or db_reads:
-            mode = "🗃️ Database-only"
-        else:
-            mode = "📄 CIF-only"
-            
-        print(f"   Mode: {mode}")
+        # Test backend selection
+        info = MessagingFactory.get_backend_info(req_obj)
         
-        # Show environment variables to set
-        print("\n🔧 Environment Variables:")
-        for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                     "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-            value = os.environ.get(flag, "unset")
-            print(f"   {flag}: {value}")
-        
-        print("\n💡 To persist these settings, add to your shell profile:")
-        for flag in ["MSGDB_WRITES_ENABLED", "MSGDB_READS_ENABLED", 
-                     "MSGCIF_WRITES_ENABLED", "MSGCIF_READS_ENABLED"]:
-            value = os.environ.get(flag)
-            if value:
-                print(f"   export {flag}={value}")
+        print("\n🧪 Backend Selection Test")
+        print("=" * 30)
+        print(f"Selected Backend: {info['selected_backend']}")
+        print(f"Backend Class: {info['backend_class']}")
+        print(f"Reason: {info['reason']}")
         
     except Exception as e:
-        print(f"❌ Error showing configuration: {e}")
+        print(f"\n❌ Backend test failed: {e}")
 
 
-def show_migration_guide():
-    """Show migration guide"""
-    print("🛤️ Migration Guide:")
-    print("=" * 50)
-    print()
-    print("📋 Phase 1: Dual-write, CIF-read")
-    print("   python backend_config.py dual-write-cif-read")
-    print("   → Write to both backends, read from CIF")
-    print("   → Validate database writes while maintaining current reads")
-    print()
-    print("📋 Phase 2: Dual-write, DB-read") 
-    print("   python backend_config.py dual-write-db-read")
-    print("   → Write to both backends, read from database")
-    print("   → Test database reads while maintaining CIF backup")
-    print()
-    print("📋 Phase 3: Database-only")
-    print("   python backend_config.py db-only")
-    print("   → Write and read from database only")
-    print("   → Migration complete")
-    print()
-    print("🔄 Rollback: CIF-only")
-    print("   python backend_config.py cif-only")
-    print("   → Revert to traditional CIF-only operation")
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return
+    
+    command = sys.argv[1].lower()
+    
+    if command in ["cif", "database"]:
+        if set_backend_mode(command):
+            print(f"\n💡 To persist this setting, add to your environment:")
+            if command == "database":
+                print(f"   export WWPDB_MESSAGING_BACKEND=database")
+            else:
+                print(f"   unset WWPDB_MESSAGING_BACKEND  # (uses CIF default)")
+    
+    elif command == "status":
+        show_status()
+        test_backend_selection()
+    
+    else:
+        print(f"❌ Unknown command: {command}")
+        print(__doc__)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: backend_config.py <command>")
-        print("Commands:")
-        print("  cif-only              - Configure CIF-only mode")
-        print("  db-only               - Configure database-only mode")
-        print("  dual-write-cif-read   - Configure dual-write, CIF-read")
-        print("  dual-write-db-read    - Configure dual-write, DB-read")
-        print("  show                  - Show current configuration")
-        print("  migration-guide       - Show migration guide")
-        sys.exit(1)
-
-    command = sys.argv[1]
-
-    if command == "cif-only":
-        set_cif_only_mode()
-    elif command == "db-only":
-        set_db_only_mode()
-    elif command == "dual-write-cif-read":
-        set_dual_write_cif_read()
-    elif command == "dual-write-db-read":
-        set_dual_write_db_read()
-    elif command == "show":
-        show_current_config()
-    elif command == "migration-guide":
-        show_migration_guide()
-    else:
-        print(f"Unknown command: {command}")
-        sys.exit(1)
+    main()
