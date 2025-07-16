@@ -18,7 +18,7 @@ project_root = os.path.abspath(
 )
 sys.path.insert(0, project_root)
 
-from wwpdb.apps.msgmodule.io.MessagingDb import MessagingDb
+from wwpdb.apps.msgmodule.db.MessagingDb import MessagingDb
 
 
 class TestMessagingDb(unittest.TestCase):

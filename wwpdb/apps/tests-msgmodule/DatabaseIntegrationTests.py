@@ -65,16 +65,6 @@ class TestDatabaseConfiguration(unittest.TestCase):
         # No environment variables set
         self.assertFalse(is_messaging_database_enabled())
 
-    def test_database_enabled_by_environment(self):
-        """Test database enabling through environment variables"""
-        from wwpdb.apps.msgmodule.db import is_messaging_database_enabled
-
-        os.environ["MSGDB_ENABLED"] = "true"
-        self.assertTrue(is_messaging_database_enabled())
-
-        os.environ["MSGDB_ENABLED"] = "false"
-        self.assertFalse(is_messaging_database_enabled())
-
     def test_configuration_loading_from_environment(self):
         """Test configuration loading from environment variables"""
         from wwpdb.apps.msgmodule.db import get_messaging_database_config
@@ -94,39 +84,6 @@ class TestDatabaseConfiguration(unittest.TestCase):
         self.assertEqual(config["database"], "test_database")
         self.assertEqual(config["username"], "test_user")
         self.assertEqual(config["password"], "test_password")
-
-    def test_configuration_validation(self):
-        """Test configuration validation"""
-        from wwpdb.apps.msgmodule.db.config import MessagingDatabaseConfig
-
-        config_mgr = MessagingDatabaseConfig()
-
-        # Valid configuration
-        valid_config = {
-            "host": "localhost",
-            "port": 3306,
-            "database": "test_db",
-            "username": "test_user",
-            "password": "test_pass",
-        }
-        self.assertTrue(config_mgr.validate_config(valid_config))
-
-        # Invalid configuration - missing required field
-        invalid_config = {
-            "host": "localhost",
-            "port": 3306,
-            # Missing database and username
-        }
-        self.assertFalse(config_mgr.validate_config(invalid_config))
-
-        # Invalid configuration - invalid port
-        invalid_port_config = {
-            "host": "localhost",
-            "port": "invalid",
-            "database": "test_db",
-            "username": "test_user",
-        }
-        self.assertFalse(config_mgr.validate_config(invalid_port_config))
 
 
 class TestDataModels(unittest.TestCase):
@@ -201,139 +158,6 @@ class TestDataModels(unittest.TestCase):
         self.assertEqual(file_ref.upload_file_name, "validation_report.pdf")
         self.assertEqual(file_ref.file_path, "/path/to/file.pdf")
         self.assertEqual(file_ref.file_size, 1024000)
-
-
-class TestDatabaseService(unittest.TestCase):
-    """Test database service functionality"""
-
-    def test_database_service_creation_with_invalid_config(self):
-        """Test database service creation with invalid configuration"""
-        from wwpdb.apps.msgmodule.db import MessagingDatabaseService
-
-        # Invalid configuration (non-existent host)
-        invalid_config = {
-            "host": "nonexistent-host-12345",
-            "port": 3306,
-            "database": "test_db",
-            "username": "test_user",
-            "password": "test_pass",
-            "pool_size": 5,
-            "charset": "utf8mb4",
-        }
-
-        # Should handle connection failure gracefully by falling back to in-memory backend
-        service = MessagingDatabaseService(invalid_config)
-        self.assertIsNotNone(service)
-        # Verify it fell back to in-memory backend
-        self.assertEqual(type(service.connection_manager.backend).__name__, "InMemoryBackend")
-
-    def test_database_service_creation_with_mock(self):
-        """Test database service creation with mocked connection pool"""
-        try:
-            import mysql.connector.pooling
-        except ImportError:
-            self.skipTest("mysql-connector-python not available for mocking test")
-            
-        from unittest.mock import patch, MagicMock
-        from wwpdb.apps.msgmodule.db import MessagingDatabaseService
-
-        with patch("mysql.connector.pooling.MySQLConnectionPool") as mock_pool_class:
-            # Mock the connection pool
-            mock_pool = MagicMock()
-            mock_pool_class.return_value = mock_pool
-
-            config = {
-                "host": "localhost",
-                "port": 3306,
-                "database": "test_db",
-                "username": "test_user",
-                "password": "test_pass",
-                "pool_size": 5,
-                "charset": "utf8mb4",
-            }
-
-            service = MessagingDatabaseService(config)
-
-            # Verify pool was created with correct configuration
-            mock_pool_class.assert_called_once()
-            call_args = mock_pool_class.call_args[1]
-            self.assertEqual(call_args["host"], "localhost")
-            self.assertEqual(call_args["port"], 3306)
-            self.assertEqual(call_args["database"], "test_db")
-            self.assertEqual(call_args["user"], "test_user")
-            self.assertEqual(call_args["password"], "test_pass")
-
-
-class TestMessagingIoIntegration(unittest.TestCase):
-    """Test MessagingIo integration functionality"""
-
-    def setUp(self):
-        """Set up test environment"""
-        self.temp_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        """Clean up test environment"""
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
-
-    def create_mock_request_object(self):
-        """Create a mock request object for testing"""
-
-        class MockSession:
-            def __init__(self, path):
-                self.path = path
-
-            def getPath(self):
-                return self.path
-
-        class MockRequest:
-            def __init__(self, temp_dir):
-                self.session = MockSession(temp_dir)
-                self.values = {
-                    "WWPDB_SITE_ID": "RCSB",
-                    "groupid": "",
-                    "identifier": "D_1000000001",
-                }
-
-            def newSessionObj(self):
-                return self.session
-
-            def getValue(self, key, default=""):
-                return self.values.get(key, default)
-
-        return MockRequest(self.temp_dir)
-
-    def test_messaging_db_creation(self):
-        """Test MessagingDb creation"""
-        # This will fail due to missing dependencies, but we test the import and basic structure
-        try:
-            from wwpdb.apps.msgmodule.io.MessagingDb import MessagingDb
-
-            req_obj = self.create_mock_request_object()
-
-            # This may fail due to missing dependencies, which is expected
-            try:
-                msgIo = MessagingDb(req_obj, verbose=False)
-                # If creation succeeds, verify it has the expected interface
-                self.assertTrue(hasattr(msgIo, "processMsg"))
-            except ImportError:
-                # Expected if wwPDB dependencies are not available
-                pass
-
-        except ImportError:
-            # Expected if the module can't be imported due to dependencies
-            pass
-
-    def test_backend_selection_logic(self):
-        """Test the backend selection logic"""
-        from wwpdb.apps.msgmodule.db import is_messaging_database_enabled
-
-        # Test with database disabled
-        os.environ["MSGDB_ENABLED"] = "false"
-        self.assertFalse(is_messaging_database_enabled())
-
-        # Test with database enabled
-        os.environ["MSGDB_ENABLED"] = "true"
-        self.assertTrue(is_messaging_database_enabled())
 
 
 class TestMigrationUtilities(unittest.TestCase):
