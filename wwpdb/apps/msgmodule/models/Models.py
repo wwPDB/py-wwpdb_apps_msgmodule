@@ -40,7 +40,7 @@ class MessageRecord(Base):
     
     # Relationships
     status = relationship("MessageStatus", back_populates="message", uselist=False, cascade="all, delete-orphan")
-    file_references = relationship("FileReference", back_populates="message", cascade="all, delete-orphan")
+    file_references = relationship("MessageFileReference", back_populates="message", cascade="all, delete-orphan")
     
     # ========== Compatibility Properties (Original Message interface) ==========
     
@@ -135,9 +135,9 @@ class MessageRecord(Base):
         )
 
 
-class FileReference(Base):
+class MessageFileReference(Base):
     """SQLAlchemy model for message file references with compatibility interface"""
-    __tablename__ = 'file_reference'
+    __tablename__ = 'message_file_reference'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=False, index=True)

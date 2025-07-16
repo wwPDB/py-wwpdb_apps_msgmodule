@@ -114,7 +114,7 @@ def get_create_table_statements():
     # Message file references table
     statements.append(
         """
-        CREATE TABLE IF NOT EXISTS file_reference (
+        CREATE TABLE IF NOT EXISTS message_file_reference (
             id BIGINT PRIMARY KEY AUTO_INCREMENT,
             message_id VARCHAR(255) NOT NULL,
             deposition_data_set_id VARCHAR(50) NOT NULL,
@@ -196,7 +196,7 @@ def verify_tables(config):
         # List expected tables
         expected_tables = [
             "messages",
-            "file_reference",
+            "message_file_reference",
             "message_status",
         ]
 

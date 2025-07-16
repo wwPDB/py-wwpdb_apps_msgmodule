@@ -23,7 +23,7 @@ from .DataAccessLayer import (
 from ..models.Models import (
     Base,
     MessageRecord,
-    FileReference,
+    MessageFileReference,
     MessageStatus,
 )
 
@@ -43,7 +43,7 @@ __all__ = [
     # SQLAlchemy Models
     "Base",
     "MessageRecord",
-    "FileReference", 
+    "MessageFileReference", 
     "MessageStatus",
     
     # Database Backend

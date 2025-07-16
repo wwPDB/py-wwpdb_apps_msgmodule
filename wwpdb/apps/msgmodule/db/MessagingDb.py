@@ -22,7 +22,7 @@ from wwpdb.apps.msgmodule.db import (
 from wwpdb.apps.msgmodule.models.Models import (
     MessageRecord,
     MessageStatus,
-    FileReference,
+    MessageFileReference,
 )
 
 # Existing imports (unchanged)
@@ -134,7 +134,7 @@ class MessagingDb:
             if hasattr(p_msgObj, 'fileReferences') and p_msgObj.fileReferences:
                 for file_ref in p_msgObj.fileReferences:
                     if isinstance(file_ref, dict):
-                        file_record = FileReference(
+                        file_record = MessageFileReference(
                             message_id=message_record.message_id,
                             deposition_data_set_id=message_record.deposition_data_set_id,
                             content_type=file_ref.get("content_type", ""),
@@ -534,7 +534,7 @@ class MessagingDb:
                 except Exception as e:
                     logger.error(f"Error processing file reference {fileRef}: {e}")
                     failedFileRefs.append({
-                        "file_reference": str(fileRef),
+                        "message_file_reference": str(fileRef),
                         "error": str(e)
                     })
                     bSuccess = False

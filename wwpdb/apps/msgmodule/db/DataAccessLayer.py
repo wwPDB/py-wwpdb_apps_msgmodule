@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 
 # Import models from models module
-from ..models.Models import Base, MessageRecord, FileReference, MessageStatus
+from ..models.Models import Base, MessageRecord, MessageFileReference, MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +255,7 @@ class MessageDAO(BaseDAO):
 class MessageFileDAO(BaseDAO):
     """Data Access Object for message file reference operations"""
 
-    def create_file_reference(self, file_ref: FileReference) -> int:
+    def create_file_reference(self, file_ref: MessageFileReference) -> int:
         """Create a new file reference"""
         with self.connection_manager.session_scope() as session:
             try:
@@ -272,12 +272,12 @@ class MessageFileDAO(BaseDAO):
 
     def get_file_references_by_message(
         self, message_id: str
-    ) -> List[FileReference]:
+    ) -> List[MessageFileReference]:
         """Get all file references for a message"""
         with self.connection_manager.session_scope() as session:
             try:
-                file_models = session.query(FileReference).filter(
-                    FileReference.message_id == message_id
+                file_models = session.query(MessageFileReference).filter(
+                    MessageFileReference.message_id == message_id
                 ).all()
                 return file_models
             except SQLAlchemyError as e:
@@ -286,12 +286,12 @@ class MessageFileDAO(BaseDAO):
 
     def get_file_references_by_deposition(
         self, deposition_id: str
-    ) -> List[FileReference]:
+    ) -> List[MessageFileReference]:
         """Get all file references for a deposition"""
         with self.connection_manager.session_scope() as session:
             try:
-                file_models = session.query(FileReference).filter(
-                    FileReference.deposition_data_set_id == deposition_id
+                file_models = session.query(MessageFileReference).filter(
+                    MessageFileReference.deposition_data_set_id == deposition_id
                 ).all()
                 return file_models
             except SQLAlchemyError as e:
@@ -402,7 +402,7 @@ class MessagingDatabaseService:
         self,
         message: MessageRecord,
         status: MessageStatus = None,
-        file_references: List[FileReference] = None,
+        file_references: List[MessageFileReference] = None,
     ) -> bool:
         """Create a complete message record with status and file references"""
         try:

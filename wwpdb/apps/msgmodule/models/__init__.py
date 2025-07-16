@@ -8,7 +8,7 @@ Message model classes and SQLAlchemy database models with compatibility interfac
 from .Message import Message, Note, AutoMessage, ReminderMessage, AutoNote
 
 # SQLAlchemy database models with compatibility interface  
-from .Models import Base, MessageRecord, FileReference, MessageStatus
+from .Models import Base, MessageRecord, MessageFileReference, MessageStatus
 
 __all__ = [
     # CIF-based models
@@ -21,6 +21,6 @@ __all__ = [
     # SQLAlchemy models with compatibility interface
     "Base",
     "MessageRecord",
-    "FileReference", 
+    "MessageFileReference", 
     "MessageStatus",
 ]
