@@ -98,49 +98,45 @@ Scripts are integrated with the Makefile system:
 
 ## Backend Selection in Scripts
 
-All scripts now use the dual-mode backend selection logic via the messaging factory. The backend (CIF-only, database-only, or dual-mode) is chosen at runtime based on four independent feature flags:
+All scripts now use the simplified backend selection logic via the messaging factory. The backend (CIF or database) is chosen at runtime based on a single environment variable:
 
-### Feature Flags
+### Configuration
 
-- **`MSGDB_WRITES_ENABLED`** - Enable database writes (`true`/`false`)
-- **`MSGDB_READS_ENABLED`** - Enable database reads (`true`/`false`)  
-- **`MSGCIF_WRITES_ENABLED`** - Enable CIF file writes (`true`/`false`)
-- **`MSGCIF_READS_ENABLED`** - Enable CIF file reads (`true`/`false`)
+- **`WWPDB_MESSAGING_BACKEND=database`** - Use database backend
+- **`WWPDB_MESSAGING_BACKEND=cif`** or unset - Use CIF backend (default)
 
 ### Backend Modes
 
-1. **📄 CIF-only** (default): Only CIF operations enabled
-2. **🗃️ Database-only**: Only database operations enabled
-3. **🔄 Dual-mode**: Both backends enabled (for migration scenarios)
+1. **📄 CIF-only** (default): Traditional file-based storage
+2. **🗃️ Database-only**: Modern database storage
 
-**Always use the factory pattern through `MessagingFactory.create_messaging_service()` or `create_messaging_service()` - direct instantiation of MessagingDb/MessagingIo/MessagingDualMode is discouraged.**
+**Always use the factory pattern through `MessagingFactory.create_messaging_service()` or `create_messaging_service()` - direct instantiation of MessagingDb/MessagingIo is discouraged.**
 
 ## Migration Support Scripts
 
-The dual-mode architecture supports gradual migration with these helper scripts:
+The simplified architecture supports clean migration with these helper scripts:
 
-- **`backend_config.py`** - Configure backend modes and show current status
-- **`makefile_utils.py`** - Enhanced to show dual-mode feature flags and health
+- **`backend_config.py`** - Configure backend modes and show current status  
+- **`makefile_utils.py`** - Enhanced to show backend configuration and health
 - **`validate_integration.py`** - Validates all backend modes and configurations
 
 ### Quick Backend Configuration
 
 ```bash
 # Show current backend configuration
-python scripts/backend_config.py show
+python scripts/backend_config.py status
 
-# Configure for migration phases
-python scripts/backend_config.py dual-write-cif-read   # Phase 1
-python scripts/backend_config.py dual-write-db-read    # Phase 2  
-python scripts/backend_config.py db-only               # Phase 3
+# Configure backend modes
+python scripts/backend_config.py cif       # Use CIF files
+python scripts/backend_config.py database  # Use database
 ```
 
 ## Troubleshooting
 
 - Use `python scripts/backend_config.py show` to see current configuration
-- Use `make backend-info` or `make feature-flags` to check Makefile integration
+- Use `make backend-info` or `make backend-status` to check Makefile integration
 - Use the `--verbose` flag on scripts to see backend selection details
-- Check that all four feature flags are set correctly for your desired mode
+- Check that the WWPDB_MESSAGING_BACKEND environment variable is set correctly
 
 ## Best Practices
 

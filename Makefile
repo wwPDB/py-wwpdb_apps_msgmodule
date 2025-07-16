@@ -3,9 +3,9 @@
 
 .PHONY: help clean install build test test-unit test-integration test-database validate validate-integration \
         lint format check-format security docs serve-docs deploy deploy-dev deploy-production \
-        backup restore monitor status health feature-flags \
-        backend-cif-only backend-db-only backend-dual-write-cif-read backend-dual-write-db-read backend-info backend-migration-guide \
-        migration-phase-1 migration-phase-2 migration-phase-3 test-dual-mode test-feature-flags test-factory test-migration
+        backup restore monitor status health \
+        backend-cif-only backend-db-only backend-info backend-migration-guide \
+        migration-phase-1 migration-phase-2 migration-phase-3 test-factory test-migration
 
 # Configuration
 PYTHON := python3
@@ -171,37 +171,13 @@ test-tox: ## Run tests across multiple Python versions with tox
 	@echo "$(GREEN)Running tox tests...$(NC)"
 	$(TOX)
 
-test-dual-mode: ## Run dual-mode functionality tests
-	@echo "$(GREEN)Running dual-mode tests...$(NC)"
-	@if [ -f "$(TESTS_DIR)/DualModeTests.py" ]; then \
-		$(PYTEST) $(TESTS_DIR)/DualModeTests.py -v --tb=short; \
-	else \
-		echo "$(YELLOW)DualModeTests.py not found$(NC)"; \
-	fi
-
-test-feature-flags: ## Run feature flag tests only
-	@echo "$(GREEN)Running feature flag tests...$(NC)"
-	@if [ -f "$(TESTS_DIR)/DualModeTests.py" ]; then \
-		$(PYTEST) $(TESTS_DIR)/DualModeTests.py::TestDualModeFeatureFlags -v --tb=short; \
-	else \
-		echo "$(YELLOW)DualModeTests.py not found$(NC)"; \
-	fi
-
 test-factory: ## Run messaging factory tests
 	@echo "$(GREEN)Running messaging factory tests...$(NC)"
-	@if [ -f "$(TESTS_DIR)/DualModeTests.py" ]; then \
-		$(PYTEST) $(TESTS_DIR)/DualModeTests.py::TestMessagingFactory -v --tb=short; \
-	else \
-		echo "$(YELLOW)DualModeTests.py not found$(NC)"; \
-	fi
+	@echo "$(YELLOW)Factory tests integrated with main test suite$(NC)"
 
 test-migration: ## Run migration scenario tests
 	@echo "$(GREEN)Running migration scenario tests...$(NC)"
-	@if [ -f "$(TESTS_DIR)/DualModeTests.py" ]; then \
-		$(PYTEST) $(TESTS_DIR)/DualModeTests.py::TestMigrationScenarios -v --tb=short; \
-	else \
-		echo "$(YELLOW)DualModeTests.py not found$(NC)"; \
-	fi
+	@echo "$(YELLOW)Migration tests integrated with main test suite$(NC)"
 
 # Validation Tasks
 validate: validate-integration lint security ## Run all validation checks
@@ -284,47 +260,34 @@ deploy-production: ## Deploy to production environment
 	@echo "$(RED)WARNING: Production deployment requires manual approval$(NC)"
 	@echo "$(YELLOW)Please review deployment guide: $(DOCS_DIR)/DEPLOYMENT_GUIDE_PHASE2.md$(NC)"
 
-# Feature Flag Management
-feature-flags: ## Show current feature flag status
-	@echo "$(GREEN)Current feature flag configuration:$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/makefile_utils.py feature-flags
-
-feature-flags-enable: ## Enable a feature flag (usage: make feature-flags-enable FLAG=flag_name)
-	@echo "$(GREEN)Enabling feature flag: $(FLAG)$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/makefile_utils.py enable-flag $(FLAG)
-
-feature-flags-disable: ## Disable a feature flag (usage: make feature-flags-disable FLAG=flag_name)
-	@echo "$(YELLOW)Disabling feature flag: $(FLAG)$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/makefile_utils.py disable-flag $(FLAG)
-
-# Dual-Mode Backend Configuration
+# Backend Configuration
 backend-cif-only: ## Configure for CIF-only mode
 	@echo "$(GREEN)Configuring CIF-only mode...$(NC)"
 	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py cif-only
 
 backend-db-only: ## Configure for database-only mode  
 	@echo "$(GREEN)Configuring database-only mode...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py db-only
-
-backend-dual-write-cif-read: ## Configure for dual-write, CIF-read (Migration Phase 1)
-	@echo "$(GREEN)Configuring dual-write, CIF-read mode...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py dual-write-cif-read
-
-backend-dual-write-db-read: ## Configure for dual-write, DB-read (Migration Phase 2)
-	@echo "$(GREEN)Configuring dual-write, DB-read mode...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py dual-write-db-read
+	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
 
 backend-info: ## Show detailed backend configuration info
 	@echo "$(GREEN)Backend Configuration Details:$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py show
+	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py status
 
 backend-migration-guide: ## Show migration guide
 	@echo "$(GREEN)Migration Guide:$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py migration-guide
+	@cat SIMPLIFICATION_SUMMARY.md
 
 # Migration Helper Targets
-migration-phase-1: backend-dual-write-cif-read ## Start Migration Phase 1 (dual-write, CIF-read)
-migration-phase-2: backend-dual-write-db-read ## Start Migration Phase 2 (dual-write, DB-read)  
+migration-phase-1: ## Start Migration Phase 1 (test database)
+	@echo "$(GREEN)Migration Phase 1: Testing database backend$(NC)"
+	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
+	@echo "$(YELLOW)Set MSGDB_* environment variables for your test database$(NC)"
+
+migration-phase-2: ## Start Migration Phase 2 (production database)
+	@echo "$(GREEN)Migration Phase 2: Production database deployment$(NC)"
+	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
+	@echo "$(YELLOW)Set MSGDB_* environment variables for your production database$(NC)"
+
 migration-phase-3: backend-db-only ## Start Migration Phase 3 (DB-only)
 
 # Monitoring and Health Tasks
@@ -337,7 +300,7 @@ status: ## Show current system status
 	@echo "Environment: $(ENV)"
 	@echo "Python: $$($(PYTHON) --version)"
 	@echo "Package: $(PACKAGE_NAME)"
-	@$(MAKE) feature-flags
+	@$(MAKE) backend-status
 
 monitor: ## Start monitoring (placeholder for future monitoring tools)
 	@echo "$(GREEN)Starting monitoring...$(NC)"
@@ -396,16 +359,13 @@ troubleshoot: ## Show troubleshooting information
 	@echo "$(YELLOW)Common commands:$(NC)"
 	@echo "  make health            - Check system health"
 	@echo "  make validate-phase2   - Validate Phase 2 implementation"
-	@echo "  make feature-flags     - Show feature flag status"
 	@echo "  make backend-info      - Show backend configuration details"
 	@echo "  make logs             - Show recent logs"
 	@echo ""
 	@echo "$(YELLOW)Backend Configuration:$(NC)"
 	@echo "  make backend-cif-only           - CIF-only mode"
 	@echo "  make backend-db-only            - Database-only mode"
-	@echo "  make backend-dual-write-cif-read - Migration Phase 1"
-	@echo "  make backend-dual-write-db-read  - Migration Phase 2"
-	@echo "  make backend-migration-guide     - Show migration guide"
+	@echo "  make backend-status             - Show current backend status"
 
 logs: ## Show recent logs (if logging is configured)
 	@echo "$(GREEN)Recent logs:$(NC)"
@@ -431,23 +391,19 @@ info: ## Show project information
 	@echo "Scripts: $(SCRIPTS_DIR)"
 	@echo ""
 	@echo "$(YELLOW)Key Features:$(NC)"
-	@echo "  - Dual-mode backend support (CIF + Database)"
-	@echo "  - Flexible read/write backend selection"
-	@echo "  - Gradual migration support with feature flags"
-	@echo "  - Automatic failover and circuit breaker protection"
-	@echo "  - Dynamic feature flag management"
+	@echo "  - Simple backend selection (CIF or Database)"
+	@echo "  - Clean migration support with single environment variable"
+	@echo "  - Easy rollback capability"
+	@echo "  - Same interface for both backends"
 	@echo "  - Comprehensive validation and testing"
 	@echo ""
 	@echo "$(YELLOW)Backend Modes:$(NC)"
-	@echo "  - CIF-only: Traditional file-based storage"
-	@echo "  - Database-only: Pure database storage"
-	@echo "  - Dual-mode: Write to both, configurable read priority"
+	@echo "  - CIF-only: Traditional file-based storage (default)"
+	@echo "  - Database-only: Modern database storage"
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@echo "  make dev-setup         - Setup development environment"
 	@echo "  make backend-info      - Show current backend configuration"
 	@echo "  make test             - Run all tests"
-	@echo "  make test-dual-mode   - Run dual-mode functionality tests"
-	@echo "  make test-feature-flags - Run feature flag tests"
 	@echo "  make validate         - Run all validations"
 	@echo "  make deploy-dev       - Deploy to development"

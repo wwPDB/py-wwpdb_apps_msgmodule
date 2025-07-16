@@ -10,21 +10,19 @@ The wwPDB Communication Module provides messaging capabilities for the OneDep de
 
 ### Key Features
 
-- **Dual-Mode Backend Support**: Flexible CIF and database backend selection with independent read/write control
-- **Gradual Migration Support**: Non-blocking migration from CIF to database with dual-write capability
+- **Simple Backend Selection**: Clean choice between CIF and database storage
+- **Gradual Migration Support**: Easy migration from CIF to database with single environment variable
 - **Intelligent Backend Selection**: Configuration-driven backend selection with factory pattern
-- **Production-Ready**: Robust feature flags, clean error handling, and comprehensive validation
+- **Production-Ready**: Robust configuration, clean error handling, and comprehensive validation
 - **Migration Tools**: Complete CIF-to-database migration and validation utilities
 
 ## Architecture
 
 ### Core Components
 
-- **MessagingFactory**: Smart factory pattern for backend selection (CIF-only, DB-only, or dual-mode)
-- **MessagingDualMode**: Dual-write service for gradual migration scenarios
-- **MessagingDb**: Database-primary message operations
-- **MessagingIo**: CIF-based operations (standalone or as part of dual-mode)
-- **Feature Flag System**: Granular backend control with independent read/write flags
+- **MessagingFactory**: Simple factory pattern for backend selection (CIF or Database)
+- **MessagingDb**: Database message operations
+- **MessagingIo**: CIF-based operations (legacy)
 - **Database Layer**: Robust database service with connection management
 
 ### Backend Selection
@@ -42,44 +40,50 @@ messaging = MessagingFactory.create_messaging_service(
 **Available Modes:**
 
 1. **📄 CIF-only** - Traditional file-based storage (default)
-2. **🗃️ Database-only** - Pure database storage  
-3. **🔄 Dual-mode** - Write to both, configurable read priority (for migration)
+2. **🗃️ Database-only** - Modern database storage
 
-## Backend Configuration (Dual-Mode Support)
+## Backend Configuration
 
-The backend is configured using four independent feature flags:
+The backend is configured using a single environment variable:
 
-### Feature Flags
+### Configuration
 
-- **`MSGDB_WRITES_ENABLED`** - Enable database writes (`true`/`false`)
-- **`MSGDB_READS_ENABLED`** - Enable database reads (`true`/`false`)
-- **`MSGCIF_WRITES_ENABLED`** - Enable CIF file writes (`true`/`false`)
-- **`MSGCIF_READS_ENABLED`** - Enable CIF file reads (`true`/`false`)
-
-### Migration Scenarios
-
-#### Phase 1: Dual-write, CIF-read (Validation)
 ```bash
-export MSGDB_WRITES_ENABLED=true
-export MSGCIF_WRITES_ENABLED=true
-export MSGCIF_READS_ENABLED=true
-# Result: Writes to both backends, reads from CIF
+# Use database backend
+export WWPDB_MESSAGING_BACKEND=database
+
+# Use CIF backend (default)
+export WWPDB_MESSAGING_BACKEND=cif
+# or
+unset WWPDB_MESSAGING_BACKEND
 ```
 
-#### Phase 2: Dual-write, DB-read (Testing)
+### Migration Steps
+
+#### Phase 1: Test Database Backend
 ```bash
-export MSGDB_WRITES_ENABLED=true
-export MSGDB_READS_ENABLED=true
-export MSGCIF_WRITES_ENABLED=true
-# Result: Writes to both backends, reads from database
+# In test environment
+export WWPDB_MESSAGING_BACKEND=database
+export MSGDB_HOST=test-db.example.com
+export MSGDB_NAME=wwpdb_messaging_test
+# Test and validate database operations
 ```
 
-#### Phase 3: Database-only (Final)
+#### Phase 2: Production Deployment
 ```bash
-export MSGDB_WRITES_ENABLED=true
-export MSGDB_READS_ENABLED=true
-export MSGCIF_WRITES_ENABLED=false
-# Result: Database-only operations
+# In production when ready
+export WWPDB_MESSAGING_BACKEND=database
+export MSGDB_HOST=prod-db.example.com
+export MSGDB_NAME=wwpdb_messaging
+# Full database operations
+```
+
+#### Phase 3: Rollback (if needed)
+```bash
+# Immediate rollback to CIF files
+unset WWPDB_MESSAGING_BACKEND
+# or
+export WWPDB_MESSAGING_BACKEND=cif
 ```
 
 ### Quick Configuration Commands
@@ -91,8 +95,7 @@ make backend-info
 # Configure specific modes
 make backend-cif-only              # CIF-only mode
 make backend-db-only               # Database-only mode  
-make backend-dual-write-cif-read   # Migration Phase 1
-make backend-dual-write-db-read    # Migration Phase 2
+make backend-status                # Show current backend configuration
 
 # Migration helpers
 make migration-phase-1             # Start Phase 1
@@ -108,20 +111,13 @@ make backend-migration-guide
 ```bash
 # Show current configuration
 make backend-info                    # Show detailed backend configuration
-make feature-flags                   # Show all feature flag status  
+make backend-status                  # Show current backend status  
 make health                         # Check system health
 
 # Configure backend modes
 make backend-cif-only               # Configure CIF-only mode
 make backend-db-only                # Configure database-only mode
-make backend-dual-write-cif-read    # Configure dual-write, CIF-read (Phase 1)
-make backend-dual-write-db-read     # Configure dual-write, DB-read (Phase 2)
 
-# Migration helpers
-make migration-phase-1              # Start Migration Phase 1
-make migration-phase-2              # Start Migration Phase 2  
-make migration-phase-3              # Start Migration Phase 3
-make backend-migration-guide        # Show detailed migration guide
 ```
 
 **All messaging operations use the factory entry point:**
@@ -130,15 +126,14 @@ make backend-migration-guide        # Show detailed migration guide
 from wwpdb.apps.msgmodule.io.MessagingFactory import create_messaging_service
 
 messaging = create_messaging_service(req_obj, verbose=True)
-# Factory automatically selects: MessagingIo, MessagingDb, or MessagingDualMode
+# Factory automatically selects: MessagingIo or MessagingDb
 ```
 
 ## Troubleshooting Backend Selection
 
 - Use `make backend-info` to see current configuration
-- Use `make feature-flags` to see all feature flag status
 - Use `MessagingFactory.get_backend_info(req_obj)` to debug backend selection
-- Check that environment variables are set correctly for your desired mode
+- Check that WWPDB_MESSAGING_BACKEND environment variable is set correctly
 
 ## Quick Start
 
@@ -242,14 +237,6 @@ make deploy-staging     # Deploy to staging environment
 make deploy-production  # Deploy to production environment
 ```
 
-### Feature Flags
-
-```bash
-make feature-flags                # Show current feature flag status
-make feature-flags-enable FLAG=flag_name   # Enable a feature flag
-make feature-flags-disable FLAG=flag_name  # Disable a feature flag
-```
-
 ### Monitoring and Health
 
 ```bash
@@ -298,8 +285,7 @@ wwpdb/apps/msgmodule/
 ├── db/                     # Database layer
 │   ├── messaging_dal.py    # Data access layer
 │   └── config.py          # Database configuration
-├── util/                   # Utilities and feature management
-│   ├── FeatureFlagManager.py
+├── util/                   # Utilities
 │   └── AutoMessage.py
 ├── webapp/                # Web application components
 └── depict/               # Message rendering and templates
@@ -328,15 +314,6 @@ python scripts/migrate_cif_to_db.py --depositions-file deposition_list.txt
 python scripts/migrate_cif_to_db.py --directory /path/to/cif/files
 ```
 
-## Feature Flags
-
-The system uses a minimal set of production-ready feature flags:
-
-- `database_writes_enabled`: Enable/disable database write operations
-- `database_reads_enabled`: Enable/disable database read operations  
-- `circuit_breaker`: Database circuit breaker for fault tolerance
-- `connection_pooling`: Database connection pooling optimization
-
 ## Monitoring and Health Checks
 
 ### Built-in Health Check
@@ -347,9 +324,8 @@ make health    # System health check
 
 Provides real-time status on:
 
-- Database connectivity
-- Feature flag status
-- Circuit breaker state
+- Backend configuration status
+- Database connectivity (when using database backend)
 - System resource utilization
 
 ### Integration Validation
@@ -378,7 +354,7 @@ See `scripts/README.md` for detailed script documentation.
 ## Contributing
 
 1. Follow the established patterns for backend selection via MessagingFactory
-2. Maintain minimal feature flag usage
+2. Use simple environment variable configuration (WWPDB_MESSAGING_BACKEND)
 3. Ensure all changes pass the full test suite
 4. Add appropriate documentation and examples
 
