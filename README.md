@@ -235,7 +235,7 @@ wwpdb/apps/msgmodule/
 │   ├── MessagingDb.py      # Database-primary operations
 │   └── MessagingIo.py      # Legacy CIF operations
 ├── db/                     # Database layer
-│   ├── messaging_dal.py    # Data access layer
+│   ├── DataAccessLayer.py    # Data access layer
 │   └── config.py          # Database configuration
 ├── util/                   # Utilities
 │   └── AutoMessage.py

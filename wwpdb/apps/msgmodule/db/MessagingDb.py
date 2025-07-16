@@ -19,10 +19,10 @@ from wwpdb.apps.msgmodule.db import (
     get_messaging_database_config,
     is_messaging_database_enabled,
 )
-from wwpdb.apps.msgmodule.models.DatabaseModels import (
-    MessageRecordModel,
-    MessageStatusModel,
-    MessageFileReferenceModel,
+from wwpdb.apps.msgmodule.models.Models import (
+    MessageRecord,
+    MessageStatus,
+    FileReference,
 )
 
 # Existing imports (unchanged)
@@ -116,12 +116,12 @@ class MessagingDb:
         """Process message using database storage"""
         try:
             # Create database records directly from message object
-            message_record = MessageRecordModel.from_message_obj(p_msgObj)
+            message_record = MessageRecord.from_message_obj(p_msgObj)
             
             # Create status record if needed
             status_record = None
             if hasattr(p_msgObj, 'isBeingSent') and p_msgObj.isBeingSent:
-                status_record = MessageStatusModel(
+                status_record = MessageStatus(
                     message_id=message_record.message_id,
                     deposition_data_set_id=message_record.deposition_data_set_id,
                     read_status="N",
@@ -134,7 +134,7 @@ class MessagingDb:
             if hasattr(p_msgObj, 'fileReferences') and p_msgObj.fileReferences:
                 for file_ref in p_msgObj.fileReferences:
                     if isinstance(file_ref, dict):
-                        file_record = MessageFileReferenceModel(
+                        file_record = FileReference(
                             message_id=message_record.message_id,
                             deposition_data_set_id=message_record.deposition_data_set_id,
                             content_type=file_ref.get("content_type", ""),

@@ -27,7 +27,7 @@ from wwpdb.apps.msgmodule.db import (
     MessagingDatabaseService,
     MessageRecord,
     MessageStatus,
-    MessageFileReference,
+    FileReference,
 )
 from wwpdb.io.locator.PathInfo import PathInfo
 
@@ -267,9 +267,9 @@ class CifToDbMigrator:
             content_type=content_type,
         )
 
-    def _convert_to_file_reference(self, file_ref: Dict) -> MessageFileReference:
-        """Convert CIF file reference to MessageFileReference"""
-        return MessageFileReference(
+    def _convert_to_file_reference(self, file_ref: Dict) -> FileReference:
+        """Convert CIF file reference to FileReference"""
+        return FileReference(
             message_id=file_ref.get("message_id", ""),
             deposition_data_set_id=file_ref.get("deposition_data_set_id", ""),
             content_type=file_ref.get("content_type", ""),
@@ -293,7 +293,7 @@ class CifToDbMigrator:
     def _store_parsed_data(
         self,
         messages: List[MessageRecord],
-        file_references: List[MessageFileReference],
+        file_references: List[FileReference],
         status_records: List[MessageStatus],
     ) -> bool:
         """Store parsed data in database"""

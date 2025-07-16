@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 
 # Import models from models module
-from ..models.DatabaseModels import Base, MessageRecordModel, MessageFileReferenceModel, MessageStatusModel
+from ..models.Models import Base, MessageRecord, FileReference, MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class BaseDAO:
 class MessageDAO(BaseDAO):
     """Data Access Object for message operations using SQLAlchemy ORM"""
 
-    def create_message(self, message: MessageRecordModel) -> int:
+    def create_message(self, message: MessageRecord) -> int:
         """Create a new message record using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
@@ -136,12 +136,12 @@ class MessageDAO(BaseDAO):
                 logger.error(f"Failed to create message: {e}")
                 raise
 
-    def get_message_by_id(self, message_id: str) -> Optional[MessageRecordModel]:
+    def get_message_by_id(self, message_id: str) -> Optional[MessageRecord]:
         """Retrieve a message by its ID using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
-                message_model = session.query(MessageRecordModel).filter(
-                    MessageRecordModel.message_id == message_id
+                message_model = session.query(MessageRecord).filter(
+                    MessageRecord.message_id == message_id
                 ).first()
                 
                 return message_model
@@ -156,18 +156,18 @@ class MessageDAO(BaseDAO):
         content_type: str = None,
         limit: int = None,
         offset: int = 0,
-    ) -> List[MessageRecordModel]:
+    ) -> List[MessageRecord]:
         """Retrieve messages for a deposition using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
-                query = session.query(MessageRecordModel).filter(
-                    MessageRecordModel.deposition_data_set_id == deposition_id
+                query = session.query(MessageRecord).filter(
+                    MessageRecord.deposition_data_set_id == deposition_id
                 )
 
                 if content_type:
-                    query = query.filter(MessageRecordModel.content_type == content_type)
+                    query = query.filter(MessageRecord.content_type == content_type)
 
-                query = query.order_by(MessageRecordModel.timestamp.desc())
+                query = query.order_by(MessageRecord.timestamp.desc())
 
                 if limit:
                     query = query.limit(limit).offset(offset)
@@ -183,8 +183,8 @@ class MessageDAO(BaseDAO):
         """Update a message record using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
-                message_model = session.query(MessageRecordModel).filter(
-                    MessageRecordModel.message_id == message_id
+                message_model = session.query(MessageRecord).filter(
+                    MessageRecord.message_id == message_id
                 ).first()
                 
                 if not message_model:
@@ -207,8 +207,8 @@ class MessageDAO(BaseDAO):
         """Delete a message record using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
-                message_model = session.query(MessageRecordModel).filter(
-                    MessageRecordModel.message_id == message_id
+                message_model = session.query(MessageRecord).filter(
+                    MessageRecord.message_id == message_id
                 ).first()
                 
                 if not message_model:
@@ -222,27 +222,27 @@ class MessageDAO(BaseDAO):
                 logger.error(f"Failed to delete message {message_id}: {e}")
                 raise
 
-    def search_messages(self, search_criteria: Dict) -> List[MessageRecordModel]:
+    def search_messages(self, search_criteria: Dict) -> List[MessageRecord]:
         """Search messages based on various criteria using ORM"""
         with self.connection_manager.session_scope() as session:
             try:
-                query = session.query(MessageRecordModel)
+                query = session.query(MessageRecord)
 
                 for field, value in search_criteria.items():
                     if field == "text_search":
                         search_term = f"%{value}%"
                         query = query.filter(
-                            (MessageRecordModel.message_subject.like(search_term)) |
-                            (MessageRecordModel.message_text.like(search_term))
+                            (MessageRecord.message_subject.like(search_term)) |
+                            (MessageRecord.message_text.like(search_term))
                         )
                     elif field == "date_from":
-                        query = query.filter(MessageRecordModel.timestamp >= value)
+                        query = query.filter(MessageRecord.timestamp >= value)
                     elif field == "date_to":
-                        query = query.filter(MessageRecordModel.timestamp <= value)
-                    elif hasattr(MessageRecordModel, field):
-                        query = query.filter(getattr(MessageRecordModel, field) == value)
+                        query = query.filter(MessageRecord.timestamp <= value)
+                    elif hasattr(MessageRecord, field):
+                        query = query.filter(getattr(MessageRecord, field) == value)
 
-                query = query.order_by(MessageRecordModel.timestamp.desc())
+                query = query.order_by(MessageRecord.timestamp.desc())
                 message_models = query.all()
                 
                 return message_models
@@ -255,7 +255,7 @@ class MessageDAO(BaseDAO):
 class MessageFileDAO(BaseDAO):
     """Data Access Object for message file reference operations"""
 
-    def create_file_reference(self, file_ref: MessageFileReferenceModel) -> int:
+    def create_file_reference(self, file_ref: FileReference) -> int:
         """Create a new file reference"""
         with self.connection_manager.session_scope() as session:
             try:
@@ -272,12 +272,12 @@ class MessageFileDAO(BaseDAO):
 
     def get_file_references_by_message(
         self, message_id: str
-    ) -> List[MessageFileReferenceModel]:
+    ) -> List[FileReference]:
         """Get all file references for a message"""
         with self.connection_manager.session_scope() as session:
             try:
-                file_models = session.query(MessageFileReferenceModel).filter(
-                    MessageFileReferenceModel.message_id == message_id
+                file_models = session.query(FileReference).filter(
+                    FileReference.message_id == message_id
                 ).all()
                 return file_models
             except SQLAlchemyError as e:
@@ -286,12 +286,12 @@ class MessageFileDAO(BaseDAO):
 
     def get_file_references_by_deposition(
         self, deposition_id: str
-    ) -> List[MessageFileReferenceModel]:
+    ) -> List[FileReference]:
         """Get all file references for a deposition"""
         with self.connection_manager.session_scope() as session:
             try:
-                file_models = session.query(MessageFileReferenceModel).filter(
-                    MessageFileReferenceModel.deposition_data_set_id == deposition_id
+                file_models = session.query(FileReference).filter(
+                    FileReference.deposition_data_set_id == deposition_id
                 ).all()
                 return file_models
             except SQLAlchemyError as e:
@@ -302,13 +302,13 @@ class MessageFileDAO(BaseDAO):
 class MessageStatusDAO(BaseDAO):
     """Data Access Object for message status operations"""
 
-    def create_or_update_status(self, status: MessageStatusModel) -> bool:
+    def create_or_update_status(self, status: MessageStatus) -> bool:
         """Create or update message status"""
         with self.connection_manager.session_scope() as session:
             try:
                 # Check if status already exists
-                existing_status = session.query(MessageStatusModel).filter(
-                    MessageStatusModel.message_id == status.message_id
+                existing_status = session.query(MessageStatus).filter(
+                    MessageStatus.message_id == status.message_id
                 ).first()
                 
                 if existing_status:
@@ -328,24 +328,24 @@ class MessageStatusDAO(BaseDAO):
                 logger.error(f"Failed to create or update status: {e}")
                 raise
 
-    def get_status_by_message(self, message_id: str) -> Optional[MessageStatusModel]:
+    def get_status_by_message(self, message_id: str) -> Optional[MessageStatus]:
         """Get status for a specific message"""
         with self.connection_manager.session_scope() as session:
             try:
-                status_model = session.query(MessageStatusModel).filter(
-                    MessageStatusModel.message_id == message_id
+                status_model = session.query(MessageStatus).filter(
+                    MessageStatus.message_id == message_id
                 ).first()
                 return status_model
             except SQLAlchemyError as e:
                 logger.error(f"Failed to get status by message: {e}")
                 raise
 
-    def get_statuses_by_deposition(self, deposition_id: str) -> List[MessageStatusModel]:
+    def get_statuses_by_deposition(self, deposition_id: str) -> List[MessageStatus]:
         """Get all message statuses for a deposition"""
         with self.connection_manager.session_scope() as session:
             try:
-                status_models = session.query(MessageStatusModel).filter(
-                    MessageStatusModel.deposition_data_set_id == deposition_id
+                status_models = session.query(MessageStatus).filter(
+                    MessageStatus.deposition_data_set_id == deposition_id
                 ).all()
                 return status_models
             except SQLAlchemyError as e:
@@ -356,8 +356,8 @@ class MessageStatusDAO(BaseDAO):
         """Mark a message as read/unread"""
         with self.connection_manager.session_scope() as session:
             try:
-                status_model = session.query(MessageStatusModel).filter(
-                    MessageStatusModel.message_id == message_id
+                status_model = session.query(MessageStatus).filter(
+                    MessageStatus.message_id == message_id
                 ).first()
                 
                 if status_model:
@@ -374,8 +374,8 @@ class MessageStatusDAO(BaseDAO):
         """Set action required flag for a message"""
         with self.connection_manager.session_scope() as session:
             try:
-                status_model = session.query(MessageStatusModel).filter(
-                    MessageStatusModel.message_id == message_id
+                status_model = session.query(MessageStatus).filter(
+                    MessageStatus.message_id == message_id
                 ).first()
                 
                 if status_model:
@@ -400,9 +400,9 @@ class MessagingDatabaseService:
 
     def create_message_with_status(
         self,
-        message: MessageRecordModel,
-        status: MessageStatusModel = None,
-        file_references: List[MessageFileReferenceModel] = None,
+        message: MessageRecord,
+        status: MessageStatus = None,
+        file_references: List[FileReference] = None,
     ) -> bool:
         """Create a complete message record with status and file references"""
         try:

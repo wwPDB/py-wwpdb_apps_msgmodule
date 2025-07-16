@@ -14,17 +14,17 @@ from .config import (
 )
 
 # Data Access Layer (with SQLAlchemy ORM)
-from .messaging_dal import (
+from .DataAccessLayer import (
     MessagingDatabaseService,
     DatabaseConnectionManager,
 )
 
 # Import SQLAlchemy models directly
-from ..models.DatabaseModels import (
+from ..models.Models import (
     Base,
-    MessageRecordModel,
-    MessageFileReferenceModel,
-    MessageStatusModel,
+    MessageRecord,
+    FileReference,
+    MessageStatus,
 )
 
 # Database Backend Implementation
@@ -42,9 +42,9 @@ __all__ = [
     
     # SQLAlchemy Models
     "Base",
-    "MessageRecordModel",
-    "MessageFileReferenceModel", 
-    "MessageStatusModel",
+    "MessageRecord",
+    "FileReference", 
+    "MessageStatus",
     
     # Database Backend
     "MessagingDb",

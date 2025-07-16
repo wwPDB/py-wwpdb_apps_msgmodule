@@ -1,7 +1,9 @@
 """
-SQLAlchemy database models for wwPDB messaging system.
+Streamlined SQLAlchemy models with Message interface compatibility.
 
-Database table definitions using SQLAlchemy ORM for message storage.
+This eliminates the need for intermediate dataclass conversions, making
+the SQLAlchemy models themselves provide the same interface as the original
+CIF-based Message classes.
 """
 
 from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR
@@ -13,10 +15,11 @@ from sqlalchemy.sql import func
 Base = declarative_base()
 
 
-class MessageRecordModel(Base):
-    """SQLAlchemy model for message records with compatibility interface"""
+class MessageRecord(Base):
+    """SQLAlchemy model with Message interface compatibility"""
     __tablename__ = 'messages'
     
+    # Database columns
     id = Column(Integer, primary_key=True, autoincrement=True)
     message_id = Column(String(255), unique=True, nullable=False, index=True)
     deposition_data_set_id = Column(String(50), nullable=False, index=True)
@@ -36,8 +39,8 @@ class MessageRecordModel(Base):
     updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
     
     # Relationships
-    status = relationship("MessageStatusModel", back_populates="message", uselist=False, cascade="all, delete-orphan")
-    file_references = relationship("MessageFileReferenceModel", back_populates="message", cascade="all, delete-orphan")
+    status = relationship("MessageStatus", back_populates="message", uselist=False, cascade="all, delete-orphan")
+    file_references = relationship("FileReference", back_populates="message", cascade="all, delete-orphan")
     
     # ========== Compatibility Properties (Original Message interface) ==========
     
@@ -104,7 +107,7 @@ class MessageRecordModel(Base):
     
     @classmethod
     def from_message_obj(cls, msg_obj):
-        """Create MessageRecordModel from original Message object"""
+        """Create Message from original Message object"""
         from datetime import datetime
         import uuid
         
@@ -132,9 +135,9 @@ class MessageRecordModel(Base):
         )
 
 
-class MessageFileReferenceModel(Base):
+class FileReference(Base):
     """SQLAlchemy model for message file references with compatibility interface"""
-    __tablename__ = 'message_file_references'
+    __tablename__ = 'file_reference'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     message_id = Column(String(255), ForeignKey('messages.message_id'), nullable=False, index=True)
@@ -150,7 +153,7 @@ class MessageFileReferenceModel(Base):
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
     
     # Relationships
-    message = relationship("MessageRecordModel", back_populates="file_references")
+    message = relationship("MessageRecord", back_populates="file_references")
     
     # ========== Compatibility Properties ==========
     
@@ -183,7 +186,7 @@ class MessageFileReferenceModel(Base):
         return self.file_size
 
 
-class MessageStatusModel(Base):
+class MessageStatus(Base):
     """SQLAlchemy model for message status with compatibility interface"""
     __tablename__ = 'message_status'
     
@@ -196,7 +199,7 @@ class MessageStatusModel(Base):
     updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
     
     # Relationships
-    message = relationship("MessageRecordModel", back_populates="status")
+    message = relationship("MessageRecord", back_populates="status")
     
     # ========== Compatibility Properties ==========
     

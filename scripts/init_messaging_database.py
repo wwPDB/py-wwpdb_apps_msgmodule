@@ -114,7 +114,7 @@ def get_create_table_statements():
     # Message file references table
     statements.append(
         """
-        CREATE TABLE IF NOT EXISTS message_file_references (
+        CREATE TABLE IF NOT EXISTS file_reference (
             id BIGINT PRIMARY KEY AUTO_INCREMENT,
             message_id VARCHAR(255) NOT NULL,
             deposition_data_set_id VARCHAR(50) NOT NULL,
@@ -160,27 +160,6 @@ def get_create_table_statements():
     """
     )
 
-    # Migration tracking table
-    statements.append(
-        """
-        CREATE TABLE IF NOT EXISTS migration_status (
-            id BIGINT PRIMARY KEY AUTO_INCREMENT,
-            deposition_data_set_id VARCHAR(50) NOT NULL,
-            file_type VARCHAR(50) NOT NULL,
-            file_path TEXT,
-            migration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            messages_migrated INT DEFAULT 0,
-            file_references_migrated INT DEFAULT 0,
-            status_records_migrated INT DEFAULT 0,
-            migration_notes TEXT,
-            
-            UNIQUE KEY unique_deposition_file (deposition_data_set_id, file_type),
-            INDEX idx_deposition_id (deposition_data_set_id),
-            INDEX idx_migration_date (migration_date)
-        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-    """
-    )
-
     return statements
 
 
@@ -217,9 +196,8 @@ def verify_tables(config):
         # List expected tables
         expected_tables = [
             "messages",
-            "message_file_references",
+            "file_reference",
             "message_status",
-            "migration_status",
         ]
 
         cursor.execute("SHOW TABLES")
