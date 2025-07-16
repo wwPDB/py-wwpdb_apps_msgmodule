@@ -1,11 +1,9 @@
-# wwPDB Communication Module - Database Operations Makefile
-# Automates build, test, validate, deploy, and documentation tasks
+# wwPDB Communication Module - Streamlined Makefile
+# Core build, test, and deployment tasks
 
-.PHONY: help clean install build test test-unit test-integration test-database validate validate-integration \
-        lint format check-format security docs serve-docs deploy deploy-dev deploy-production \
-        backup restore monitor status health \
-        backend-cif-only backend-db-only backend-info backend-migration-guide \
-        migration-phase-1 migration-phase-2 migration-phase-3 test-factory test-migration
+.PHONY: help clean install build test test-unit test-integration test-database validate \
+        lint format check-format security backend-status init-database migrate-data \
+        deploy deploy-dev deploy-production
 
 # Configuration
 PYTHON := python3
@@ -15,7 +13,6 @@ TOX := tox
 PACKAGE_NAME := wwpdb.apps.msgmodule
 SOURCE_DIR := wwpdb
 TESTS_DIR := wwpdb/apps/tests-msgmodule
-DOCS_DIR := docs
 SCRIPTS_DIR := scripts
 REQUIREMENTS := requirements.txt
 SETUP_FILE := setup.py
@@ -47,59 +44,14 @@ install: ## Install dependencies and setup development environment
 	@echo "$(GREEN)Installing dependencies...$(NC)"
 	$(PIP) install -r $(REQUIREMENTS)
 	$(PIP) install -e .
-	@echo "$(GREEN)Creating necessary directories...$(NC)"
-	@mkdir -p logs tmp backups
 	@echo "$(GREEN)Installation complete!$(NC)"
 
 install-dev: ## Install development dependencies
 	@echo "$(GREEN)Installing development dependencies...$(NC)"
-	@echo "$(YELLOW)Checking for CMake...$(NC)"
-	@if command -v cmake >/dev/null 2>&1; then \
-		echo "$(GREEN)CMake found. Installing full requirements...$(NC)"; \
-		$(PIP) install -r $(REQUIREMENTS) || { \
-			echo "$(RED)Failed to install some packages. Trying minimal install...$(NC)"; \
-			$(MAKE) install-minimal; \
-		}; \
-	else \
-		echo "$(RED)CMake not found. Installing minimal requirements...$(NC)"; \
-		$(MAKE) install-minimal; \
-	fi
+	$(PIP) install -r $(REQUIREMENTS)
 	@$(PIP) install pytest pytest-cov pytest-mock pylint black flake8 safety bandit tox
 	@$(PIP) install -e .
 	@echo "$(GREEN)Development environment ready!$(NC)"
-
-install-minimal: ## Install minimal dependencies (without cmake-dependent packages)
-	@echo "$(GREEN)Installing minimal dependencies...$(NC)"
-	@echo "# Minimal requirements without cmake dependencies" > requirements-minimal.txt
-	@echo "wwpdb.io" >> requirements-minimal.txt
-	@echo "wwpdb.utils.config>=0.22.2" >> requirements-minimal.txt
-	@echo "wwpdb.utils.session" >> requirements-minimal.txt
-	@echo "wwpdb.utils.wf>=0.8" >> requirements-minimal.txt
-	@echo "mmcif" >> requirements-minimal.txt
-	@echo "mmcif.utils" >> requirements-minimal.txt
-	@echo "wwpdb.utils.dp" >> requirements-minimal.txt
-	@echo "wwpdb.utils.emdb~=0.17" >> requirements-minimal.txt
-	@echo "wwpdb.apps.wf_engine" >> requirements-minimal.txt
-	@echo "# wwpdb.utils.nmr" >> requirements-minimal.txt
-	@echo "# wwpdb.utils.align" >> requirements-minimal.txt
-	@echo "mysql-connector-python>=8.0.12" >> requirements-minimal.txt
-	@$(PIP) install -r requirements-minimal.txt
-	@echo "$(GREEN)Creating necessary directories...$(NC)"
-	@mkdir -p logs tmp backups
-	@echo "$(GREEN)Minimal installation complete!$(NC)"
-
-install-cmake: ## Install CMake using system package manager
-	@echo "$(GREEN)Installing CMake...$(NC)"
-	@command -v brew >/dev/null 2>&1 && { \
-		echo "$(YELLOW)Installing CMake via Homebrew...$(NC)"; \
-		brew install cmake; \
-	} || { \
-		echo "$(YELLOW)Homebrew not found. Please install CMake manually:$(NC)"; \
-		echo "$(YELLOW)  - macOS: brew install cmake$(NC)"; \
-		echo "$(YELLOW)  - conda: conda install cmake$(NC)"; \
-		echo "$(YELLOW)  - Manual: https://cmake.org/download/$(NC)"; \
-		exit 1; \
-	}
 
 # Build Tasks
 build: clean ## Build the package
@@ -118,19 +70,14 @@ clean: ## Clean build artifacts and cache files
 	@echo "$(GREEN)Clean complete!$(NC)"
 
 # Testing Tasks
-test: test-database-full ## Run all available tests
+test: test-database ## Run all available tests
 
 test-unit: ## Run unit tests
 	@echo "$(GREEN)Running unit tests...$(NC)"
 	@if [ -d "$(TESTS_DIR)" ]; then \
-		TEST_FILES=$$(find $(TESTS_DIR) -name "*Tests.py" ! -name "DatabaseOperationsTests.py" 2>/dev/null | head -1); \
-		if [ -n "$$TEST_FILES" ]; then \
-			$(PYTEST) $(TESTS_DIR) -v --tb=short \
-				--ignore=$(TESTS_DIR)/DatabaseOperationsTests.py \
-				--cov=$(SOURCE_DIR) --cov-report=term-missing; \
-		else \
-			echo "$(YELLOW)No unit test files found in $(TESTS_DIR)$(NC)"; \
-		fi; \
+		$(PYTEST) $(TESTS_DIR) -v --tb=short \
+			--ignore=$(TESTS_DIR)/DatabaseOperationsTests.py \
+			--cov=$(SOURCE_DIR) --cov-report=term-missing; \
 	else \
 		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
 	fi
@@ -153,44 +100,8 @@ test-database: ## Run database operations tests
 		echo "$(YELLOW)Database operations test file not found$(NC)"; \
 	fi
 
-test-database-full: ## Run database tests and validation
-	@echo "$(GREEN)Running database tests and validation...$(NC)"
-	@$(MAKE) test-database
-	@$(MAKE) validate-integration
-
-test-coverage: ## Generate detailed test coverage report
-	@echo "$(GREEN)Generating coverage report...$(NC)"
-	@if [ -d "$(TESTS_DIR)" ]; then \
-		$(PYTEST) $(TESTS_DIR) --cov=$(SOURCE_DIR) --cov-report=html --cov-report=term || echo "$(YELLOW)Coverage generation completed with warnings$(NC)"; \
-		echo "$(YELLOW)Coverage report generated in htmlcov/index.html$(NC)"; \
-	else \
-		echo "$(YELLOW)Test directory not found: $(TESTS_DIR)$(NC)"; \
-	fi
-
-test-tox: ## Run tests across multiple Python versions with tox
-	@echo "$(GREEN)Running tox tests...$(NC)"
-	$(TOX)
-
-test-factory: ## Run messaging factory tests
-	@echo "$(GREEN)Running messaging factory tests...$(NC)"
-	@echo "$(YELLOW)Factory tests integrated with main test suite$(NC)"
-
-test-migration: ## Run migration scenario tests
-	@echo "$(GREEN)Running migration scenario tests...$(NC)"
-	@echo "$(YELLOW)Migration tests integrated with main test suite$(NC)"
-
 # Validation Tasks
-validate: validate-integration lint security ## Run all validation checks
-
-validate-integration: ## Validate database integration
-	@echo "$(GREEN)Validating database integration...$(NC)"
-	$(PYTHON) $(SCRIPTS_DIR)/validate_integration.py
-	@echo "$(GREEN)Integration validation complete!$(NC)"
-
-validate-config: ## Validate configuration files
-	@echo "$(GREEN)Validating configuration...$(NC)"
-	@$(PYTHON) -c "from wwpdb.apps.msgmodule.db.config import DatabaseConfig; config = DatabaseConfig(); is_valid, errors = config.validate(); print('Valid:', is_valid); print('Errors:', errors)"
-	@echo "$(GREEN)Configuration validation complete!$(NC)"
+validate: lint security ## Run all validation checks
 
 # Code Quality Tasks
 lint: ## Run code linting
@@ -211,32 +122,11 @@ security: ## Run security checks
 	safety check
 	bandit -r $(SOURCE_DIR)
 
-# Documentation Tasks
-docs: ## Generate documentation
-	@echo "$(GREEN)Generating documentation...$(NC)"
-	@echo "Documentation files in $(DOCS_DIR):"
-	@ls -la $(DOCS_DIR)/
-	@echo "$(GREEN)Documentation ready!$(NC)"
-
-serve-docs: ## Serve documentation locally (if using mkdocs or similar)
-	@echo "$(GREEN)Serving documentation...$(NC)"
-	@echo "$(YELLOW)Note: Install mkdocs or similar tool for full documentation serving$(NC)"
-	@echo "$(YELLOW)Current docs available in $(DOCS_DIR)/$(NC)"
-
-docs-check: ## Check documentation for issues
-	@echo "$(GREEN)Checking documentation...$(NC)"
-	@for file in $(DOCS_DIR)/*.md; do \
-		echo "Checking $$file..."; \
-		$(PYTHON) -c "import markdown; markdown.markdown(open('$$file').read())" > /dev/null; \
-	done
-	@echo "$(GREEN)Documentation check complete!$(NC)"
-
-# Deployment Tasks
+# Database Setup
+init-database: ## Initialize messaging database
 deploy: ## Deploy to specified environment (ENV=development|staging|production)
 ifeq ($(ENV),production)
 	@$(MAKE) deploy-production
-else ifeq ($(ENV),staging)
-	@$(MAKE) deploy-staging
 else
 	@$(MAKE) deploy-dev
 endif
@@ -244,136 +134,45 @@ endif
 deploy-dev: ## Deploy to development environment
 	@echo "$(GREEN)Deploying to development environment...$(NC)"
 	@echo "$(YELLOW)Running pre-deployment validation...$(NC)"
-	@$(MAKE) validate-integration
+	@$(MAKE) test
 	@echo "$(GREEN)Development deployment complete!$(NC)"
-
-deploy-staging: ## Deploy to staging environment
-	@echo "$(GREEN)Deploying to staging environment...$(NC)"
-	@echo "$(YELLOW)Running full validation suite...$(NC)"
-	@$(MAKE) test validate
-	@echo "$(GREEN)Staging deployment complete!$(NC)"
 
 deploy-production: ## Deploy to production environment
 	@echo "$(GREEN)Deploying to production environment...$(NC)"
 	@echo "$(YELLOW)Running comprehensive checks...$(NC)"
 	@$(MAKE) test validate security
 	@echo "$(RED)WARNING: Production deployment requires manual approval$(NC)"
-	@echo "$(YELLOW)Please review deployment guide: $(DOCS_DIR)/DEPLOYMENT_GUIDE_PHASE2.md$(NC)"
 
 # Backend Configuration
-backend-cif-only: ## Configure for CIF-only mode
-	@echo "$(GREEN)Configuring CIF-only mode...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py cif-only
-
-backend-db-only: ## Configure for database-only mode  
-	@echo "$(GREEN)Configuring database-only mode...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
-
-backend-info: ## Show detailed backend configuration info
-	@echo "$(GREEN)Backend Configuration Details:$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py status
-
-backend-migration-guide: ## Show migration guide
-	@echo "$(GREEN)Migration Guide:$(NC)"
-	@cat SIMPLIFICATION_SUMMARY.md
-
-# Migration Helper Targets
-migration-phase-1: ## Start Migration Phase 1 (test database)
-	@echo "$(GREEN)Migration Phase 1: Testing database backend$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
-	@echo "$(YELLOW)Set MSGDB_* environment variables for your test database$(NC)"
-
-migration-phase-2: ## Start Migration Phase 2 (production database)
-	@echo "$(GREEN)Migration Phase 2: Production database deployment$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/backend_config.py database
-	@echo "$(YELLOW)Set MSGDB_* environment variables for your production database$(NC)"
-
-migration-phase-3: backend-db-only ## Start Migration Phase 3 (DB-only)
-
-# Monitoring and Health Tasks
-health: ## Check system health
-	@echo "$(GREEN)Checking system health...$(NC)"
-	@$(PYTHON) $(SCRIPTS_DIR)/makefile_utils.py health
-
-status: ## Show current system status
-	@echo "$(GREEN)System Status:$(NC)"
+backend-status: ## Show current backend configuration
+	@echo "$(GREEN)Backend Configuration Status:$(NC)"
+	@echo "Current backend: $$(echo $${WWPDB_MESSAGING_BACKEND:-cif})"
 	@echo "Environment: $(ENV)"
-	@echo "Python: $$($(PYTHON) --version)"
-	@echo "Package: $(PACKAGE_NAME)"
-	@$(MAKE) backend-status
 
-monitor: ## Start monitoring (placeholder for future monitoring tools)
-	@echo "$(GREEN)Starting monitoring...$(NC)"
-	@echo "$(YELLOW)Note: Implement with your preferred monitoring solution$(NC)"
+# Database Setup
+init-database: ## Initialize messaging database
+	@echo "$(GREEN)Initializing messaging database...$(NC)"
+	$(PYTHON) $(SCRIPTS_DIR)/init_messaging_database.py
+	@echo "$(GREEN)Database initialization complete!$(NC)"
 
-# Backup and Restore Tasks
-backup: ## Create backup of configuration and data
-	@echo "$(GREEN)Creating backup...$(NC)"
-	@mkdir -p backups/$$(date +%Y%m%d_%H%M%S)
-	@cp -r $(DOCS_DIR) backups/$$(date +%Y%m%d_%H%M%S)/
-	@cp $(REQUIREMENTS) setup.py setup.cfg backups/$$(date +%Y%m%d_%H%M%S)/
-	@echo "$(GREEN)Backup created in backups/$(NC)"
-
-restore: ## Restore from backup (usage: make restore BACKUP=backup_directory)
-	@echo "$(YELLOW)Restoring from backup: $(BACKUP)$(NC)"
-	@if [ -z "$(BACKUP)" ]; then \
-		echo "$(RED)Error: Please specify BACKUP=backup_directory$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)Restore complete!$(NC)"
+migrate-data: ## Migrate CIF data to database
+	@echo "$(GREEN)Migrating CIF data to database...$(NC)"
+	$(PYTHON) $(SCRIPTS_DIR)/migrate_cif_to_db.py --batch
+	@echo "$(GREEN)Data migration complete!$(NC)"
 
 # Development Workflow Tasks
 dev-setup: install-dev ## Setup complete development environment
 	@echo "$(GREEN)Setting up development environment...$(NC)"
-	@$(MAKE) validate-config
 	@echo "$(GREEN)Development environment ready!$(NC)"
 
 dev-test: ## Quick development test cycle
 	@echo "$(GREEN)Running development test cycle...$(NC)"
 	@$(MAKE) test-database
-	@$(MAKE) validate-integration
 
 dev-commit: ## Run checks before committing
 	@echo "$(GREEN)Running pre-commit checks...$(NC)"
 	@$(MAKE) check-format lint test-database
 	@echo "$(GREEN)Ready to commit!$(NC)"
-
-# CI/CD Integration
-ci-test: ## CI testing pipeline
-	@echo "$(GREEN)Running CI test pipeline...$(NC)"
-	@$(MAKE) install-dev
-	@$(MAKE) test
-	@$(MAKE) validate
-	@$(MAKE) security
-
-ci-deploy: ## CI deployment pipeline
-	@echo "$(GREEN)Running CI deployment pipeline...$(NC)"
-	@$(MAKE) ci-test
-	@$(MAKE) build
-
-# Troubleshooting
-troubleshoot: ## Show troubleshooting information
-	@echo "$(GREEN)Troubleshooting Information:$(NC)"
-	@echo "See: $(DOCS_DIR)/TROUBLESHOOTING.md"
-	@echo ""
-	@echo "$(YELLOW)Common commands:$(NC)"
-	@echo "  make health            - Check system health"
-	@echo "  make validate-phase2   - Validate Phase 2 implementation"
-	@echo "  make backend-info      - Show backend configuration details"
-	@echo "  make logs             - Show recent logs"
-	@echo ""
-	@echo "$(YELLOW)Backend Configuration:$(NC)"
-	@echo "  make backend-cif-only           - CIF-only mode"
-	@echo "  make backend-db-only            - Database-only mode"
-	@echo "  make backend-status             - Show current backend status"
-
-logs: ## Show recent logs (if logging is configured)
-	@echo "$(GREEN)Recent logs:$(NC)"
-	@if [ -d "logs" ]; then \
-		tail -n 50 logs/*.log 2>/dev/null || echo "No log files found in logs/"; \
-	else \
-		echo "Logs directory not found. Run 'make install' to create it."; \
-	fi
 
 # Version and Information
 version: ## Show version information
@@ -383,27 +182,24 @@ version: ## Show version information
 	@echo "Environment: $(ENV)"
 
 info: ## Show project information
-	@echo "$(GREEN)wwPDB Communication Module - Phase 2 Database Operations$(NC)"
+	@echo "$(GREEN)wwPDB Communication Module$(NC)"
 	@echo "Package: $(PACKAGE_NAME)"
 	@echo "Source: $(SOURCE_DIR)"
 	@echo "Tests: $(TESTS_DIR)"
-	@echo "Docs: $(DOCS_DIR)"
 	@echo "Scripts: $(SCRIPTS_DIR)"
 	@echo ""
 	@echo "$(YELLOW)Key Features:$(NC)"
 	@echo "  - Simple backend selection (CIF or Database)"
-	@echo "  - Clean migration support with single environment variable"
-	@echo "  - Easy rollback capability"
+	@echo "  - Single environment variable configuration"
 	@echo "  - Same interface for both backends"
-	@echo "  - Comprehensive validation and testing"
+	@echo "  - Comprehensive testing"
 	@echo ""
 	@echo "$(YELLOW)Backend Modes:$(NC)"
-	@echo "  - CIF-only: Traditional file-based storage (default)"
-	@echo "  - Database-only: Modern database storage"
+	@echo "  - CIF: Traditional file-based storage (default)"
+	@echo "  - Database: Modern database storage"
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@echo "  make dev-setup         - Setup development environment"
-	@echo "  make backend-info      - Show current backend configuration"
+	@echo "  make backend-status    - Show current backend configuration"
 	@echo "  make test             - Run all tests"
 	@echo "  make validate         - Run all validations"
-	@echo "  make deploy-dev       - Deploy to development"
