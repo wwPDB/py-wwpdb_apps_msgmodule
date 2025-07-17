@@ -72,7 +72,7 @@ except ImportError:
 
 from wwpdb.utils.session.WebRequest import InputRequest, ResponseContent
 from wwpdb.apps.msgmodule.depict.MessagingDepict import MessagingDepict
-from wwpdb.apps.msgmodule.io.MessagingFactory import create_messaging_service
+from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.models.Message import Message
 from wwpdb.apps.msgmodule.util.DaInternalDb import DaInternalDb
@@ -467,7 +467,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         rsltSetDict = msgingIo.getMsgRowList(
             p_depDataSetId=depId, p_sSendStatus=sendStatus, p_bServerSide=False, p_bThreadedRslts=bUseThreadedRsltSet
         )  # serverside False b/c only getting indentation info necessary for initial config
@@ -529,7 +529,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         _bOk, msgColList = msgingIo.getMsgColList(bCommHstryRqstd)
         #
         # if( sUseServerSide == 'true' ):
@@ -618,7 +618,7 @@ class MessagingWebAppWorker(object):
 
     #     rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
 
-    #     msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+    #     msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
     #     _bOk, msgColList = msgingIo.getMsgColList()
     #     msgRecordList, iTotalRecords, iTotalDisplayRecords = msgingIo.getMsgRowList(depId, True, 0, 20, "")
     #     #
@@ -945,7 +945,7 @@ class MessagingWebAppWorker(object):
             logger.info("-- Starting")
 
             #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         bAllMsgsRead = msgingIo.areAllMsgsRead()
 
@@ -966,7 +966,7 @@ class MessagingWebAppWorker(object):
             logger.info("Starting.")
 
             #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         bAllMsgsActioned = msgingIo.areAllMsgsActioned()
 
@@ -986,7 +986,7 @@ class MessagingWebAppWorker(object):
             logger.info("-- Starting.")
 
             #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         bForRelease = msgingIo.anyReleaseFlags()
 
@@ -1006,7 +1006,7 @@ class MessagingWebAppWorker(object):
             logger.info("-- Starting.")
 
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         bForApproval = msgingIo.anyUnactionApprovalWithoutCorrection()
 
@@ -1025,7 +1025,7 @@ class MessagingWebAppWorker(object):
             logger.info("-- Starting.")
 
             #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         return msgingIo.anyNotesExist()
 
@@ -1090,7 +1090,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         rtrnDict["files_rfrncd"] = msgingIo.getFilesRfrncd(depId)
 
@@ -1123,7 +1123,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO PARSE MODEL FILE AND FILTER
         fileLst = msgingIo.checkAvailFiles(depId)
         #
@@ -1160,7 +1160,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         msgDict = msgingIo.getMsg(msgId, depId)
         #
 
@@ -1196,7 +1196,7 @@ class MessagingWebAppWorker(object):
         #
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         msgDict = msgingIo.getMsg(msgId, depId)
         logger.info("msgDict is:  %r", msgDict)
         #
@@ -1335,7 +1335,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         depIdLst = depIdCsvLst.upper().split(",")
         #
@@ -1439,7 +1439,7 @@ class MessagingWebAppWorker(object):
         #
         msgObj = Message.fromReqObj(self.__reqObj, self.__verbose, self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         #
         if self.__verbose:
             logger.info("checking for attached files.")
@@ -1573,7 +1573,7 @@ class MessagingWebAppWorker(object):
         actionReqd = "Y" if (actionReqd is None or len(actionReqd) < 1) else actionReqd
         forReleaseFlg = "N" if (forReleaseFlg is None or len(forReleaseFlg) < 1) else forReleaseFlg
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         msgStatusDict = {
             "message_id": msgId,
             "deposition_data_set_id": depId,
@@ -1619,7 +1619,7 @@ class MessagingWebAppWorker(object):
         self.__reqObj.setReturnFormat(return_format="json")
         rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         #
-        msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+        msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
         msgStatusDict = {
             "message_id": msgId,
             "deposition_data_set_id": depId,
@@ -1659,7 +1659,7 @@ class MessagingWebAppWorker(object):
     #     self.__reqObj.setReturnFormat("json")
     #     rC = ResponseContent(reqObj=self.__reqObj, verbose=self.__verbose, log=self.__lfh)
     #     #
-    #     msgingIo = create_messaging_service(self.__reqObj, self.__verbose, self.__lfh)
+    #     msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj, self.__verbose, self.__lfh)
     #     if self.__debug:
     #         logger.debug("just before call to msgingIo.deleteRow at %s",
     #                      time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
@@ -1954,7 +1954,7 @@ class MessagingWebAppWorker(object):
 
         # # export updated mmCif file here
         # # bOk = callExportFile Function
-        # msgingIo = create_messaging_service(self.__reqObj,self.__verbose,self.__lfh)
+        # msgingIo = MessagingFactory.create_messaging_backend(self.__reqObj,self.__verbose,self.__lfh)
         # bOk = msgingIo.doExport(exprtDirPath,exprtFilePath)
         # """
         return True

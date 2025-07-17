@@ -100,7 +100,7 @@ That's it! The system will now use the database for all messaging operations.
 1. **📄 CIF-only** (default): Traditional file-based storage
 2. **🗃️ Database-only**: Modern database storage
 
-**Always use the factory pattern through `MessagingFactory.create_messaging_service()` or `create_messaging_service()` - direct instantiation of MessagingDb/MessagingIo is discouraged.**
+**Always use the factory pattern through `MessagingFactory.create_messaging_backend()` - direct instantiation of MessagingDb/MessagingIo is discouraged.**
 
 ## Troubleshooting
 

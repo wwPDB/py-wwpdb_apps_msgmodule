@@ -31,7 +31,7 @@ The system supports flexible backend configuration with three modes:
 
 ```python
 # Automatic backend selection based on configuration
-messaging = MessagingFactory.create_messaging_service(
+messaging = MessagingFactory.create_messaging_backend(
     verbose=True, 
     site_id="RCSB"
 )
@@ -107,9 +107,9 @@ make validate                     # Run validations
 **All messaging operations use the factory entry point:**
 
 ```python
-from wwpdb.apps.msgmodule.io.MessagingFactory import create_messaging_service
+from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
 
-messaging = create_messaging_service(req_obj, verbose=True)
+messaging = MessagingFactory.create_messaging_backend(req_obj, verbose=True)
 # Factory automatically selects: MessagingIo or MessagingDb
 ```
 
@@ -117,7 +117,7 @@ messaging = create_messaging_service(req_obj, verbose=True)
 
 - Use `make backend-status` to see current configuration
 - Check that `WWPDB_MESSAGING_BACKEND` environment variable is set correctly
-- Use `MessagingFactory.create_messaging_service()` for consistent backend selection
+- Use `MessagingFactory.create_messaging_backend()` for consistent backend selection
 
 ## Quick Start
 
@@ -163,7 +163,7 @@ python scripts/migrate_cif_to_db.py --deposition D_1234567890
 from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
 
 # Get messaging service (automatically selects best backend)
-messaging = MessagingFactory.create_messaging_service(site_id="RCSB")
+messaging = MessagingFactory.create_messaging_backend(site_id="RCSB")
 
 # Store a message
 messaging.set(

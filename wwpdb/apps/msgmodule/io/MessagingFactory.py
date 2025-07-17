@@ -89,13 +89,3 @@ class MessagingFactory:
             "current_value": os.environ.get("WWPDB_MESSAGING_BACKEND", "not set"),
             "reason": reason
         }
-
-
-# Convenience function for direct use
-def create_messaging_service(req_obj, verbose=False, log=None):
-    """
-    Convenience function to create messaging service with backend selection.
-    
-    This replaces direct instantiation of MessagingIo in existing code.
-    """
-    return MessagingFactory.create_messaging_backend(req_obj, verbose, log)

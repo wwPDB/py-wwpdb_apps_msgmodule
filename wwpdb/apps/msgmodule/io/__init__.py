@@ -5,7 +5,7 @@ File-based I/O operations for the messaging system including CIF data import/exp
 messaging factory for backend selection, and utility functions.
 """
 
-from .MessagingFactory import MessagingFactory, create_messaging_service
+from .MessagingFactory import MessagingFactory
 from .MessagingIo import MessagingIo
 from .MessagingDataImport import MessagingDataImport
 from .MessagingDataExport import MessagingDataExport
@@ -14,7 +14,6 @@ from .EmHeaderUtils import EmHeaderUtils
 
 __all__ = [
     "MessagingFactory",
-    "create_messaging_service", 
     "MessagingIo",
     "MessagingDataImport",
     "MessagingDataExport", 
