@@ -30,13 +30,25 @@ unset WWPDB_MESSAGING_BACKEND
 
 ### Database Configuration (if using database backend)
 
-```bash
-export MSGDB_HOST=localhost
-export MSGDB_PORT=3306
-export MSGDB_NAME=wwpdb_messaging
-export MSGDB_USER=msgmodule_user
-export MSGDB_PASS=your_password
+The messaging module uses ConfigInfo for database configuration, following the standard wwPDB pattern.
+
+Set the following keys in your site's ConfigInfo:
+
 ```
+MESSAGING_DB_HOST=localhost
+MESSAGING_DB_PORT=3306
+MESSAGING_DB_NAME=wwpdb_messaging
+MESSAGING_DB_USER=msgmodule_user
+MESSAGING_DB_PASS=your_password
+```
+
+The backend selection can also be configured via ConfigInfo:
+
+```
+WWPDB_MESSAGING_BACKEND=database
+```
+
+For development, you can still use the `WWPDB_MESSAGING_BACKEND` environment variable for backend selection.
 
 ## Usage
 
@@ -45,6 +57,7 @@ from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
 from wwpdb.apps.msgmodule.models.Message import Message
 
 # Backend automatically selected based on WWPDB_MESSAGING_BACKEND
+# Database configuration read from ConfigInfo
 messaging = MessagingFactory.create_messaging_backend(reqObj, verbose=True)
 
 # Create and store a message

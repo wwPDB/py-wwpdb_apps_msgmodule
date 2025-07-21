@@ -30,6 +30,13 @@ configInfo = {
         "correspondence-to-depositor": (["txt"], "correspondence-to-depositor"),
         "correspondence-legacy-rcsb": (["pdbx"], "correspondence-legacy-rcsb"),
     },
+    # Database configuration for testing
+    "WWPDB_MESSAGING_BACKEND": "cif",  # Default to CIF for tests
+    "MESSAGING_DB_HOST": "localhost",
+    "MESSAGING_DB_PORT": "3306", 
+    "MESSAGING_DB_NAME": "wwpdb_messaging_test",
+    "MESSAGING_DB_USER": "test_user",
+    "MESSAGING_DB_PASS": "test_password",
 }
 
 configInfoMockConfig = {

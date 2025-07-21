@@ -16,8 +16,6 @@ from typing import List, Dict, Optional, Tuple
 # Import the new database layer
 from wwpdb.apps.msgmodule.db import (
     MessagingDatabaseService,
-    get_messaging_database_config,
-    is_messaging_database_enabled,
 )
 from wwpdb.apps.msgmodule.models.Models import (
     MessageRecord,
@@ -48,10 +46,7 @@ class MessagingDb:
         self.__debug = True
         self.__reqObj = reqObj
 
-        # Initialize database service
-        self.__init_database_service()
-
-        # Existing initialization (unchanged)
+        # Initialize basic attributes first
         self.__sObj = self.__reqObj.newSessionObj()
         self.__sessionPath = self.__sObj.getPath()
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
@@ -59,6 +54,9 @@ class MessagingDb:
 
         # Initialize ConfigInfo for database configuration
         self.__cI = ConfigInfo(self.__siteId)
+
+        # Initialize database service after ConfigInfo is set
+        self.__init_database_service()
 
         # File path handling (still needed for file attachments)
         self.__msgsToDpstrFilePath = None
@@ -72,18 +70,14 @@ class MessagingDb:
         This implementation requires database to be available - no fallback logic.
         """
         try:
-            # Get site ID and ConfigInfo
-            site_id = self.__siteId if hasattr(self, "__siteId") else None
-            config_info = getattr(self, "__cI", None)
-
             # Check if database is enabled
-            if not is_messaging_database_enabled(site_id, config_info):
+            if not self._is_messaging_database_enabled():
                 logger.warning("Database storage is disabled - MessagingDb requires database to be enabled")
                 self.__db_service = None
                 return
 
             # Get database configuration
-            db_config = get_messaging_database_config(site_id, config_info)
+            db_config = self._get_messaging_database_config()
             self.__db_service = MessagingDatabaseService(db_config)
 
             if self.__verbose:
@@ -95,6 +89,56 @@ class MessagingDb:
             self.__db_service = None
             if self.__verbose:
                 logger.warning("MessagingDb requires database service - operations will fail")
+
+    def _is_messaging_database_enabled(self) -> bool:
+        """
+        Check if database backend is enabled via ConfigInfo.
+        
+        Returns:
+            True if database backend is enabled, False otherwise
+        """
+        try:
+            backend = self.__cI.get("WWPDB_MESSAGING_BACKEND", "cif").lower().strip()
+            return backend == "database"
+        except Exception as e:
+            logger.warning(f"Failed to check messaging backend via ConfigInfo: {e}")
+            return False
+
+    def _get_messaging_database_config(self) -> dict:
+        """
+        Get messaging database configuration from ConfigInfo.
+
+        Returns:
+            Database configuration dictionary
+            
+        Raises:
+            RuntimeError: If configuration is not found or incomplete
+        """
+        try:
+            # Get required configuration from ConfigInfo
+            host = self.__cI.get("MESSAGING_DB_HOST")
+            user = self.__cI.get("MESSAGING_DB_USER") 
+            database = self.__cI.get("MESSAGING_DB_NAME")
+            
+            if not all([host, user, database]):
+                missing = [k for k, v in [("MESSAGING_DB_HOST", host), ("MESSAGING_DB_USER", user), ("MESSAGING_DB_NAME", database)] if not v]
+                raise RuntimeError(f"Missing required ConfigInfo database settings: {', '.join(missing)}")
+
+            config = {
+                "host": host,
+                "port": int(self.__cI.get("MESSAGING_DB_PORT", "3306")),
+                "database": database,
+                "username": user,
+                "password": self.__cI.get("MESSAGING_DB_PASS", ""),
+                "charset": "utf8mb4",
+            }
+            
+            logger.info("Using database configuration from ConfigInfo")
+            return config
+            
+        except Exception as e:
+            logger.error(f"Failed to read database config from ConfigInfo: {e}")
+            raise RuntimeError(f"Database configuration error: {e}")
 
     def processMsg(self, p_msgObj):
         """

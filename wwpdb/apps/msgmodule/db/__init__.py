@@ -3,15 +3,8 @@ Database module for wwPDB messaging system.
 
 Database access for the messaging system migration from CIF file-based storage
 to relational database storage. Provides database backend implementation,
-configuration management, data access layer, and bridge to existing Message models.
+data access layer, and bridge to existing Message models.
 """
-
-# Configuration
-from .config import (
-    MessagingDatabaseConfig,
-    get_messaging_database_config,
-    is_messaging_database_enabled,
-)
 
 # Data Access Layer (with SQLAlchemy ORM)
 from .DataAccessLayer import (
@@ -31,11 +24,6 @@ from ..models.Models import (
 from .MessagingDb import MessagingDb
 
 __all__ = [
-    # Configuration
-    "MessagingDatabaseConfig",
-    "get_messaging_database_config", 
-    "is_messaging_database_enabled",
-    
     # Data Access Layer (SQLAlchemy ORM)
     "MessagingDatabaseService",
     "DatabaseConnectionManager",
@@ -46,6 +34,6 @@ __all__ = [
     "MessageFileReference", 
     "MessageStatus",
     
-    # Database Backend
+    # Database Backend Implementation
     "MessagingDb",
 ]
