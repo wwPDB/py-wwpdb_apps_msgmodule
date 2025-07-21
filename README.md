@@ -139,7 +139,6 @@ Set up environment variables:
 
 ```bash
 # Database configuration
-export MSGDB_ENABLED=true
 export MSGDB_HOST=localhost
 export MSGDB_PORT=3306
 export MSGDB_NAME=wwpdb_messaging
@@ -161,22 +160,27 @@ python scripts/migrate_cif_to_db.py --deposition D_1234567890
 
 ```python
 from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
+from wwpdb.apps.msgmodule.models.Message import Message
 
-# Get messaging service (automatically selects best backend)
-messaging = MessagingFactory.create_messaging_backend(site_id="RCSB")
+# Assume reqObj is your request object (see webapp or tests for example construction)
+messaging = MessagingFactory.create_messaging_backend(reqObj, verbose=True)
 
-# Store a message
-messaging.set(
-    deposition_id="D_1234567890",
-    message_data={
-        "sender": "annotator@rcsb.org",
-        "message_text": "Please review the structure validation.",
-        "message_type": "annotation_request"
-    }
+# Create a message object from the request
+messageObj = Message.fromReqObj(reqObj)
+
+# Store the message
+success, fileSuccess, failedFiles = messaging.processMsg(messageObj)
+
+# Retrieve all messages for a deposition
+messages = messaging.getMsgRowList(
+    p_depDataSetId="D_1234567890"
 )
 
-# Retrieve messages
-messages = messaging.get(deposition_id="D_1234567890")
+# Retrieve a single message by ID
+msg = messaging.getMsg(
+    p_msgId="some-message-id",
+    p_depId="D_1234567890"
+)
 ```
 
 ## Available Commands
