@@ -16,16 +16,13 @@ The wwPDB Communication Module provides messaging capabilities for the OneDep de
 
 ## Configuration
 
-Backend selection is controlled by environment variable:
+### Backend Selection
 
-```bash
-# Use database backend
-export WWPDB_MESSAGING_BACKEND=database
+The messaging module supports two storage backends, with selection controlled by ConfigInfo:
 
-# Use CIF backend (default) 
-export WWPDB_MESSAGING_BACKEND=cif
-# or
-unset WWPDB_MESSAGING_BACKEND
+```
+WWPDB_MESSAGING_BACKEND=database  # Use database backend
+WWPDB_MESSAGING_BACKEND=cif       # Use CIF backend (default)
 ```
 
 ### Database Configuration (if using database backend)
@@ -40,15 +37,8 @@ MESSAGING_DB_PORT=3306
 MESSAGING_DB_NAME=wwpdb_messaging
 MESSAGING_DB_USER=msgmodule_user
 MESSAGING_DB_PASS=your_password
-```
-
-The backend selection can also be configured via ConfigInfo:
-
-```
 WWPDB_MESSAGING_BACKEND=database
 ```
-
-For development, you can still use the `WWPDB_MESSAGING_BACKEND` environment variable for backend selection.
 
 ## Usage
 
@@ -56,7 +46,7 @@ For development, you can still use the `WWPDB_MESSAGING_BACKEND` environment var
 from wwpdb.apps.msgmodule.io.MessagingFactory import MessagingFactory
 from wwpdb.apps.msgmodule.models.Message import Message
 
-# Backend automatically selected based on WWPDB_MESSAGING_BACKEND
+# Backend automatically selected based on ConfigInfo WWPDB_MESSAGING_BACKEND
 # Database configuration read from ConfigInfo
 messaging = MessagingFactory.create_messaging_backend(reqObj, verbose=True)
 
