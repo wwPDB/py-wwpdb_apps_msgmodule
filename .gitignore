@@ -1,19 +1,15 @@
-#-------------------------------------------------------------------------------
-# Python bytecode, compiled, and cache files
-#-------------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.mypy_cache/
-.pytest_cache/
-.hypothesis/
-*.sage.py
 
-#-------------------------------------------------------------------------------
-# Build, distribution, and packaging
-#-------------------------------------------------------------------------------
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
 downloads/
 eggs/
@@ -28,9 +24,18 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-.Python
-develop-eggs/
-target/
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
 htmlcov/
 .tox/
 .coverage
@@ -39,10 +44,44 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
+.hypothesis/
+.pytest_cache/
 
-#-------------------------------------------------------------------------------
-# Environment and virtualenvs
-#-------------------------------------------------------------------------------
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
 .env
 .venv
 env/
@@ -50,80 +89,24 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.python-version
 
-#-------------------------------------------------------------------------------
-# IDE/editor/project settings
-#-------------------------------------------------------------------------------
-.idea/
+# Spyder project settings
 .spyderproject
 .spyproject
+
+# Rope project settings
 .ropeproject
 
-#-------------------------------------------------------------------------------
-# Logs and local databases
-#-------------------------------------------------------------------------------
-*.log
-pip-log.txt
-pip-delete-this-directory.txt
-local_settings.py
-db.sqlite3
-celerybeat-schedule
+# pycharm
+.idea/
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+
 test-output/
 
-#-------------------------------------------------------------------------------
-# Documentation and site builds
-#-------------------------------------------------------------------------------
-docs/_build/
-.site
-/site
-*.md
-!README.md
-
-#-------------------------------------------------------------------------------
-# Jupyter and Sage
-#-------------------------------------------------------------------------------
-.ipynb_checkpoints
-
-#-------------------------------------------------------------------------------
-# Flask, Django, Scrapy, PyBuilder, Sphinx, PyInstaller, Webassets
-#-------------------------------------------------------------------------------
-instance/
-.webassets-cache
-.scrapy
-*.manifest
-*.spec
-
-#-------------------------------------------------------------------------------
-# Miscellaneous
-#-------------------------------------------------------------------------------
-*.mo
-*.pot
-*.pyo
-*.pot
-*.mo
-
-#-------------------------------------------------------------------------------
-# Migration, demo, and debugging scripts
-#-------------------------------------------------------------------------------
-*_example.py
-*_demo.py
-demo_*.py
-!demo_real_system.py
-debug_*.py
-workflow_test_report.json
-*_report.py
-show_*.py
-explain_*.py
-
-#-------------------------------------------------------------------------------
-# Validation and check scripts
-#-------------------------------------------------------------------------------
-validate_*.py
-!scripts/validate_integration.py
-check_*.py
-
-#-------------------------------------------------------------------------------
-# Emacs backup files
-#-------------------------------------------------------------------------------
+# emacs
 *~
