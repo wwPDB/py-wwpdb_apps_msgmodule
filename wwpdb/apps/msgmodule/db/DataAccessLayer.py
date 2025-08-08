@@ -96,7 +96,7 @@ class BaseDAO(Generic[ModelType]):
             logger.error(f"Error creating {self.model_class.__name__}: {e}")
             return False
     
-    def get_by_id(self, record_id: str, id_field: str = 'id') -> Optional[ModelType]:
+    def get_by_id(self, record_id: str, id_field: str = 'ordinal_id') -> Optional[ModelType]:
         """Get record by ID"""
         try:
             with self.db_connection.get_session() as session:
@@ -128,7 +128,7 @@ class BaseDAO(Generic[ModelType]):
             logger.error(f"Error updating {self.model_class.__name__}: {e}")
             return False
     
-    def delete(self, record_id: str, id_field: str = 'id') -> bool:
+    def delete(self, record_id: str, id_field: str = 'ordinal_id') -> bool:
         """Delete a record by ID"""
         try:
             with self.db_connection.get_session() as session:

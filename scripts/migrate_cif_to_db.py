@@ -1,12 +1,7 @@
 """
 Migration utility to convert existing CIF message files to database records.
 
-This script will:
-1. Scan for existing CIF message files
-2. Parse the CIF data structures  
-3. Convert to database format
-4. Import into the new message database
-5. Verify data integrity
+This script migrates CIF message files to the new database format.
 """
 
 import os
@@ -24,7 +19,6 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 
 # Database imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from wwpdb.apps.msgmodule.db import (
     DataAccessLayer,
     MessageInfo,
@@ -42,364 +36,92 @@ logger = logging.getLogger(__name__)
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
-    def __init__(self, site_id: str):
-        """Initialize migrator with ConfigInfo-based database configuration"""
-        if not site_id:
-            raise ValueError("site_id is required and cannot be empty")
-            
+    def __init__(self, site_id: str, create_tables: bool = False):
+        """Initialize migrator"""
         self.site_id = site_id
-        
         self.config_info = ConfigInfo(site_id)
         
-        # Get database configuration from ConfigInfo
-        db_config = self._get_database_config_from_configinfo()
-        
+        # Get database configuration
+        db_config = self._get_database_config()
         self.data_access = DataAccessLayer(db_config)
         
-        # Ensure database tables exist
-        try:
+        # Create tables only if explicitly requested
+        if create_tables:
             self.data_access.create_tables()
-            logger.info("Database tables created/verified successfully")
-        except Exception as e:
-            logger.warning(f"Table creation warning (tables may already exist): {e}")
+            logger.info("Database tables created/verified")
+        
+        logger.info("Database connection established")
         
         self.path_info = PathInfo(siteId=site_id)
+        self.stats = {"processed": 0, "migrated": 0, "errors": 0}
 
-        # Migration statistics
-        self.stats = {
-            "files_processed": 0,
-            "messages_migrated": 0,
-            "file_references_migrated": 0,
-            "status_records_migrated": 0,
-            "errors": 0,
-            "skipped": 0,
+    def _get_database_config(self) -> Dict:
+        """Get database configuration from ConfigInfo"""
+        host = self.config_info.get("SITE_DB_HOST_NAME")
+        user = self.config_info.get("SITE_DB_ADMIN_USER")
+        database = self.config_info.get("WWPDB_MESSAGING_DB_NAME")
+        port = self.config_info.get("SITE_DB_PORT_NUMBER", "3306")
+        password = self.config_info.get("SITE_DB_ADMIN_PASS", "")
+        
+        if not all([host, user, database]):
+            raise RuntimeError("Missing required database configuration")
+
+        return {
+            "host": host,
+            "port": int(port),
+            "database": database,
+            "username": user,
+            "password": password,
+            "charset": "utf8mb4",
         }
 
-    def _get_database_config_from_configinfo(self) -> Dict:
-        """Get database configuration from ConfigInfo instead of environment variables"""
-        try:
-            # Get database configuration from ConfigInfo (same keys as MessagingDb)
-            host = self.config_info.get("SITE_DB_HOST_NAME")
-            user = self.config_info.get("SITE_DB_ADMIN_USER")
-            database = self.config_info.get("WWPDB_MESSAGING_DB_NAME")
-            port = self.config_info.get("SITE_DB_PORT_NUMBER", "3306")
-            password = self.config_info.get("SITE_DB_ADMIN_PASS", "")
-            
-            if not all([host, user, database]):
-                missing = [k for k, v in [("SITE_DB_HOST_NAME", host), ("SITE_DB_ADMIN_USER", user), ("WWPDB_MESSAGING_DB_NAME", database)] if not v]
-                raise RuntimeError(f"Missing required ConfigInfo database settings: {', '.join(missing)}")
-
-            config = {
-                "host": host,
-                "port": int(port),
-                "database": database,
-                "username": user,
-                "password": password,
-                "pool_size": 20,
-                "charset": "utf8mb4",
-            }
-            
-            logger.info(f"Using database configuration from ConfigInfo for site {self.site_id}")
-            # Log config without password
-            config_display = dict((k, "***" if k == "password" else v) for k, v in config.items())
-            logger.info(f"Database config: {config_display}")
-            
-            return config
-            
-        except Exception as e:
-            logger.error(f"Failed to get database config from ConfigInfo: {e}")
-            raise RuntimeError(f"Database configuration error: {e}")
-
-    def migrate_deposition_messages(
-        self, deposition_id: str, test_mode: bool = False
-    ) -> bool:
-        """Migrate all message files for a specific deposition"""
-        try:
-            logger.info(f"Starting migration for deposition {deposition_id}")
-
-            # Define the message file types to migrate
-            message_types = [
-                "messages-from-depositor",
-                "messages-to-depositor",
-                "notes-from-annotator",
-            ]
-
-            success = True
-            for msg_type in message_types:
-                file_path = self._get_message_file_path(deposition_id, msg_type)
-                if file_path and os.path.exists(file_path):
-                    if not self._migrate_cif_file(file_path, msg_type, test_mode):
-                        success = False
-                else:
-                    logger.info(f"No {msg_type} file found for {deposition_id}")
-
-            if success:
-                logger.info(f"Successfully migrated deposition {deposition_id}")
+    def migrate_deposition(self, deposition_id: str, dry_run: bool = False) -> bool:
+        """Migrate all message files for a deposition"""
+        logger.info(f"Migrating deposition {deposition_id}")
+        
+        message_types = ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]
+        success = True
+        
+        for msg_type in message_types:
+            file_path = self._get_file_path(deposition_id, msg_type)
+            if file_path and os.path.exists(file_path):
+                if not self._migrate_file(file_path, msg_type, dry_run):
+                    success = False
             else:
-                logger.error(f"Migration failed for deposition {deposition_id}")
+                logger.debug(f"No {msg_type} file for {deposition_id}")
+        
+        return success
 
-            return success
-
-        except Exception as e:
-            logger.error(f"Error migrating deposition {deposition_id}: {e}")
-            self.stats["errors"] += 1
-            return False
-
-    def migrate_bulk_depositions(
-        self, deposition_list: List[str], test_mode: bool = False
-    ) -> Dict:
-        """Migrate multiple depositions"""
-        logger.info(f"Starting bulk migration for {len(deposition_list)} depositions")
-
+    def migrate_directory(self, directory_path: str, dry_run: bool = False) -> Dict:
+        """Migrate all depositions in a directory"""
+        logger.info(f"Scanning {directory_path}")
+        
+        deposition_ids = [
+            item for item in os.listdir(directory_path)
+            if os.path.isdir(os.path.join(directory_path, item)) and item.startswith('D_')
+        ]
+        
+        logger.info(f"Found {len(deposition_ids)} depositions")
+        
         successful = []
         failed = []
-
-        for deposition_id in deposition_list:
+        
+        for deposition_id in deposition_ids:
             try:
-                if self.migrate_deposition_messages(deposition_id, test_mode):
+                if self.migrate_deposition(deposition_id, dry_run):
                     successful.append(deposition_id)
                 else:
                     failed.append(deposition_id)
-
             except Exception as e:
-                logger.error(f"Error processing {deposition_id}: {e}")
+                logger.error(f"Error with {deposition_id}: {e}")
                 failed.append(deposition_id)
+        
+        logger.info(f"Completed: {len(successful)} success, {len(failed)} failed")
+        return {"successful": successful, "failed": failed}
 
-        results = {"successful": successful, "failed": failed, "stats": self.stats}
 
-        logger.info(
-            f"Bulk migration completed. Success: {len(successful)}, Failed: {len(failed)}"
-        )
-        return results
-
-    def migrate_from_directory(
-        self, directory_path: str, test_mode: bool = False
-    ) -> Dict:
-        """Migrate all CIF message files from a directory"""
-        logger.info(f"Scanning directory {directory_path} for CIF message files")
-
-        cif_files = []
-        for root, dirs, files in os.walk(directory_path):
-            for file in files:
-                if self._is_message_cif_file(file):
-                    cif_files.append(os.path.join(root, file))
-
-        logger.info(f"Found {len(cif_files)} CIF message files")
-
-        successful = []
-        failed = []
-
-        for cif_file in cif_files:
-            try:
-                msg_type = self._extract_message_type(cif_file)
-                if self._migrate_cif_file(cif_file, msg_type, test_mode):
-                    successful.append(cif_file)
-                else:
-                    failed.append(cif_file)
-
-            except Exception as e:
-                logger.error(f"Error processing {cif_file}: {e}")
-                failed.append(cif_file)
-
-        results = {"successful": successful, "failed": failed, "stats": self.stats}
-
-        logger.info(
-            f"Directory migration completed. Success: {len(successful)}, Failed: {len(failed)}"
-        )
-        return results
-
-    def _migrate_cif_file(
-        self, file_path: str, message_type: str, test_mode: bool = False
-    ) -> bool:
-        """Migrate a single CIF message file"""
-        try:
-            logger.info(f"Processing CIF file: {file_path}")
-            self.stats["files_processed"] += 1
-
-            # Parse CIF file
-            messages, file_references, status_records = self._parse_cif_file(
-                file_path, message_type
-            )
-
-            if not messages:
-                logger.warning(f"No messages found in {file_path}")
-                self.stats["skipped"] += 1
-                return True
-
-            # Migrate data to database
-            if not test_mode:
-                success = self._store_parsed_data(
-                    messages, file_references, status_records
-                )
-                if not success:
-                    self.stats["errors"] += 1
-                    return False
-            else:
-                logger.info(
-                    f"TEST MODE: Would migrate {len(messages)} messages from {file_path}"
-                )
-
-            self.stats["messages_migrated"] += len(messages)
-            self.stats["file_references_migrated"] += len(file_references)
-            self.stats["status_records_migrated"] += len(status_records)
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error migrating CIF file {file_path}: {e}")
-            self.stats["errors"] += 1
-            return False
-
-    def _parse_cif_file(self, file_path: str, message_type: str) -> tuple:
-        """Parse CIF file and extract message data"""
-        messages = []
-        file_references = []
-        status_records = []
-
-        try:
-            # Use existing PdbxMessageIo to read CIF file
-            msg_io = PdbxMessageIo(verbose=False)
-            if not msg_io.read(file_path):
-                logger.error(f"Failed to read CIF file: {file_path}")
-                return messages, file_references, status_records
-
-            # Extract message info
-            message_info_list = msg_io.getMessageInfo()
-            for msg_info in message_info_list:
-                message = self._convert_to_message_info(msg_info, message_type)
-                messages.append(message)
-
-            # Extract file references
-            file_ref_list = msg_io.getFileReferenceInfo()
-            for file_ref in file_ref_list:
-                message_file_reference = self._convert_to_file_reference(file_ref)
-                file_references.append(message_file_reference)
-
-            # Extract status info
-            status_info_list = msg_io.getMsgStatusInfo()
-            for status_info in status_info_list:
-                status = self._convert_to_status_record(status_info)
-                status_records.append(status)
-
-            logger.info(
-                f"Parsed {len(messages)} messages, {len(file_references)} file refs, "
-                f"{len(status_records)} status records from {file_path}"
-            )
-
-        except Exception as e:
-            logger.error(f"Error parsing CIF file {file_path}: {e}")
-            raise
-
-        return messages, file_references, status_records
-
-    def _convert_to_message_info(
-        self, msg_info: Dict, message_type: str
-    ) -> MessageInfo:
-        """Convert CIF message info to MessageInfo"""
-        # Map content type to proper enum values
-        if "notes" in message_type:
-            content_type = "notes-from-annotator"
-        elif "from-depositor" in message_type:
-            content_type = "messages-from-depositor"
-        else:
-            content_type = "messages-to-depositor"
-
-        # Parse timestamp
-        timestamp_str = msg_info.get("timestamp", "")
-        try:
-            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            timestamp = datetime.now()
-
-        return MessageInfo(
-            message_id=msg_info.get("message_id", str(uuid.uuid4())),
-            deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
-            timestamp=timestamp,
-            sender=msg_info.get("sender", ""),
-            context_type=msg_info.get("context_type"),
-            context_value=msg_info.get("context_value"),
-            parent_message_id=msg_info.get("parent_message_id"),
-            message_subject=msg_info.get("message_subject", ""),
-            message_text=msg_info.get("message_text", ""),
-            message_type=msg_info.get("message_type", "text"),
-            send_status=msg_info.get("send_status", "Y"),
-            content_type=content_type,
-        )
-
-    def _convert_to_file_reference(self, file_ref: Dict) -> MessageFileReference:
-        """Convert CIF file reference to MessageFileReference"""
-        return MessageFileReference(
-            message_id=file_ref.get("message_id", ""),
-            deposition_data_set_id=file_ref.get("deposition_data_set_id", ""),
-            content_type=file_ref.get("content_type", ""),
-            content_format=file_ref.get("content_format", ""),
-            partition_number=int(file_ref.get("partition_number", 1)),
-            version_id=int(file_ref.get("version_id", 1)),
-            storage_type=file_ref.get("storage_type", "archive"),  # Fixed: was file_source
-            upload_file_name=file_ref.get("upload_file_name"),
-        )
-
-    def _convert_to_status_record(self, status_info: Dict) -> MessageStatus:
-        """Convert CIF status info to MessageStatus"""
-        return MessageStatus(
-            message_id=status_info.get("message_id", ""),
-            deposition_data_set_id=status_info.get("deposition_data_set_id", ""),
-            read_status=status_info.get("read_status", "N"),
-            action_reqd=status_info.get("action_reqd", "N"),
-            for_release=status_info.get("for_release", "N"),
-        )
-
-    def _store_parsed_data(
-        self,
-        messages: List[MessageInfo],
-        file_references: List[MessageFileReference],
-        status_records: List[MessageStatus],
-    ) -> bool:
-        """Store parsed data in database"""
-        try:
-            # Store messages first
-            for message in messages:
-                # Check if message already exists
-                existing = self.data_access.get_message_by_id(
-                    message.message_id
-                )
-                if existing:
-                    logger.warning(
-                        f"Message {message.message_id} already exists, skipping"
-                    )
-                    continue
-
-                # Create message
-                if not self.data_access.create_message(message):
-                    logger.error(f"Failed to create message {message.message_id}")
-                    return False
-
-            # Store file references
-            for file_ref in file_references:
-                if not self.data_access.create_file_reference(file_ref):
-                    logger.error(
-                        f"Failed to create file reference for message {file_ref.message_id}"
-                    )
-                    return False
-
-            # Store status records
-            for status in status_records:
-                if not self.data_access.create_or_update_status(status):
-                    logger.error(
-                        f"Failed to create status for message {status.message_id}"
-                    )
-                    return False
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error storing parsed data: {e}")
-            return False
-
-    def _get_message_file_path(
-        self, deposition_id: str, message_type: str
-    ) -> Optional[str]:
-        """Get the file path for a message file"""
+    def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
+        """Get file path using PathInfo"""
         try:
             return self.path_info.getFilePath(
                 dataSetId=deposition_id,
@@ -409,156 +131,184 @@ class CifToDbMigrator:
                 versionId="latest",
             )
         except Exception as e:
-            logger.error(
-                f"Error getting file path for {deposition_id}, {message_type}: {e}"
-            )
+            logger.debug(f"No {message_type} file for {deposition_id}: {e}")
             return None
 
-    def _is_message_cif_file(self, filename: str) -> bool:
-        """Check if file is a message CIF file"""
-        message_patterns = [
-            "messages-from-depositor",
-            "messages-to-depositor",
-            "notes-from-annotator",
-        ]
-        return any(
-            pattern in filename for pattern in message_patterns
-        ) and filename.endswith(".cif")
+    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False) -> bool:
+        """Migrate a single CIF file"""
+        logger.info(f"Processing {file_path}")
+        self.stats["processed"] += 1
 
-    def _extract_message_type(self, file_path: str) -> str:
-        """Extract message type from file path"""
-        filename = os.path.basename(file_path)
-        if "messages-from-depositor" in filename:
-            return "messages-from-depositor"
-        elif "messages-to-depositor" in filename:
-            return "messages-to-depositor"
-        elif "notes-from-annotator" in filename:
-            return "notes-from-annotator"
-        else:
-            return "unknown"
-
-    def verify_migration(self, deposition_id: str) -> Dict:
-        """Verify that migration was successful for a deposition"""
         try:
-            # Get messages from database
-            db_messages = self.data_access.get_deposition_messages(deposition_id)
+            # Parse CIF file
+            msg_io = PdbxMessageIo(verbose=False)
+            if not msg_io.read(file_path):
+                logger.error(f"Failed to read {file_path}")
+                return False
 
-            # Get original CIF data for comparison
-            cif_data = self._get_original_cif_data(deposition_id)
+            # Convert data
+            messages = self._convert_messages(msg_io.getMessageInfo(), message_type)
+            file_refs = self._convert_file_refs(msg_io.getFileReferenceInfo())
+            statuses = self._convert_statuses(msg_io.getMsgStatusInfo())
 
-            verification_result = {
-                "deposition_id": deposition_id,
-                "db_message_count": len(db_messages),
-                "cif_message_count": len(cif_data.get("messages", [])),
-                "match": len(db_messages) == len(cif_data.get("messages", [])),
-                "discrepancies": [],
-            }
+            if not messages:
+                logger.warning(f"No messages in {file_path}")
+                return True
 
-            # Additional verification logic could be added here
+            # Store in database
+            if not dry_run:
+                success = self._store_data(messages, file_refs, statuses)
+                if success:
+                    self.stats["migrated"] += len(messages)
+                else:
+                    self.stats["errors"] += 1
+                    return False
+            else:
+                logger.info(f"DRY RUN: Would migrate {len(messages)} messages")
 
-            return verification_result
+            return True
 
         except Exception as e:
-            logger.error(f"Error verifying migration for {deposition_id}: {e}")
-            return {"error": str(e)}
+            logger.error(f"Error processing {file_path}: {e}")
+            self.stats["errors"] += 1
+            return False
 
-    def _get_original_cif_data(self, deposition_id: str) -> Dict:
-        """Get original CIF data for verification"""
-        # This would implement logic to read and parse original CIF files
-        # for comparison with database data
-        return {"messages": [], "file_references": [], "status_records": []}
+    def _convert_messages(self, msg_infos: List[Dict], message_type: str) -> List[MessageInfo]:
+        """Convert CIF message data to MessageInfo objects"""
+        messages = []
+        
+        # Map message type to content type
+        if "notes" in message_type:
+            content_type = "notes-from-annotator"
+        elif "from-depositor" in message_type:
+            content_type = "messages-from-depositor"
+        else:
+            content_type = "messages-to-depositor"
 
-    def print_statistics(self):
-        """Print migration statistics"""
-        print("\n" + "=" * 50)
-        print("MIGRATION STATISTICS")
-        print("=" * 50)
-        print(f"Files processed:          {self.stats['files_processed']}")
-        print(f"Messages migrated:        {self.stats['messages_migrated']}")
-        print(f"File references migrated: {self.stats['file_references_migrated']}")
-        print(f"Status records migrated:  {self.stats['status_records_migrated']}")
-        print(f"Errors:                   {self.stats['errors']}")
-        print(f"Skipped:                  {self.stats['skipped']}")
-        print("=" * 50)
+        for msg_info in msg_infos:
+            # Parse timestamp
+            timestamp_str = msg_info.get("timestamp", "")
+            timestamp = datetime.now()
+            
+            if timestamp_str:
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y %H:%M:%S", "%d-%b-%Y"]:
+                    try:
+                        timestamp = datetime.strptime(timestamp_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+
+            message = MessageInfo(
+                message_id=msg_info.get("message_id", str(uuid.uuid4())),
+                deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
+                timestamp=timestamp,
+                sender=msg_info.get("sender", ""),
+                context_type=msg_info.get("context_type"),
+                context_value=msg_info.get("context_value"),
+                parent_message_id=msg_info.get("parent_message_id"),
+                message_subject=msg_info.get("message_subject", ""),
+                message_text=msg_info.get("message_text", ""),
+                message_type=msg_info.get("message_type", "text"),
+                send_status=msg_info.get("send_status", "Y"),
+                content_type=content_type,
+            )
+            messages.append(message)
+        
+        return messages
+
+    def _convert_file_refs(self, file_refs: List[Dict]) -> List[MessageFileReference]:
+        """Convert file references"""
+        return [
+            MessageFileReference(
+                message_id=ref.get("message_id", ""),
+                deposition_data_set_id=ref.get("deposition_data_set_id", ""),
+                content_type=ref.get("content_type", ""),
+                content_format=ref.get("content_format", ""),
+                partition_number=int(ref.get("partition_number", 1)),
+                version_id=int(ref.get("version_id", 1)),
+                storage_type=ref.get("storage_type", "archive"),
+                upload_file_name=ref.get("upload_file_name"),
+            )
+            for ref in file_refs
+        ]
+
+    def _convert_statuses(self, statuses: List[Dict]) -> List[MessageStatus]:
+        """Convert status records"""
+        return [
+            MessageStatus(
+                message_id=status.get("message_id", ""),
+                deposition_data_set_id=status.get("deposition_data_set_id", ""),
+                read_status=status.get("read_status", "N"),
+                action_reqd=status.get("action_reqd", "N"),
+                for_release=status.get("for_release", "N"),
+            )
+            for status in statuses
+        ]
+
+    def _store_data(self, messages: List[MessageInfo], file_refs: List[MessageFileReference], 
+                    statuses: List[MessageStatus]) -> bool:
+        """Store data in database"""
+        try:
+            # Store messages
+            for message in messages:
+                if self.data_access.get_message_by_id(message.message_id):
+                    logger.debug(f"Message {message.message_id} already exists")
+                    continue
+                if not self.data_access.create_message(message):
+                    return False
+
+            # Store file references and statuses
+            for file_ref in file_refs:
+                self.data_access.create_file_reference(file_ref)
+            
+            for status in statuses:
+                self.data_access.create_or_update_status(status)
+
+            return True
+        except Exception as e:
+            logger.error(f"Database error: {e}")
+            return False
+
+    def print_stats(self):
+        """Print simple migration statistics"""
+        print(f"Migration Summary:")
+        print(f"  Files processed: {self.stats['processed']}")
+        print(f"  Messages migrated: {self.stats['migrated']}")
+        print(f"  Errors: {self.stats['errors']}")
 
 
 def main():
-    """Main entry point for migration script"""
-    parser = argparse.ArgumentParser(
-        description="Migrate CIF message files to database"
-    )
+    """Main entry point"""
+    parser = argparse.ArgumentParser(description="Migrate CIF message files to database")
     parser.add_argument("--deposition", help="Single deposition ID to migrate")
-    parser.add_argument(
-        "--depositions-file", help="File containing list of deposition IDs"
-    )
-    parser.add_argument("--directory", help="Directory containing CIF files to migrate")
-    parser.add_argument(
-        "--test-mode", action="store_true", help="Run in test mode (no database writes)"
-    )
-    parser.add_argument(
-        "--site-id", required=True, help="Site ID for ConfigInfo database configuration (e.g., RCSB, PDBe, PDBj, BMRB)"
-    )
-    parser.add_argument("--verify", help="Verify migration for a deposition ID")
+    parser.add_argument("--directory", help="Directory containing deposition subdirectories")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without writing to database")
+    parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
+    parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
 
     args = parser.parse_args()
 
-    # Initialize migrator with ConfigInfo-based configuration
     try:
-        migrator = CifToDbMigrator(args.site_id)
-        logger.info(f"Migrator initialized successfully for site {args.site_id}")
-    except Exception as e:
-        logger.error(f"Failed to initialize migrator: {e}")
-        sys.exit(1)
-
-    try:
-        if args.verify:
-            # Verification mode
-            result = migrator.verify_migration(args.verify)
-            print(f"Verification result: {result}")
-
-        elif args.deposition:
-            # Single deposition migration
-            success = migrator.migrate_deposition_messages(
-                args.deposition, args.test_mode
-            )
-            print(
-                f"Migration {'successful' if success else 'failed'} for {args.deposition}"
-            )
-
-        elif args.depositions_file:
-            # Bulk deposition migration
-            with open(args.depositions_file, "r") as f:
-                deposition_list = [line.strip() for line in f if line.strip()]
-
-            results = migrator.migrate_bulk_depositions(deposition_list, args.test_mode)
-            print(
-                f"Bulk migration completed: {len(results['successful'])} successful, {len(results['failed'])} failed"
-            )
-
+        migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables)
+        
+        if args.deposition:
+            migrator.migrate_deposition(args.deposition, args.dry_run)
         elif args.directory:
-            # Directory migration
-            results = migrator.migrate_from_directory(args.directory, args.test_mode)
-            print(
-                f"Directory migration completed: {len(results['successful'])} successful, {len(results['failed'])} failed"
-            )
-
+            migrator.migrate_directory(args.directory, args.dry_run)
         else:
             parser.print_help()
             return
 
-        migrator.print_statistics()
+        migrator.print_stats()
 
     except Exception as e:
         logger.error(f"Migration failed: {e}")
         sys.exit(1)
-    
     finally:
-        # Clean up database connections
         try:
             migrator.data_access.close()
-            logger.info("Database connections closed")
-        except Exception as e:
-            logger.warning(f"Error closing database connections: {e}")
+        except:
+            pass
 
 
 if __name__ == "__main__":
