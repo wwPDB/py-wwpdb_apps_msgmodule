@@ -245,12 +245,52 @@ class CifToDbMigrator:
             for status in statuses
         ]
 
+    def _sort_messages_by_dependencies(self, messages: List[MessageInfo]) -> List[MessageInfo]:
+        """Sort messages to ensure parents are inserted before children"""
+        # Create a map of message_id -> message for easy lookup
+        message_map = {msg.message_id: msg for msg in messages}
+        
+        # Track visited and currently processing nodes for cycle detection
+        visited = set()
+        processing = set()
+        sorted_messages = []
+        
+        def visit(message: MessageInfo):
+            if message.message_id in processing:
+                # Cycle detected - log warning and skip dependency
+                logger.warning(f"Circular dependency detected for message {message.message_id}")
+                return
+            
+            if message.message_id in visited:
+                return
+            
+            processing.add(message.message_id)
+            
+            # If this message has a parent, visit the parent first
+            if message.parent_message_id and message.parent_message_id in message_map:
+                parent = message_map[message.parent_message_id]
+                visit(parent)
+            
+            processing.remove(message.message_id)
+            visited.add(message.message_id)
+            sorted_messages.append(message)
+        
+        # Visit all messages
+        for message in messages:
+            visit(message)
+        
+        logger.info(f"Sorted {len(messages)} messages by dependencies")
+        return sorted_messages
+
     def _store_data(self, messages: List[MessageInfo], file_refs: List[MessageFileReference], 
                     statuses: List[MessageStatus]) -> bool:
-        """Store data in database"""
+        """Store data in database with proper dependency ordering"""
         try:
-            # Store messages
-            for message in messages:
+            # Sort messages to ensure parents are inserted before children
+            sorted_messages = self._sort_messages_by_dependencies(messages)
+            
+            # Store messages in dependency order
+            for message in sorted_messages:
                 if self.data_access.get_message_by_id(message.message_id):
                     logger.debug(f"Message {message.message_id} already exists")
                     continue
