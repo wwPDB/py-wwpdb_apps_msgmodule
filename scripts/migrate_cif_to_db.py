@@ -576,7 +576,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without writing to database")
     parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
     parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
-    parser.add_argument("--log-json", help="Write structured JSONL logs to this file (default: logs/migration_TIMESTAMP.jsonl)")
+    parser.add_argument("--log-json", default=None, help="Write structured JSONL logs to this file (default: auto-generate logs/migration_TIMESTAMP.jsonl)")
     parser.add_argument("--log-level", default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
 
     args = parser.parse_args()
@@ -589,10 +589,12 @@ def main():
         
         # Generate timestamped log filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.log_json = os.path.join(logs_dir, f"migration_{timestamp}.jsonl")
+        json_log_path = os.path.join(logs_dir, f"migration_{timestamp}.jsonl")
+    else:
+        json_log_path = args.log_json  # Use custom path
 
-    # Setup logging with JSON output
-    _setup_logging(args.log_json, args.log_level)
+    # Setup logging with JSON output (always enabled)
+    _setup_logging(json_log_path, args.log_level)
     
     log_event("INFO", "migration_start",
              message="Starting migration",
@@ -601,7 +603,7 @@ def main():
              dry_run=args.dry_run,
              site_id=args.site_id,
              create_tables=args.create_tables,
-             log_json_path=args.log_json,
+             log_json_path=json_log_path,
              run_id=RUN_ID)
 
     migrator = None
