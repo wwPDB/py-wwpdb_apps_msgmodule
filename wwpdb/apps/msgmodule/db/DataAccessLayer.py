@@ -88,20 +88,36 @@ class BaseDAO(Generic[ModelType]):
         """Create a new record"""
         try:
             with self.db_connection.get_session() as session:
-                # Create a fresh instance to avoid session conflicts
-                fresh_obj = self.model_class()
+                # Handle potential session conflicts efficiently
+                if hasattr(obj, '_sa_instance_state') and obj._sa_instance_state.session is not None:
+                    # Object is attached to a different session - merge it
+                    merged_obj = session.merge(obj)
+                    session.commit()
+                else:
+                    # Object is not attached to any session - add directly
+                    session.add(obj)
+                    session.commit()
                 
-                # Copy all attributes to the fresh instance
-                for column in self.model_class.__table__.columns:
-                    if hasattr(obj, column.name):
-                        setattr(fresh_obj, column.name, getattr(obj, column.name))
-                
-                session.add(fresh_obj)
-                session.commit()
                 logger.info(f"Created {self.model_class.__name__} record")
                 return True
         except SQLAlchemyError as e:
             logger.error(f"Error creating {self.model_class.__name__}: {e}")
+            return False
+
+    def create_bulk(self, objects: List[ModelType]) -> bool:
+        """Create multiple records in a single transaction for better performance"""
+        if not objects:
+            return True
+            
+        try:
+            with self.db_connection.get_session() as session:
+                # Use bulk insert for better performance
+                session.add_all(objects)
+                session.commit()
+                logger.info(f"Created {len(objects)} {self.model_class.__name__} records in bulk")
+                return True
+        except SQLAlchemyError as e:
+            logger.error(f"Error bulk creating {self.model_class.__name__}: {e}")
             return False
     
     def get_by_id(self, record_id: str, id_field: str = 'ordinal_id') -> Optional[ModelType]:
@@ -277,6 +293,10 @@ class DataAccessLayer:
         """Create a new message"""
         return self.messages.create(message)
     
+    def create_messages_bulk(self, messages: List[MessageInfo]) -> bool:
+        """Create multiple messages in a single transaction"""
+        return self.messages.create_bulk(messages)
+    
     def get_message_by_id(self, message_id: str) -> Optional[MessageInfo]:
         """Get message by ID"""
         return self.messages.get_by_message_id(message_id)
@@ -292,6 +312,10 @@ class DataAccessLayer:
     def create_file_reference(self, file_ref: MessageFileReference) -> bool:
         """Create a new file reference"""
         return self.file_references.create(file_ref)
+    
+    def create_file_references_bulk(self, file_refs: List[MessageFileReference]) -> bool:
+        """Create multiple file references in a single transaction"""
+        return self.file_references.create_bulk(file_refs)
     
     def create_or_update_status(self, status: MessageStatus) -> bool:
         """Create or update message status"""

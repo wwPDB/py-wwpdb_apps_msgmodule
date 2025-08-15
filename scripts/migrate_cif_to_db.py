@@ -582,13 +582,23 @@ class CifToDbMigrator:
                      total_inserted=inserted_count,
                      iterations=iteration)
 
-            # Store file references and statuses
-            for file_ref in file_refs:
-                if not self.data_access.create_file_reference(file_ref):
-                    log_event("WARNING", "file_ref_insert_fail",
-                             message="Failed to insert file reference",
-                             message_id=file_ref.message_id,
-                             deposition_id=file_ref.deposition_data_set_id)
+            # Store file references in bulk for better performance
+            if file_refs:
+                if not self.data_access.create_file_references_bulk(file_refs):
+                    log_event("WARNING", "file_refs_bulk_fail",
+                             message="Bulk file reference insert failed, trying individual inserts",
+                             count=len(file_refs))
+                    # Fallback to individual inserts
+                    for file_ref in file_refs:
+                        if not self.data_access.create_file_reference(file_ref):
+                            log_event("WARNING", "file_ref_insert_fail",
+                                     message="Failed to insert file reference",
+                                     message_id=file_ref.message_id,
+                                     deposition_id=file_ref.deposition_data_set_id)
+                else:
+                    log_event("INFO", "file_refs_bulk_success",
+                             message="File references inserted in bulk",
+                             count=len(file_refs))
             
             for status in statuses:
                 # Only create status if the corresponding message exists
