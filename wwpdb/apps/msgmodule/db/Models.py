@@ -8,7 +8,8 @@ the CIF structure:
 - pdbx_deposition_message_status
 """
 
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, Binary, LargeBinary
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, LargeBinary
+from sqlalchemy.types import BINARY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -30,7 +31,7 @@ class MessageInfo(Base):
     context_type = Column(String(50), nullable=True, index=True)
     context_value = Column(String(255), nullable=True)
     parent_message_id = Column(String(255), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=True, index=True)
-    message_subject = Column(Binary, nullable=False)
+    message_subject = Column(BINARY, nullable=False)
     message_text = Column(LargeBinary, nullable=False)
     message_type = Column(String(20), nullable=True, default='text')
     send_status = Column(CHAR(1), nullable=True, default='Y')
