@@ -591,9 +591,16 @@ class CifToDbMigrator:
                              deposition_id=file_ref.deposition_data_set_id)
             
             for status in statuses:
-                if not self.data_access.create_or_update_status(status):
-                    log_event("WARNING", "status_insert_fail",
-                             message="Failed to insert/update status",
+                # Only create status if the corresponding message exists
+                if self.data_access.message_exists(status.message_id):
+                    if not self.data_access.create_or_update_status(status):
+                        log_event("WARNING", "status_insert_fail",
+                                 message="Failed to insert/update status",
+                                 message_id=status.message_id,
+                                 deposition_id=status.deposition_data_set_id)
+                else:
+                    log_event("WARNING", "status_orphaned",
+                             message="Skipping status - message not found",
                              message_id=status.message_id,
                              deposition_id=status.deposition_data_set_id)
 
