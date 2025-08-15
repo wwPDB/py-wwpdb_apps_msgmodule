@@ -156,6 +156,17 @@ class MessageDAO(BaseDAO[MessageInfo]):
         """Get message by message_id"""
         return self.get_by_id(message_id, 'message_id')
     
+    def exists_by_message_id(self, message_id: str) -> bool:
+        """Check if message exists by message_id"""
+        try:
+            with self.db_connection.get_session() as session:
+                return session.query(MessageInfo).filter(
+                    MessageInfo.message_id == message_id
+                ).first() is not None
+        except SQLAlchemyError as e:
+            logger.error(f"Error checking message existence {message_id}: {e}")
+            return False
+    
     def get_by_deposition(self, deposition_id: str) -> List[MessageInfo]:
         """Get all messages for a deposition"""
         try:
@@ -261,6 +272,10 @@ class DataAccessLayer:
     def get_message_by_id(self, message_id: str) -> Optional[MessageInfo]:
         """Get message by ID"""
         return self.messages.get_by_message_id(message_id)
+    
+    def message_exists(self, message_id: str) -> bool:
+        """Check if message exists by ID"""
+        return self.messages.exists_by_message_id(message_id)
     
     def get_deposition_messages(self, deposition_id: str) -> List[MessageInfo]:
         """Get all messages for a deposition"""

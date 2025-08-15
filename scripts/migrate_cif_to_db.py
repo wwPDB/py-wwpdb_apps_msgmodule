@@ -501,8 +501,7 @@ class CifToDbMigrator:
                 
                 for message in pending_messages:
                     # Check if message already exists
-                    existing = self.data_access.get_message_by_id(message.message_id)
-                    if existing:
+                    if self.data_access.message_exists(message.message_id):
                         log_event("DEBUG", "message_exists",
                                  message="Message already exists in database",
                                  message_id=message.message_id,
@@ -514,7 +513,7 @@ class CifToDbMigrator:
                     # Check if parent exists (if needed)
                     parent_exists = True
                     if message.parent_message_id:
-                        parent_exists = self.data_access.get_message_by_id(message.parent_message_id) is not None
+                        parent_exists = self.data_access.message_exists(message.parent_message_id)
                     
                     if parent_exists:
                         # Parent exists or no parent needed - try to insert
