@@ -576,12 +576,22 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without writing to database")
     parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
     parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
-    parser.add_argument("--log-json", help="Write structured JSONL logs to this file")
+    parser.add_argument("--log-json", help="Write structured JSONL logs to this file (default: logs/migration_TIMESTAMP.jsonl)")
     parser.add_argument("--log-level", default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
 
     args = parser.parse_args()
 
-    # Setup logging with optional JSON output
+    # Setup default log file path if not specified
+    if args.log_json is None:
+        # Create logs directory if it doesn't exist
+        logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        
+        # Generate timestamped log filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.log_json = os.path.join(logs_dir, f"migration_{timestamp}.jsonl")
+
+    # Setup logging with JSON output
     _setup_logging(args.log_json, args.log_level)
     
     log_event("INFO", "migration_start",
