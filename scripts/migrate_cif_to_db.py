@@ -424,13 +424,24 @@ class CifToDbMigrator:
 
         self.stats["migrated"] += len(inserted)
 
-        # 4) File refs and statuses after messages
+        # 4) File refs and statuses after messages - only for successfully inserted messages
+        inserted_message_ids = {msg.message_id for msg in inserted}
+        
+        # Filter file refs and statuses to only include those for successfully inserted messages
+        valid_file_refs = [ref for ref in file_refs if ref.message_id in inserted_message_ids]
+        valid_statuses = [status for status in statuses if status.message_id in inserted_message_ids]
+        
+        log_event("DEBUG", "filter_refs_statuses", deposition_id=dep_id,
+                  original_file_refs=len(file_refs), valid_file_refs=len(valid_file_refs),
+                  original_statuses=len(statuses), valid_statuses=len(valid_statuses),
+                  inserted_messages=len(inserted_message_ids))
+        
         try:
             with self.dal.session_scope() as s:
-                for chunk_start in range(0, len(file_refs), BATCH_SIZE):
-                    self.dal.bulk_insert_file_refs_ignore(s, file_refs[chunk_start:chunk_start+BATCH_SIZE])
-                for chunk_start in range(0, len(statuses), BATCH_SIZE):
-                    self.dal.bulk_upsert_statuses(s, statuses[chunk_start:chunk_start+BATCH_SIZE])
+                for chunk_start in range(0, len(valid_file_refs), BATCH_SIZE):
+                    self.dal.bulk_insert_file_refs_ignore(s, valid_file_refs[chunk_start:chunk_start+BATCH_SIZE])
+                for chunk_start in range(0, len(valid_statuses), BATCH_SIZE):
+                    self.dal.bulk_upsert_statuses(s, valid_statuses[chunk_start:chunk_start+BATCH_SIZE])
         except Exception as e:
             sql_code = self._extract_sql_error_code(e)
             log_event("ERROR", "db_error", deposition_id=dep_id, 
@@ -438,7 +449,9 @@ class CifToDbMigrator:
             raise
 
         log_event("INFO", "insert_refs_statuses", deposition_id=dep_id,
-                  file_refs=len(file_refs), statuses=len(statuses), batch_size=BATCH_SIZE)
+                  file_refs=len(valid_file_refs), statuses=len(valid_statuses), 
+                  batch_size=BATCH_SIZE, filtered_out_refs=len(file_refs)-len(valid_file_refs),
+                  filtered_out_statuses=len(statuses)-len(valid_statuses))
         log_event("INFO", "deposition_summary", deposition_id=dep_id,
                   messages_inserted=len(inserted), unresolved=len(pending))
         return True
