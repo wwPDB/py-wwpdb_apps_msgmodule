@@ -4,7 +4,7 @@ Migration utility to convert existing CIF message files to database records.
 Streamlined version with bulk operations, minimal round-trips, and idempotent inserts.
 """
 
-import os, sys, logging, argparse, uuid
+import os, sys, logging, argparse, uuid, json, traceback
 from typing import List, Dict, Optional, Tuple, Set
 from datetime import datetime
 
@@ -17,7 +17,48 @@ from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
 
 logger = logging.getLogger(__name__)
 
+RUN_ID = str(uuid.uuid4())
 BATCH_SIZE = 2000
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        obj = {
+            "ts": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S.%fZ"),
+            "level": record.levelname,
+            "logger": record.name,
+            "run_id": RUN_ID,
+            "event": getattr(record, "event", None),
+            "msg": record.getMessage(),
+        }
+        # structured extras passed via 'extra={"fields": {...}}'
+        fields = getattr(record, "fields", None)
+        if isinstance(fields, dict):
+            obj.update(fields)
+        if record.exc_info:
+            etype, e, tb = record.exc_info
+            obj["exc_type"] = getattr(etype, "__name__", str(etype))
+            obj["exc_message"] = str(e)
+            obj["exc_trace"] = "".join(traceback.format_exception(etype, e, tb)).rstrip()
+        return json.dumps(obj, ensure_ascii=False)
+
+def setup_logging(human_level="INFO", json_path=None):
+    root = logging.getLogger()
+    root.handlers[:] = []
+    root.setLevel(getattr(logging, human_level.upper()))
+
+    # human console
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    root.addHandler(ch)
+
+    # json file
+    if json_path:
+        fh = logging.FileHandler(json_path, encoding="utf-8")
+        fh.setFormatter(JsonFormatter())
+        root.addHandler(fh)
+
+def log_event(level, event, **fields):
+    getattr(logger, level.lower())(fields.get("message", ""), extra={"event": event, "fields": fields})
 
 class CifToDbMigrator:
     def __init__(self, site_id: str, create_tables: bool = False):
@@ -25,9 +66,20 @@ class CifToDbMigrator:
         self.config_info = ConfigInfo(site_id)
         self.path_info = PathInfo(siteId=site_id)
         db_config = self._get_database_config()
+        
+        log_event("INFO", "init_migrator", site_id=site_id, create_tables=create_tables,
+                  db_host=db_config["host"], db_name=db_config["database"])
+        
         self.dal = DataAccessLayer(db_config)
         if create_tables:
-            self.dal.create_tables()
+            try:
+                self.dal.create_tables()
+                log_event("INFO", "tables_created", site_id=site_id)
+            except Exception as e:
+                sql_code = self._extract_sql_error_code(e)
+                log_event("ERROR", "db_error", operation="create_tables", 
+                          sql_error_code=sql_code, message=str(e))
+                raise
         self.stats = {"processed": 0, "migrated": 0, "errors": 0}
 
     def _get_database_config(self) -> Dict:
@@ -41,7 +93,21 @@ class CifToDbMigrator:
         return {"host": host, "port": port, "database": database,
                 "username": user, "password": password, "charset": "utf8mb4"}
 
+    def _extract_sql_error_code(self, exception) -> Optional[int]:
+        """Extract SQL error code from database exception"""
+        try:
+            # SQLAlchemy+PyMySQL often exposes codes as e.orig.args[0]
+            if hasattr(exception, "orig") and getattr(exception.orig, "args", None):
+                return exception.orig.args[0]
+            # Direct PyMySQL exceptions
+            elif hasattr(exception, "args") and exception.args:
+                return exception.args[0]
+        except Exception:
+            pass
+        return None
+
     def migrate_deposition(self, dep_id: str, dry_run: bool = False) -> bool:
+        log_event("INFO", "start_deposition", deposition_id=dep_id, dry_run=dry_run)
         message_types = ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]
 
         all_msgs: List[MessageInfo] = []
@@ -60,11 +126,12 @@ class CifToDbMigrator:
             all_stats.extend(stats)
 
         if not all_msgs:
-            logger.info(f"{dep_id}: no messages found")
+            log_event("INFO", "no_messages", deposition_id=dep_id)
             return True
 
         if dry_run:
-            logger.info(f"{dep_id}: DRY RUN (msgs={len(all_msgs)}, refs={len(all_refs)}, stats={len(all_stats)})")
+            log_event("INFO", "dry_run_summary", deposition_id=dep_id,
+                      messages=len(all_msgs), file_refs=len(all_refs), statuses=len(all_stats))
             return True
 
         return self._store_bundle(dep_id, all_msgs, all_refs, all_stats)
@@ -79,19 +146,27 @@ class CifToDbMigrator:
             return None
 
     def _parse_file(self, file_path: str, message_type: str):
-        logger.info(f"Processing {file_path}")
+        dep_id = os.path.basename(os.path.dirname(file_path))
+        fname = os.path.basename(file_path)
+        log_event("INFO", "process_file", deposition_id=dep_id, file_path=file_path,
+                  filename=fname, message_type=message_type)
         self.stats["processed"] += 1
         try:
             io = PdbxMessageIo(verbose=False)
             if not io.read(file_path):
-                logger.error(f"Failed to read {file_path}")
+                log_event("ERROR", "read_fail", deposition_id=dep_id, filename=fname,
+                          file_path=file_path, message_type=message_type,
+                          reason="mmCIF read returned False")
                 return False, [], [], []
             msgs = self._convert_messages(io.getMessageInfo(), message_type)
             refs = self._convert_file_refs(io.getFileReferenceInfo())
             stats = self._convert_statuses(io.getMsgStatusInfo())
+            log_event("INFO", "parse_ok", deposition_id=dep_id, filename=fname,
+                      messages=len(msgs), file_refs=len(refs), statuses=len(stats))
             return True, msgs, refs, stats
         except Exception as e:
-            logger.error(f"Error processing {file_path}: {e}")
+            log_event("ERROR", "parse_exception", deposition_id=dep_id, filename=fname,
+                      file_path=file_path, message_type=message_type, message=str(e))
             self.stats["errors"] += 1
             return False, [], [], []
 
@@ -216,11 +291,21 @@ class CifToDbMigrator:
         """Dependency-safe, batched, idempotent store."""
         # 1) topo sort within bundle
         sorted_msgs = self._sort_messages_by_dependencies(messages)
+        log_event("DEBUG", "sorted_messages", deposition_id=dep_id, count=len(sorted_msgs))
 
         # 2) Preload parent presence (outside bundle)
         parent_ids = {m.parent_message_id for m in sorted_msgs if m.parent_message_id}
-        with self.dal.session_scope() as s:
-            existing_parents = self.dal.messages_exist(s, parent_ids)
+        try:
+            with self.dal.session_scope() as s:
+                existing_parents = self.dal.messages_exist(s, parent_ids)
+        except Exception as e:
+            sql_code = self._extract_sql_error_code(e)
+            log_event("ERROR", "db_error", deposition_id=dep_id, operation="preload_parents",
+                      sql_error_code=sql_code, message=str(e))
+            raise
+        
+        log_event("DEBUG", "preload_parents", deposition_id=dep_id,
+                  requested=len(parent_ids), existing=len(existing_parents))
 
         # 3) Iterative passes honoring already-present parents
         pending = {m.message_id: m for m in sorted_msgs}
@@ -230,66 +315,98 @@ class CifToDbMigrator:
         with self.dal.session_scope() as s:
             # Build a fast "present" set (parents preloaded + newly inserted)
             present = set(existing_parents)
-            for _ in range(MAX_PASSES):
-                progressed = 0
+            for pass_no in range(1, MAX_PASSES + 1):
                 this_pass: List[MessageInfo] = []
                 for mid, m in list(pending.items()):
                     if (not m.parent_message_id) or (m.parent_message_id in present):
                         this_pass.append(m)
                         del pending[mid]
-                        progressed += 1
+                
                 if not this_pass:
+                    log_event("INFO", "no_progress_pass", deposition_id=dep_id,
+                              pass_no=pass_no, remaining=len(pending))
                     break
+                
                 # bulk insert this pass (ignore duplicates quietly)
                 for chunk_start in range(0, len(this_pass), BATCH_SIZE):
                     chunk = this_pass[chunk_start:chunk_start+BATCH_SIZE]
-                    self.dal.bulk_insert_messages_ignore(s, chunk)
+                    try:
+                        self.dal.bulk_insert_messages_ignore(s, chunk)
+                        log_event("INFO", "insert_chunk", deposition_id=dep_id,
+                                  pass_no=pass_no, batch=len(chunk), start=chunk_start, 
+                                  end=chunk_start+len(chunk)-1)
+                    except Exception as e:
+                        sql_code = self._extract_sql_error_code(e)
+                        log_event("ERROR", "db_error", deposition_id=dep_id, 
+                                  operation="bulk_insert_messages", pass_no=pass_no,
+                                  sql_error_code=sql_code, batch_size=len(chunk), message=str(e))
+                        raise
+                
                 present.update(m.message_id for m in this_pass)
                 inserted.extend(this_pass)
 
             # Optional: skip unresolved children (missing parents) strictly
             if pending:
-                logger.warning(f"{dep_id}: unresolved children after passes: {len(pending)} (parents missing)")
+                unresolved = len(pending)
+                sample = list(pending.values())[:5]
+                log_event("WARNING", "unresolved_children", deposition_id=dep_id,
+                          count=unresolved,
+                          examples=[{"message_id": x.message_id, "parent_message_id": x.parent_message_id}
+                                    for x in sample])
 
         self.stats["migrated"] += len(inserted)
 
         # 4) File refs and statuses after messages
-        with self.dal.session_scope() as s:
-            for chunk_start in range(0, len(file_refs), BATCH_SIZE):
-                self.dal.bulk_insert_file_refs_ignore(s, file_refs[chunk_start:chunk_start+BATCH_SIZE])
-            for chunk_start in range(0, len(statuses), BATCH_SIZE):
-                self.dal.bulk_upsert_statuses(s, statuses[chunk_start:chunk_start+BATCH_SIZE])
+        try:
+            with self.dal.session_scope() as s:
+                for chunk_start in range(0, len(file_refs), BATCH_SIZE):
+                    self.dal.bulk_insert_file_refs_ignore(s, file_refs[chunk_start:chunk_start+BATCH_SIZE])
+                for chunk_start in range(0, len(statuses), BATCH_SIZE):
+                    self.dal.bulk_upsert_statuses(s, statuses[chunk_start:chunk_start+BATCH_SIZE])
+        except Exception as e:
+            sql_code = self._extract_sql_error_code(e)
+            log_event("ERROR", "db_error", deposition_id=dep_id, 
+                      operation="insert_refs_statuses", sql_error_code=sql_code, message=str(e))
+            raise
 
-        logger.info(f"{dep_id}: inserted {len(inserted)} msgs, {len(file_refs)} refs, {len(statuses)} statuses")
+        log_event("INFO", "insert_refs_statuses", deposition_id=dep_id,
+                  file_refs=len(file_refs), statuses=len(statuses), batch_size=BATCH_SIZE)
+        log_event("INFO", "deposition_summary", deposition_id=dep_id,
+                  messages_inserted=len(inserted), unresolved=len(pending))
         return True
 
     def migrate_directory(self, directory_path: str, dry_run: bool = False) -> Dict:
         """Migrate all depositions in a directory"""
-        logger.info(f"Starting directory scan: {directory_path}")
+        log_event("INFO", "start_directory", directory=directory_path)
         
         deposition_ids = [
             item for item in os.listdir(directory_path)
             if os.path.isdir(os.path.join(directory_path, item)) and item.startswith('D_')
         ]
         
-        logger.info(f"Found {len(deposition_ids)} depositions to process")
+        log_event("INFO", "found_depositions", directory=directory_path, 
+                  count=len(deposition_ids), sample_ids=deposition_ids[:10])
         
         successful = []
         failed = []
         
         for i, deposition_id in enumerate(deposition_ids, 1):
             try:
-                logger.info(f"Processing deposition {i}/{len(deposition_ids)}: {deposition_id}")
+                log_event("DEBUG", "process_deposition", deposition_id=deposition_id, 
+                          progress=f"{i}/{len(deposition_ids)}")
                 
                 if self.migrate_deposition(deposition_id, dry_run):
                     successful.append(deposition_id)
                 else:
                     failed.append(deposition_id)
             except Exception as e:
-                logger.error(f"Exception processing deposition {deposition_id}: {e}")
+                log_event("ERROR", "deposition_exception", deposition_id=deposition_id, 
+                          message=str(e))
                 failed.append(deposition_id)
         
-        logger.info(f"Directory migration completed - successful: {len(successful)}, failed: {len(failed)}")
+        log_event("INFO", "end_directory", directory=directory_path,
+                  successful=len(successful), failed=len(failed),
+                  success_ids=successful[:10], failed_ids=failed[:10])
         return {"successful": successful, "failed": failed}
 
     def close(self):
@@ -307,17 +424,19 @@ def main():
     parser.add_argument("--create-tables", action="store_true", help="Create database tables")
     parser.add_argument("--dry-run", action="store_true", help="Dry run - don't insert into database")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--json-log", help="Write structured JSONL logs here")
     
     args = parser.parse_args()
     
-    # Setup logging
-    logging.basicConfig(
-        level=getattr(logging, args.log_level),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    # Setup dual logging (human + JSON)
+    setup_logging(args.log_level, args.json_log)
     
     migrator = None
     try:
+        log_event("INFO", "migration_start", site_id=args.site_id, 
+                  deposition_id=args.deposition_id, directory=args.directory,
+                  dry_run=args.dry_run, create_tables=args.create_tables)
+        
         # Initialize migrator
         migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables)
         
@@ -325,21 +444,23 @@ def main():
             # Migrate single deposition
             success = migrator.migrate_deposition(args.deposition_id, dry_run=args.dry_run)
             if not success:
+                log_event("ERROR", "migration_failed", deposition_id=args.deposition_id)
                 sys.exit(1)
         elif args.directory:
             # Migrate directory
             results = migrator.migrate_directory(args.directory, dry_run=args.dry_run)
             if results["failed"]:
-                logger.error(f"Some depositions failed: {results['failed']}")
+                log_event("ERROR", "migration_partial_failure", failed_count=len(results["failed"]),
+                          failed_ids=results["failed"][:10])
                 sys.exit(1)
         else:
             logger.error("Must specify either --deposition-id or --directory")
             sys.exit(1)
             
-        logger.info(f"Migration completed. Stats: {migrator.stats}")
+        log_event("INFO", "migration_complete", stats=migrator.stats)
         
     except Exception as e:
-        logger.error(f"Migration failed: {e}")
+        log_event("ERROR", "migration_exception", message=str(e))
         sys.exit(1)
     finally:
         if migrator:
@@ -348,3 +469,52 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""
+JSON Log Query Examples (with jq):
+
+Assuming you ran with --json-log migration.jsonl:
+
+1. Count FK/DataError by code:
+   jq -r 'select(.event=="db_error" and .sql_error_code!=null) | .sql_error_code' migration.jsonl | sort | uniq -c
+
+2. List files that failed to parse:
+   jq -r 'select(.event=="read_fail") | .filename' migration.jsonl | sort -u
+
+3. Show unresolved parent links (first 5 examples per deposition):
+   jq -r 'select(.event=="unresolved_children") | [.deposition_id,.count,.examples] | @json' migration.jsonl
+
+4. Timeline of chunk inserts:
+   jq -r 'select(.event=="insert_chunk") | [.ts,.deposition_id,.pass_no,.batch,.start,.end] | @tsv' migration.jsonl
+
+5. Per-deposition summary table:
+   jq -r 'select(.event=="deposition_summary") | [.deposition_id,.messages_inserted,.unresolved] | @tsv' migration.jsonl | column -t
+
+6. Find depositions with missing files:
+   jq -r 'select(.event=="no_messages") | .deposition_id' migration.jsonl
+
+7. Track migration performance:
+   jq -r 'select(.event=="insert_chunk") | [.deposition_id,.pass_no,.batch] | @tsv' migration.jsonl | awk '{sum[$1] += $3} END {for (dep in sum) print dep, sum[dep]}'
+
+8. Find parsing errors by message type:
+   jq -r 'select(.event=="parse_exception") | [.message_type,.filename,.message] | @tsv' migration.jsonl
+
+9. Show directory-level statistics:
+   jq -r 'select(.event=="end_directory") | [.directory,.successful,.failed] | @tsv' migration.jsonl
+
+10. List all SQL error codes and their frequency:
+    jq -r 'select(.event=="db_error" and .sql_error_code) | .sql_error_code' migration.jsonl | sort -n | uniq -c | sort -nr
+
+Field reference:
+- event: process_file, parse_ok, read_fail, parse_exception, start_deposition, 
+         no_messages, dry_run_summary, sorted_messages, preload_parents,
+         no_progress_pass, insert_chunk, unresolved_children, insert_refs_statuses,
+         deposition_summary, start_directory, end_directory, migration_start,
+         migration_complete, migration_exception, db_error
+- deposition_id, filename, file_path, message_type
+- messages, file_refs, statuses, batch, batch_size, pass_no, start, end
+- sql_error_code, operation, reason
+- run_id (UUID for this migration run)
+- ts (ISO timestamp), level, logger
+"""
