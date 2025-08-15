@@ -8,7 +8,7 @@ the CIF structure:
 - pdbx_deposition_message_status
 """
 
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, LargeBinary
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, LargeBinary, UniqueConstraint
 from sqlalchemy.types import BINARY
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -59,6 +59,12 @@ class MessageFileReference(Base):
     storage_type = Column(String(20), nullable=True, default='archive', index=True)
     upload_file_name = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
+    
+    # Add unique constraint to ensure idempotent inserts
+    __table_args__ = (
+        UniqueConstraint('message_id', 'content_type', 'version_id', 'partition_number', 
+                        name='uq_file_ref_message_content_version_partition'),
+    )
     
     # Relationships
     message = relationship("MessageInfo", back_populates="file_references")
