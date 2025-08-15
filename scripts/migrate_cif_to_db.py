@@ -80,7 +80,7 @@ class CifToDbMigrator:
                 log_event("ERROR", "db_error", operation="create_tables", 
                           sql_error_code=sql_code, message=str(e))
                 raise
-        self.stats = {"processed": 0, "migrated": 0, "errors": 0}
+        self.stats = {"processed": 0, "migrated": 0, "errors": 0, "skipped_current": 0}
 
     def _get_database_config(self) -> Dict:
         host = self.config_info.get("SITE_DB_HOST_NAME")
@@ -105,6 +105,74 @@ class CifToDbMigrator:
         except Exception:
             pass
         return None
+
+    def get_migration_cutoff(self) -> Optional[datetime]:
+        """Determine the cutoff time for incremental migration based on latest DB message"""
+        try:
+            with self.dal.session_scope() as s:
+                # Get the timestamp of the most recent message in the database
+                latest_msg = s.query(MessageInfo)\
+                           .order_by(MessageInfo.timestamp.desc())\
+                           .first()
+                
+                if latest_msg:
+                    cutoff = latest_msg.timestamp
+                    log_event("INFO", "migration_cutoff_detected", 
+                             cutoff_timestamp=cutoff.isoformat(),
+                             latest_message_id=latest_msg.message_id,
+                             deposition_id=latest_msg.deposition_data_set_id)
+                    return cutoff
+                else:
+                    log_event("INFO", "migration_cutoff_none", reason="no_existing_messages")
+                    return None
+                    
+        except Exception as e:
+            sql_code = self._extract_sql_error_code(e)
+            log_event("ERROR", "db_error", operation="get_migration_cutoff",
+                     sql_error_code=sql_code, message=str(e))
+            # If we can't determine cutoff, migrate everything to be safe
+            return None
+
+    def should_migrate_deposition(self, dep_id: str, cutoff: Optional[datetime] = None) -> Tuple[bool, Dict]:
+        """Check if deposition needs migration based on file modification times"""
+        if cutoff is None:
+            return True, {"reason": "no_cutoff", "newest_file": None, "file_count": 0}
+        
+        message_types = ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]
+        newest_mtime = None
+        file_count = 0
+        files_newer_than_cutoff = []
+        
+        for msg_type in message_types:
+            file_path = self._file_path(dep_id, msg_type)
+            if file_path and os.path.exists(file_path):
+                file_count += 1
+                mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                
+                if newest_mtime is None or mtime > newest_mtime:
+                    newest_mtime = mtime
+                
+                if mtime > cutoff:
+                    files_newer_than_cutoff.append({
+                        "file_type": msg_type,
+                        "mtime": mtime.isoformat(),
+                        "file_path": file_path
+                    })
+        
+        should_migrate = len(files_newer_than_cutoff) > 0
+        
+        result = {
+            "reason": "has_newer_files" if should_migrate else "no_newer_files",
+            "newest_file": newest_mtime.isoformat() if newest_mtime else None,
+            "file_count": file_count,
+            "files_newer_than_cutoff": files_newer_than_cutoff,
+            "cutoff": cutoff.isoformat()
+        }
+        
+        if not should_migrate:
+            self.stats["skipped_current"] += 1
+        
+        return should_migrate, result
 
     def migrate_deposition(self, dep_id: str, dry_run: bool = False) -> bool:
         log_event("INFO", "start_deposition", deposition_id=dep_id, dry_run=dry_run)
@@ -375,9 +443,21 @@ class CifToDbMigrator:
                   messages_inserted=len(inserted), unresolved=len(pending))
         return True
 
-    def migrate_directory(self, directory_path: str, dry_run: bool = False) -> Dict:
-        """Migrate all depositions in a directory"""
-        log_event("INFO", "start_directory", directory=directory_path)
+    def migrate_directory(self, directory_path: str, dry_run: bool = False, 
+                         force_full: bool = False) -> Dict:
+        """Migrate depositions with automatic delta detection"""
+        log_event("INFO", "start_directory", directory=directory_path, 
+                 dry_run=dry_run, force_full=force_full)
+        
+        # Determine migration cutoff unless forced full migration
+        cutoff = None if force_full else self.get_migration_cutoff()
+        
+        if cutoff:
+            log_event("INFO", "incremental_migration", cutoff=cutoff.isoformat(),
+                     reason="existing_messages_found")
+        else:
+            log_event("INFO", "full_migration", 
+                     reason="no_cutoff" if not force_full else "forced")
         
         deposition_ids = [
             item for item in os.listdir(directory_path)
@@ -389,25 +469,61 @@ class CifToDbMigrator:
         
         successful = []
         failed = []
+        skipped = []
         
         for i, deposition_id in enumerate(deposition_ids, 1):
             try:
-                log_event("DEBUG", "process_deposition", deposition_id=deposition_id, 
-                          progress=f"{i}/{len(deposition_ids)}")
+                # Check if this deposition needs migration
+                should_migrate, check_info = self.should_migrate_deposition(deposition_id, cutoff)
+                
+                log_event("DEBUG", "deposition_check", deposition_id=deposition_id,
+                         progress=f"{i}/{len(deposition_ids)}", 
+                         should_migrate=should_migrate, **check_info)
+                
+                if not should_migrate:
+                    skipped.append(deposition_id)
+                    continue
                 
                 if self.migrate_deposition(deposition_id, dry_run):
                     successful.append(deposition_id)
                 else:
                     failed.append(deposition_id)
+                    
             except Exception as e:
                 log_event("ERROR", "deposition_exception", deposition_id=deposition_id, 
                           message=str(e))
                 failed.append(deposition_id)
         
         log_event("INFO", "end_directory", directory=directory_path,
-                  successful=len(successful), failed=len(failed),
-                  success_ids=successful[:10], failed_ids=failed[:10])
-        return {"successful": successful, "failed": failed}
+                  successful=len(successful), failed=len(failed), skipped=len(skipped),
+                  cutoff=cutoff.isoformat() if cutoff else None,
+                  success_sample=successful[:10], failed_sample=failed[:10], 
+                  skipped_sample=skipped[:10])
+        
+        return {
+            "successful": successful, 
+            "failed": failed, 
+            "skipped": skipped,
+            "cutoff": cutoff
+        }
+
+    def get_migration_stats(self) -> Dict:
+        """Get comprehensive migration statistics"""
+        try:
+            with self.dal.session_scope() as s:
+                total_messages = s.query(MessageInfo).count()
+                unique_depositions = s.query(MessageInfo.deposition_data_set_id).distinct().count()
+                latest_timestamp = s.query(MessageInfo.timestamp).order_by(MessageInfo.timestamp.desc()).first()
+                
+                return {
+                    "total_messages_in_db": total_messages,
+                    "unique_depositions_in_db": unique_depositions,
+                    "latest_message_timestamp": latest_timestamp[0].isoformat() if latest_timestamp else None,
+                    **self.stats
+                }
+        except Exception as e:
+            log_event("ERROR", "stats_error", message=str(e))
+            return self.stats
 
     def close(self):
         """Close database connections"""
@@ -423,6 +539,10 @@ def main():
     parser.add_argument("--directory", help="Directory containing depositions to migrate")
     parser.add_argument("--create-tables", action="store_true", help="Create database tables")
     parser.add_argument("--dry-run", action="store_true", help="Dry run - don't insert into database")
+    parser.add_argument("--force-full", action="store_true", 
+                       help="Force full migration ignoring existing DB content")
+    parser.add_argument("--stats-only", action="store_true", 
+                       help="Only show migration statistics, don't migrate")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument("--json-log", help="Write structured JSONL logs here")
     
@@ -435,29 +555,50 @@ def main():
     try:
         log_event("INFO", "migration_start", site_id=args.site_id, 
                   deposition_id=args.deposition_id, directory=args.directory,
-                  dry_run=args.dry_run, create_tables=args.create_tables)
+                  dry_run=args.dry_run, create_tables=args.create_tables,
+                  force_full=args.force_full, stats_only=args.stats_only)
         
         # Initialize migrator
         migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables)
         
+        if args.stats_only:
+            # Just show current state
+            stats = migrator.get_migration_stats()
+            log_event("INFO", "migration_stats", **stats)
+            return
+        
         if args.deposition_id:
-            # Migrate single deposition
+            # Single deposition - always migrate (no delta logic for single dep)
             success = migrator.migrate_deposition(args.deposition_id, dry_run=args.dry_run)
             if not success:
                 log_event("ERROR", "migration_failed", deposition_id=args.deposition_id)
                 sys.exit(1)
         elif args.directory:
-            # Migrate directory
-            results = migrator.migrate_directory(args.directory, dry_run=args.dry_run)
+            # Directory migration with automatic delta detection
+            results = migrator.migrate_directory(args.directory, dry_run=args.dry_run,
+                                                force_full=args.force_full)
+            
+            # Report results
+            total_processed = len(results["successful"]) + len(results["failed"])
+            log_event("INFO", "migration_summary", 
+                     successful=len(results["successful"]),
+                     failed=len(results["failed"]),
+                     skipped=len(results["skipped"]),
+                     total_found=total_processed + len(results["skipped"]),
+                     cutoff_used=results["cutoff"].isoformat() if results["cutoff"] else None)
+            
             if results["failed"]:
-                log_event("ERROR", "migration_partial_failure", failed_count=len(results["failed"]),
-                          failed_ids=results["failed"][:10])
+                log_event("ERROR", "migration_partial_failure", 
+                         failed_count=len(results["failed"]),
+                         failed_ids=results["failed"][:10])
                 sys.exit(1)
         else:
             logger.error("Must specify either --deposition-id or --directory")
             sys.exit(1)
             
-        log_event("INFO", "migration_complete", stats=migrator.stats)
+        # Final stats
+        final_stats = migrator.get_migration_stats()
+        log_event("INFO", "migration_complete", **final_stats)
         
     except Exception as e:
         log_event("ERROR", "migration_exception", message=str(e))
