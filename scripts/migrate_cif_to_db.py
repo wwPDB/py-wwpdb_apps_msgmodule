@@ -488,32 +488,98 @@ class CifToDbMigrator:
             # Sort messages to ensure parents are inserted before children
             sorted_messages = self._sort_messages_by_dependencies(messages)
             
-            # Store messages in dependency order
-            for message in sorted_messages:
-                existing = self.data_access.get_message_by_id(message.message_id)
-                if existing:
-                    log_event("DEBUG", "message_exists",
-                             message="Message already exists in database",
-                             message_id=message.message_id,
-                             parent_message_id=message.parent_message_id,
-                             deposition_id=message.deposition_data_set_id)
-                    continue
+            # Store messages with dependency checking
+            pending_messages = sorted_messages.copy()
+            inserted_count = 0
+            max_iterations = len(sorted_messages) + 10  # Prevent infinite loops
+            iteration = 0
+            
+            while pending_messages and iteration < max_iterations:
+                iteration += 1
+                messages_inserted_this_round = 0
+                still_pending = []
+                
+                for message in pending_messages:
+                    # Check if message already exists
+                    existing = self.data_access.get_message_by_id(message.message_id)
+                    if existing:
+                        log_event("DEBUG", "message_exists",
+                                 message="Message already exists in database",
+                                 message_id=message.message_id,
+                                 parent_message_id=message.parent_message_id,
+                                 deposition_id=message.deposition_data_set_id)
+                        messages_inserted_this_round += 1
+                        continue
                     
-                if not self.data_access.create_message(message):
-                    log_event("ERROR", "insert_fail",
-                             message="Failed to insert message",
-                             message_id=message.message_id,
-                             parent_message_id=message.parent_message_id,
-                             deposition_id=message.deposition_data_set_id,
-                             content_type=message.content_type)
-                    return False
-                else:
-                    log_event("INFO", "insert_ok",
-                             message="Message inserted successfully",
-                             message_id=message.message_id,
-                             parent_message_id=message.parent_message_id,
-                             deposition_id=message.deposition_data_set_id,
-                             content_type=message.content_type)
+                    # Check if parent exists (if needed)
+                    parent_exists = True
+                    if message.parent_message_id:
+                        parent_exists = self.data_access.get_message_by_id(message.parent_message_id) is not None
+                    
+                    if parent_exists:
+                        # Parent exists or no parent needed - try to insert
+                        if not self.data_access.create_message(message):
+                            log_event("ERROR", "insert_fail",
+                                     message="Failed to insert message",
+                                     message_id=message.message_id,
+                                     parent_message_id=message.parent_message_id,
+                                     deposition_id=message.deposition_data_set_id,
+                                     content_type=message.content_type)
+                            return False
+                        else:
+                            log_event("INFO", "insert_ok",
+                                     message="Message inserted successfully",
+                                     message_id=message.message_id,
+                                     parent_message_id=message.parent_message_id,
+                                     deposition_id=message.deposition_data_set_id,
+                                     content_type=message.content_type)
+                            messages_inserted_this_round += 1
+                            inserted_count += 1
+                    else:
+                        # Parent doesn't exist yet - keep pending
+                        log_event("DEBUG", "parent_pending",
+                                 message="Deferring message - parent not found",
+                                 message_id=message.message_id,
+                                 parent_message_id=message.parent_message_id,
+                                 deposition_id=message.deposition_data_set_id,
+                                 iteration=iteration)
+                        still_pending.append(message)
+                
+                pending_messages = still_pending
+                
+                # If no progress was made, we have orphaned messages
+                if messages_inserted_this_round == 0 and pending_messages:
+                    log_event("WARNING", "orphaned_messages",
+                             message="Found messages with missing parents",
+                             orphaned_count=len(pending_messages),
+                             orphaned_message_ids=[msg.message_id for msg in pending_messages[:5]])
+                    
+                    # Insert orphaned messages without parent_message_id to avoid blocking
+                    for message in pending_messages:
+                        original_parent = message.parent_message_id
+                        message.parent_message_id = None  # Temporarily remove parent reference
+                        
+                        if not self.data_access.create_message(message):
+                            log_event("ERROR", "orphan_insert_fail",
+                                     message="Failed to insert orphaned message",
+                                     message_id=message.message_id,
+                                     original_parent_id=original_parent,
+                                     deposition_id=message.deposition_data_set_id)
+                            return False
+                        else:
+                            log_event("WARNING", "orphan_inserted",
+                                     message="Inserted orphaned message without parent reference",
+                                     message_id=message.message_id,
+                                     original_parent_id=original_parent,
+                                     deposition_id=message.deposition_data_set_id)
+                            inserted_count += 1
+                    
+                    break  # Exit the while loop
+            
+            log_event("INFO", "messages_stored",
+                     message="All messages processed",
+                     total_inserted=inserted_count,
+                     iterations=iteration)
 
             # Store file references and statuses
             for file_ref in file_refs:
