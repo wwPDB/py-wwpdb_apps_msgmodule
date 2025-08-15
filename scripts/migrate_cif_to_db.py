@@ -517,7 +517,8 @@ class CifToDbMigrator:
                     
                     if parent_exists:
                         # Parent exists or no parent needed - try to insert
-                        if not self.data_access.create_message(message):
+                        success = self.data_access.create_message(message)
+                        if not success:
                             log_event("ERROR", "insert_fail",
                                      message="Failed to insert message",
                                      message_id=message.message_id,
@@ -558,7 +559,8 @@ class CifToDbMigrator:
                         original_parent = message.parent_message_id
                         message.parent_message_id = None  # Temporarily remove parent reference
                         
-                        if not self.data_access.create_message(message):
+                        success = self.data_access.create_message(message)
+                        if not success:
                             log_event("ERROR", "orphan_insert_fail",
                                      message="Failed to insert orphaned message",
                                      message_id=message.message_id,
@@ -582,10 +584,18 @@ class CifToDbMigrator:
 
             # Store file references and statuses
             for file_ref in file_refs:
-                self.data_access.create_file_reference(file_ref)
+                if not self.data_access.create_file_reference(file_ref):
+                    log_event("WARNING", "file_ref_insert_fail",
+                             message="Failed to insert file reference",
+                             message_id=file_ref.message_id,
+                             deposition_id=file_ref.deposition_data_set_id)
             
             for status in statuses:
-                self.data_access.create_or_update_status(status)
+                if not self.data_access.create_or_update_status(status):
+                    log_event("WARNING", "status_insert_fail",
+                             message="Failed to insert/update status",
+                             message_id=status.message_id,
+                             deposition_id=status.deposition_data_set_id)
 
             return True
             

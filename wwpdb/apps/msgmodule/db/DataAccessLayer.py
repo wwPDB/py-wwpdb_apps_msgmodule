@@ -88,7 +88,15 @@ class BaseDAO(Generic[ModelType]):
         """Create a new record"""
         try:
             with self.db_connection.get_session() as session:
-                session.add(obj)
+                # Create a fresh instance to avoid session conflicts
+                fresh_obj = self.model_class()
+                
+                # Copy all attributes to the fresh instance
+                for column in self.model_class.__table__.columns:
+                    if hasattr(obj, column.name):
+                        setattr(fresh_obj, column.name, getattr(obj, column.name))
+                
+                session.add(fresh_obj)
                 session.commit()
                 logger.info(f"Created {self.model_class.__name__} record")
                 return True
