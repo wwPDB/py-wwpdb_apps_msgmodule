@@ -198,6 +198,16 @@ class CifToDbMigrator:
                     except ValueError:
                         continue
 
+            # Encode text fields as bytes for BLOB storage in new schema
+            message_subject = msg_info.get("message_subject", "")
+            message_text = msg_info.get("message_text", "")
+            
+            # Ensure text fields are encoded as UTF-8 bytes for BLOB columns
+            if isinstance(message_subject, str):
+                message_subject = message_subject.encode('utf-8')
+            if isinstance(message_text, str):
+                message_text = message_text.encode('utf-8')
+
             message = MessageInfo(
                 message_id=msg_info.get("message_id", str(uuid.uuid4())),
                 deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
@@ -206,8 +216,8 @@ class CifToDbMigrator:
                 context_type=msg_info.get("context_type"),
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
-                message_subject=msg_info.get("message_subject", ""),
-                message_text=msg_info.get("message_text", ""),
+                message_subject=message_subject,
+                message_text=message_text,
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
