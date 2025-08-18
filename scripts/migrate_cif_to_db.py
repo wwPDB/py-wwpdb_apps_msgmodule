@@ -10,7 +10,7 @@ import logging
 import argparse
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional
 
 # Initialize ConfigInfo to get database configuration
@@ -30,9 +30,14 @@ from wwpdb.io.locator.PathInfo import PathInfo
 
 # Enhanced logging setup
 class JsonFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        """Return RFC3339 timestamp with microseconds and Z suffix."""
+        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
+
     def format(self, record):
         obj = {
-            "timestamp": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S.%fZ"),
+            "timestamp": self.formatTime(record),
             "level": record.levelname,
             "event": getattr(record, "event", "general"),
             "message": record.getMessage(),
@@ -42,27 +47,69 @@ class JsonFormatter(logging.Formatter):
             obj.update(record.extra_data)
         return json.dumps(obj, ensure_ascii=False)
 
-def setup_logging(json_log_file=None):
+# Map events to log levels so JSON logs reflect severity
+EVENT_LEVELS = {
+    # errors
+    "parse_exception": logging.ERROR,
+    "store_exception": logging.ERROR,
+    "corrupted_file": logging.ERROR,
+    "store_failed": logging.ERROR,
+    "message_store_failed": logging.ERROR,
+    "deposition_exception": logging.ERROR,
+    "migration_exception": logging.ERROR,
+    # warnings
+    "empty_file": logging.WARNING,
+    "no_messages": logging.WARNING,
+    # debug/noisy
+    "process_file": logging.DEBUG,
+    "parse_ok": logging.DEBUG,
+    # info
+    "init_migrator": logging.INFO,
+    "tables_created": logging.INFO,
+    "db_connected": logging.INFO,
+    "start_deposition": logging.INFO,
+    "deposition_complete": logging.INFO,
+    "start_directory": logging.INFO,
+    "found_depositions": logging.INFO,
+    "progress_update": logging.INFO,
+    "directory_complete": logging.INFO,
+    "store_success": logging.INFO,
+    "store_complete": logging.INFO,
+    "dry_run": logging.INFO,
+    "message_duplicate": logging.INFO,
+    "migration_start": logging.INFO,
+    "migration_complete": logging.INFO,
+    "single_migration_complete": logging.INFO,
+    "bulk_migration_complete": logging.INFO,
+}
+
+def setup_logging(json_log_file=None, log_level: str = "INFO"):
     """Setup dual logging: console for humans, JSON for parsing"""
     root_logger = logging.getLogger()
     root_logger.handlers = []  # Clear existing handlers
-    root_logger.setLevel(logging.INFO)
+    lvl = getattr(logging, (log_level or "INFO").upper(), logging.INFO)
+    root_logger.setLevel(lvl)
     
     # Console handler for humans
     console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(lvl)
     console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     root_logger.addHandler(console_handler)
     
     # JSON file handler for parsing
     if json_log_file:
         file_handler = logging.FileHandler(json_log_file, encoding='utf-8')
+        file_handler.setLevel(lvl)
         file_handler.setFormatter(JsonFormatter())
         root_logger.addHandler(file_handler)
 
-def log_event(event: str, **kwargs):
+def log_event(event: str, level: Optional[int] = None, **kwargs):
     """Log structured events for easy querying"""
     logger = logging.getLogger(__name__)
-    logger.info(kwargs.get('message', ''), extra={'event': event, 'extra_data': kwargs})
+    lvl = level if level is not None else EVENT_LEVELS.get(event, logging.INFO)
+    # Avoid duplicating 'message' in extra_data; it is already the log message
+    extra_data = {k: v for k, v in kwargs.items() if k != 'message'}
+    logger.log(lvl, kwargs.get('message', ''), extra={'event': event, 'extra_data': extra_data})
 
 # Setup basic logging initially
 logging.basicConfig(
@@ -389,11 +436,14 @@ def main():
     parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
     parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
     parser.add_argument("--json-log", help="Path to JSON log file for structured logging")
+    parser.add_argument("--log-level", default="INFO",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                        help="Console and JSON log level")
 
     args = parser.parse_args()
 
     # Setup enhanced logging
-    setup_logging(args.json_log)
+    setup_logging(args.json_log, args.log_level)
 
     try:
         log_event("migration_start", site_id=args.site_id, deposition=args.deposition,
