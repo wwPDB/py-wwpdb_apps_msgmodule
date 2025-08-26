@@ -19,6 +19,20 @@ from .DataAccessLayer import (
     DataAccessLayer,
 )
 
+# Import database-backed message I/O
+from .PdbxMessageIo import (
+    PdbxMessageIo,
+    create_message_io,
+)
+
+# Import compatibility classes for drop-in replacement
+from .PdbxMessage import (
+    PdbxMessageInfo,
+    PdbxMessageFileReference,
+    PdbxMessageOrigCommReference,
+    PdbxMessageStatus,
+)
+
 __all__ = [
     # SQLAlchemy Models
     "Base",
@@ -27,4 +41,12 @@ __all__ = [
     "MessageStatus",
     # Database Services
     "DataAccessLayer",
+    # Message I/O
+    "PdbxMessageIo",
+    "create_message_io",
+    # Compatibility Classes (for drop-in replacement)
+    "PdbxMessageInfo",
+    "PdbxMessageFileReference", 
+    "PdbxMessageStatus",
+    "PdbxMessageOrigCommReference",
 ]

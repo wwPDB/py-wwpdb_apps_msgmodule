@@ -154,9 +154,9 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
-from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
-from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
-from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
+from wwpdb.apps.msgmodule.db.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+from wwpdb.apps.msgmodule.db.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 
 #
 from mmcif.io.PdbxReader import PdbxReader
@@ -441,7 +441,7 @@ class MessagingIo(object):
 
         :Helpers:
             wwpdb.apps.msgmodule.io.MessagingDataImport
-            mmcif_utils.message.PdbxMessageIo
+            wwpdb.apps.msgmodule.db.PdbxMessageIo
 
         :param `p_msgId`:    unique message ID
         :param `p_depId`:    ID of deposition dataset for message being requested
