@@ -1,0 +1,183 @@
+# Communication Module — Production Data Migration
+
+**Audience:** Internal (wwPDB sites)  
+**Goal:** Migrate historical CIF-based messages to production database before backend switch-over.
+
+---
+
+## 1. Configuration Requirements
+
+Add this variable to your site configuration:
+
+````bash
+# filepath: site.cfg
+# ...existing code...
+wwpdb_messaging_db_name = wwpdb_messaging  # or your preferred database name
+# ...existing code...
+````
+
+The migration scripts will use existing site configuration variables:
+
+- `SITE_DB_HOST_NAME`
+- `SITE_DB_PORT_NUMBER`
+- `SITE_DB_ADMIN_USER`
+- `SITE_DB_ADMIN_PASS`
+- `WWPDB_MESSAGING_DB_NAME` (new, required)
+
+---
+
+## 2. Database Schema
+
+Three tables mirror mmCIF categories:
+
+- **`pdbx_deposition_message_info`** - Main messages table
+  - PK: `message_id`, FK: `parent_message_id` (self-reference)
+  - Content types: `messages-to-depositor`, `messages-from-depositor`, `notes-from-annotator`
+
+- **`pdbx_deposition_message_status`** - Message status tracking
+  - FK: `message_id` → `pdbx_deposition_message_info`
+
+- **`pdbx_deposition_message_file_reference`** - File attachments
+  - FK: `message_id` → `pdbx_deposition_message_info`
+
+---
+
+## 3. Migration Scripts
+
+### Database Initialization: `init_messaging_database.py`
+
+Creates database and tables with proper indexes and foreign keys.
+
+````bash
+# Create schema in production
+python init_messaging_database.py --site-id RCSB
+
+# Verify existing schema only
+python init_messaging_database.py --site-id RCSB --verify-only
+
+# Drop and recreate (DESTRUCTIVE)
+python init_messaging_database.py --site-id RCSB --drop-and-recreate
+````
+
+### Data Migration: `migrate_cif_to_db.py`
+
+Migrates CIF messages to database. **Idempotent** - safe to re-run.
+
+````bash
+# Dry run (no database writes)
+python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --dry-run
+
+# Single deposition
+python migrate_cif_to_db.py --site-id RCSB --deposition D_123456
+
+# Bulk migration with logging
+python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --json-log migration.json
+
+# Create tables if needed
+python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --create-tables
+````
+
+**Key behaviors:**
+
+- Existing `message_id` entries are **skipped** (duplicate-safe)
+- JSON logs record all operations for auditing
+- UTF-8 encoding for message content
+- Preserves parent-child message relationships
+
+---
+
+## 4. Migration Timeline
+
+**Start:** Early September 2025 • **Switch-over:** October 2025 (TBD)
+
+### Phase A — Setup (Early Sep)
+
+1. **Create production schema**
+
+   ````bash
+   python init_messaging_database.py --site-id <SITE>
+   ````
+
+2. **Validate with dry run**
+
+   ````bash
+   python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --dry-run
+   ````
+
+### Phase B — Historical Load (Sep)
+
+1. **Bulk migration**
+
+   ````bash
+   python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --json-log backfill.json
+   ````
+
+2. **Validation** (End of Sep)
+   - Compare row counts vs CIF inventories
+   - Review JSON logs for errors
+
+### Phase C — Delta Updates (Sep - Oct)
+
+**Re-runs** to catch new CIF messages (duplicates are safely skipped):
+
+````bash
+python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --json-log delta-$(date +%F).json
+````
+
+### Phase D — Switch-over (Oct)
+
+1. **Pause** new message creation
+2. **Final migration run** (should show only duplicates)
+3. **Switch backend** to database
+4. **Smoke tests** and resume operations
+
+### Phase E — Post-switchover (Post-Oct)
+
+- Monitor operations
+- Daily integrity checks
+
+---
+
+## 5. Verification
+
+- **Row count parity** per deposition across all tables
+- **Spot check** message content, parent/child relationships, file references
+- **JSON log analysis** for error-free operations
+- **Zero message loss** post switch-over
+
+---
+
+## 6. Rollback Plan
+
+- Switch application back to CIF backend
+- Database remains available for future migration attempts
+- Re-run migration scripts (duplicate-safe)
+- For complete reset: use `--drop-and-recreate`
+
+---
+
+## 7. Timeline Visualization
+
+```mermaid
+gantt
+    title Communication Module Migration (Switch-over: October 2025)
+    dateFormat  YYYY-MM-DD
+    excludes    weekends
+
+    section Phase A — Setup
+    Create production schema          :a1, 2025-09-01, 3d
+    Validate with dry run            :a2, 2025-09-04, 2d
+
+    section Phase B — Historical Load
+    Bulk historical migration        :b1, 2025-09-08, 15d
+    Validation & count checks        :b2, 2025-09-25, 3d
+
+    section Phase C — Delta Updates
+    Re-runs for new messages         :c1, 2025-09-08, 25d
+
+    section Phase D — Switch-over
+    Final migration & backend switch :d1, 2025-10-06, 1d
+
+    section Phase E — Post-switchover
+    Monitoring & integrity checks    :e1, 2025-10-07, 5d
+```
