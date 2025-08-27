@@ -1,0 +1,376 @@
+##
+# File: PdbxMessage.py (Database-backed implementation)
+# Date: 27-Aug-2025
+#
+# Database-backed drop-in replacement for mmcif_utils.message.PdbxMessage classes
+# that maintains the same API interface while leveraging existing SQLAlchemy models.
+##
+"""
+Database-backed message helper classes that provide the same interface as the original
+PdbxMessage classes but work with the existing SQLAlchemy models from Models.py.
+"""
+
+import sys
+from datetime import datetime
+from typing import Dict, Optional
+
+from .Models import MessageInfo, MessageFileReference, MessageStatus
+
+
+def _fmt_timestamp(ts) -> str:
+    """Format timestamp for compatibility with CIF backend"""
+    if isinstance(ts, datetime):
+        return ts.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(ts, str):
+        return ts
+    return ""
+
+
+def _parse_timestamp(ts_str) -> datetime:
+    """Parse timestamp string to datetime"""
+    if isinstance(ts_str, datetime):
+        return ts_str
+    if not ts_str:
+        return datetime.utcnow()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y %H:%M:%S", "%d-%b-%Y"):
+        try:
+            return datetime.strptime(ts_str, fmt)
+        except ValueError:
+            continue
+    return datetime.utcnow()
+
+
+class _BasePdbxMessage:
+    """Base class that wraps SQLAlchemy models with CIF-compatible interface"""
+    
+    def __init__(self, model_instance=None, verbose: bool = False, log=sys.stderr):
+        self._verbose = verbose
+        self._log = log
+        self._model = model_instance
+        self._row_dict = {}
+
+    def setOrdinalId(self, id: int):
+        if self._model:
+            self._model.ordinal_id = id
+        self._row_dict["ordinal_id"] = id
+
+    def getOrdinalId(self) -> int:
+        if self._model and hasattr(self._model, 'ordinal_id'):
+            return self._model.ordinal_id or 0
+        return self._row_dict.get("ordinal_id", 0)
+
+    def setMessageId(self, v: str):
+        if self._model:
+            self._model.message_id = v
+        self._row_dict["message_id"] = v
+
+    def getMessageId(self) -> str:
+        if self._model and hasattr(self._model, 'message_id'):
+            return self._model.message_id or ""
+        return self._row_dict.get("message_id", "")
+
+    def setDepositionId(self, v: str):
+        if self._model:
+            self._model.deposition_data_set_id = v
+        self._row_dict["deposition_data_set_id"] = v
+
+    def getDepositionId(self) -> str:
+        if self._model and hasattr(self._model, 'deposition_data_set_id'):
+            return self._model.deposition_data_set_id or ""
+        return self._row_dict.get("deposition_data_set_id", "")
+
+    def get(self) -> Dict:
+        """Return dict representation compatible with CIF backend"""
+        if self._model:
+            # Convert SQLAlchemy model to dict
+            result = {}
+            for attr in dir(self._model):
+                if not attr.startswith('_') and not callable(getattr(self._model, attr)):
+                    value = getattr(self._model, attr, None)
+                    if value is not None:
+                        if isinstance(value, datetime):
+                            result[attr] = _fmt_timestamp(value)
+                        else:
+                            result[attr] = value
+            # Merge with any additional row_dict values
+            result.update(self._row_dict)
+            return result
+        return dict(self._row_dict)
+
+    def set(self, rowDict: Dict):
+        """Set values from dict (for compatibility)"""
+        self._row_dict.update(rowDict)
+        if self._model:
+            for key, value in rowDict.items():
+                if hasattr(self._model, key):
+                    if key == 'timestamp' and isinstance(value, str):
+                        setattr(self._model, key, _parse_timestamp(value))
+                    else:
+                        setattr(self._model, key, value)
+
+    def get_model(self):
+        """Get the underlying SQLAlchemy model instance"""
+        return self._model
+
+
+class PdbxMessageInfo(_BasePdbxMessage):
+    """Drop-in helper that wraps MessageInfo SQLAlchemy model"""
+
+    def __init__(self, verbose: bool = False, log=sys.stderr):
+        model = MessageInfo()
+        super().__init__(model, verbose, log)
+
+    def setTimestamp(self, v):
+        if isinstance(v, datetime):
+            timestamp = v
+            self._row_dict["timestamp"] = _fmt_timestamp(v)
+        else:
+            timestamp = _parse_timestamp(v)
+            self._row_dict["timestamp"] = v
+        
+        if self._model:
+            self._model.timestamp = timestamp
+
+    def getTimestamp(self) -> str:
+        if self._model and self._model.timestamp:
+            return _fmt_timestamp(self._model.timestamp)
+        return self._row_dict.get("timestamp", "")
+
+    def setSender(self, v: str):
+        if self._model:
+            self._model.sender = v
+        self._row_dict["sender"] = v
+
+    def getSender(self) -> str:
+        if self._model:
+            return self._model.sender or ""
+        return self._row_dict.get("sender", "")
+
+    def setContextType(self, v: Optional[str]):
+        if self._model:
+            self._model.context_type = v
+        self._row_dict["context_type"] = v
+
+    def getContextType(self) -> Optional[str]:
+        if self._model:
+            return self._model.context_type
+        return self._row_dict.get("context_type")
+
+    def setContextValue(self, v: Optional[str]):
+        if self._model:
+            self._model.context_value = v
+        self._row_dict["context_value"] = v
+
+    def getContextValue(self) -> Optional[str]:
+        if self._model:
+            return self._model.context_value
+        return self._row_dict.get("context_value")
+
+    def setParentMessageId(self, v: Optional[str]):
+        if self._model:
+            self._model.parent_message_id = v
+        self._row_dict["parent_message_id"] = v
+
+    def getParentMessageId(self) -> Optional[str]:
+        if self._model:
+            return self._model.parent_message_id
+        return self._row_dict.get("parent_message_id")
+
+    def setMessageSubject(self, v: str):
+        if self._model:
+            self._model.message_subject = v
+        self._row_dict["message_subject"] = v
+
+    def getMessageSubject(self) -> str:
+        if self._model:
+            return self._model.message_subject or ""
+        return self._row_dict.get("message_subject", "")
+
+    def setMessageText(self, v: str):
+        if self._model:
+            self._model.message_text = v
+        self._row_dict["message_text"] = v
+
+    def getMessageText(self) -> str:
+        if self._model:
+            return self._model.message_text or ""
+        return self._row_dict.get("message_text", "")
+
+    def setMessageType(self, v: str):
+        if self._model:
+            self._model.message_type = v
+        self._row_dict["message_type"] = v
+
+    def getMessageType(self) -> str:
+        if self._model:
+            return self._model.message_type or "text"
+        return self._row_dict.get("message_type", "text")
+
+    def setSendStatus(self, v: str):
+        if self._model:
+            self._model.send_status = v
+        self._row_dict["send_status"] = v
+
+    def getSendStatus(self) -> str:
+        if self._model:
+            return self._model.send_status or "Y"
+        return self._row_dict.get("send_status", "Y")
+
+    def setContentType(self, v: str):
+        if self._model:
+            self._model.content_type = v
+        self._row_dict["content_type"] = v
+
+    def getContentType(self) -> str:
+        if self._model:
+            return self._model.content_type or "messages-to-depositor"
+        return self._row_dict.get("content_type", "messages-to-depositor")
+
+
+class PdbxMessageFileReference(_BasePdbxMessage):
+    """Drop-in helper that wraps MessageFileReference SQLAlchemy model"""
+
+    def __init__(self, verbose: bool = False, log=sys.stderr):
+        model = MessageFileReference()
+        super().__init__(model, verbose, log)
+
+    def setContentType(self, v: str):
+        if self._model:
+            self._model.content_type = v
+        self._row_dict["content_type"] = v
+
+    def getContentType(self) -> str:
+        if self._model:
+            return self._model.content_type or ""
+        return self._row_dict.get("content_type", "")
+
+    def setContentFormat(self, v: str):
+        if self._model:
+            self._model.content_format = v
+        self._row_dict["content_format"] = v
+
+    def getContentFormat(self) -> str:
+        if self._model:
+            return self._model.content_format or ""
+        return self._row_dict.get("content_format", "")
+
+    def setPartitionNumber(self, v: int):
+        if self._model:
+            self._model.partition_number = v
+        self._row_dict["partition_number"] = v
+
+    def getPartitionNumber(self) -> int:
+        if self._model:
+            return self._model.partition_number or 1
+        return self._row_dict.get("partition_number", 1)
+
+    def setVersionId(self, v: int):
+        if self._model:
+            self._model.version_id = v
+        self._row_dict["version_id"] = v
+
+    def getVersionId(self) -> int:
+        if self._model:
+            return self._model.version_id or 1
+        return self._row_dict.get("version_id", 1)
+
+    def setStorageType(self, v: str):
+        if self._model:
+            self._model.storage_type = v
+        self._row_dict["storage_type"] = v
+
+    def getStorageType(self) -> str:
+        if self._model:
+            return self._model.storage_type or "archive"
+        return self._row_dict.get("storage_type", "archive")
+
+    def setUploadFileName(self, v: Optional[str]):
+        if self._model:
+            self._model.upload_file_name = v
+        self._row_dict["upload_file_name"] = v
+
+    def getUploadFileName(self) -> Optional[str]:
+        if self._model:
+            return self._model.upload_file_name
+        return self._row_dict.get("upload_file_name")
+
+
+class PdbxMessageOrigCommReference(_BasePdbxMessage):
+    """In-memory only class for API compatibility (no database persistence)"""
+
+    def __init__(self, verbose: bool = False, log=sys.stderr):
+        super().__init__(None, verbose, log)  # No model - in-memory only
+
+    def setOrigSender(self, v: str):
+        self._row_dict["orig_sender"] = v
+
+    def getOrigSender(self) -> str:
+        return self._row_dict.get("orig_sender", "")
+
+    def setOrigRecipient(self, v: str):
+        self._row_dict["orig_recipient"] = v
+
+    def getOrigRecipient(self) -> str:
+        return self._row_dict.get("orig_recipient", "")
+
+    def setOrigDepositionId(self, v: str):
+        self._row_dict["orig_deposition_data_set_id"] = v
+
+    def getOrigDepositionId(self) -> str:
+        return self._row_dict.get("orig_deposition_data_set_id", "")
+
+    def setOrigMessageSubject(self, v: str):
+        self._row_dict["orig_message_subject"] = v
+
+    def getOrigMessageSubject(self) -> str:
+        return self._row_dict.get("orig_message_subject", "")
+
+    def setOrigTimeStamp(self, v: str):
+        self._row_dict["orig_timestamp"] = v
+
+    def getOrigTimeStamp(self) -> str:
+        return self._row_dict.get("orig_timestamp", "")
+
+    def setOrigAttachments(self, v: str):
+        self._row_dict["orig_attachments"] = v
+
+    def getOrigAttachments(self) -> str:
+        return self._row_dict.get("orig_attachments", "")
+
+
+class PdbxMessageStatus(_BasePdbxMessage):
+    """Drop-in helper that wraps MessageStatus SQLAlchemy model"""
+
+    def __init__(self, verbose: bool = False, log=sys.stderr):
+        model = MessageStatus()
+        super().__init__(model, verbose, log)
+
+    def setReadStatus(self, v: str):
+        if self._model:
+            self._model.read_status = v
+        self._row_dict["read_status"] = v
+
+    def getReadStatus(self) -> str:
+        if self._model:
+            return self._model.read_status or "N"
+        return self._row_dict.get("read_status", "N")
+
+    def setActionReqd(self, v: str):
+        if self._model:
+            self._model.action_reqd = v
+        self._row_dict["action_reqd"] = v
+
+    def getActionReqd(self) -> str:
+        if self._model:
+            return self._model.action_reqd or "N"
+        return self._row_dict.get("action_reqd", "N")
+
+    def setForRelease(self, v: str):
+        if self._model:
+            self._model.for_release = v
+        self._row_dict["for_release"] = v
+
+    def getForRelease(self) -> str:
+        if self._model:
+            return self._model.for_release or "N"
+        return self._row_dict.get("for_release", "N")
