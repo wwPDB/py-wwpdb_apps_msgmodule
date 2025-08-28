@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from .Models import Base, MessageInfo, MessageFileReference, MessageStatus
+from wwpdb.apps.msgmodule.db.Models import Base, MessageInfo, MessageFileReference, MessageStatus
 
 logger = logging.getLogger(__name__)
 

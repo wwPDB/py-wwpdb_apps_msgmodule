@@ -14,7 +14,7 @@ import sys
 from datetime import datetime
 from typing import Dict, Optional
 
-from .Models import MessageInfo, MessageFileReference, MessageStatus
+from wwpdb.apps.msgmodule.db.Models import MessageInfo, MessageFileReference, MessageStatus
 
 
 def _fmt_timestamp(ts) -> str:
