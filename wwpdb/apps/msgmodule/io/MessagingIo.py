@@ -126,6 +126,8 @@
 #    2024-04-04    CS     Add context_type to autoMsg() and sendSingle() to match frontend message-to-depositor drop-down list
 #    2024-09-09    CS     Add process to send reminder on AUTH entry deposited as REL
 #    2024-09-18    CS     Change statusCode selection in __getDefaultMsgTmpltType for map-only entries
+#    2025-01-XX    AI     Database integration: Refactor MessagingIo to use DataAccessLayer/Models for DB-backed 
+#                         messaging while preserving API compatibility and CIF fallback functionality
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -188,8 +190,14 @@ from oslo_concurrency import lockutils
 # Here for now - should be relocated.
 from wwpdb.apps.msgmodule.io.EmHeaderUtils import EmHeaderUtils
 
+# Database imports for new backend
+from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
+from wwpdb.apps.msgmodule.db.Models import MessageInfo, MessageFileReference, MessageStatus
+
 import os
 import filecmp
+import uuid
+from datetime import datetime
 
 import logging
 
@@ -268,12 +276,107 @@ class MessagingIo(object):
         self.__msgsToDpstrFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/messages-to-depositor.cif"
         self.__msgsFrmDpstrFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/messages-from-depositor.cif"
         self.__notesFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/notes-from-annotator.cif"
+        
+        # Initialize database backend for new messaging system
+        self.__dataAccess = None
+        self._initializeDatabase()
 
     def setGroupId(self, groupId):
         #
         # Added by ZF
         #
         self.__groupId = groupId
+
+    def _initializeDatabase(self):
+        """Initialize database connection for new backend"""
+        try:
+            # Get database configuration from ConfigInfo
+            db_config = self._getDatabaseConfig()
+            self.__dataAccess = DataAccessLayer(db_config)
+            if self.__verbose:
+                logger.info("Database connection initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize database connection: %s", e)
+            # For backward compatibility, allow fallback to CIF files if database is unavailable
+            self.__dataAccess = None
+
+    def _getDatabaseConfig(self):
+        """Get database configuration from ConfigInfo"""
+        try:
+            # Get database configuration from site configuration
+            db_config = {
+                'host': self.__cI.get('SITE_DB_SERVER') or 'localhost',
+                'port': self.__cI.get('SITE_DB_PORT_NUMBER') or 3306,
+                'database': self.__cI.get('SITE_MSG_DB_NAME') or 'messaging',
+                'username': self.__cI.get('SITE_MSG_DB_USER_ID') or 'messaging_user',
+                'password': self.__cI.get('SITE_MSG_DB_USER_PWD') or '',
+                'charset': 'utf8mb4'
+            }
+            return db_config
+        except Exception as e:
+            logger.error("Failed to get database configuration: %s", e)
+            raise
+
+    def _convertCifMessageToDb(self, cif_dict, content_type='messages-to-depositor'):
+        """Convert CIF-style message dictionary to database MessageInfo object"""
+        try:
+            # Map content type
+            if content_type == 'msgs':
+                content_type = 'messages-to-depositor'
+            elif content_type == 'notes':
+                content_type = 'notes-from-annotator'
+            
+            # Generate message ID if not provided
+            message_id = cif_dict.get('message_id') or str(uuid.uuid4())
+            
+            # Convert timestamp to datetime
+            timestamp = cif_dict.get('timestamp')
+            if isinstance(timestamp, str):
+                try:
+                    timestamp = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    timestamp = datetime.utcnow()
+            elif not timestamp:
+                timestamp = datetime.utcnow()
+            
+            return MessageInfo(
+                message_id=message_id,
+                deposition_data_set_id=cif_dict.get('deposition_data_set_id', ''),
+                timestamp=timestamp,
+                sender=cif_dict.get('sender', 'auto'),
+                context_type=cif_dict.get('context_type'),
+                context_value=cif_dict.get('context_value'),
+                parent_message_id=cif_dict.get('parent_message_id'),
+                message_subject=cif_dict.get('message_subject', ''),
+                message_text=cif_dict.get('message_text', ''),
+                message_type=cif_dict.get('message_type', 'text'),
+                send_status=cif_dict.get('send_status', 'Y'),
+                content_type=content_type
+            )
+        except Exception as e:
+            logger.error("Error converting CIF message to DB: %s", e)
+            raise
+
+    def _convertDbMessageToDict(self, db_message):
+        """Convert database MessageInfo object to CIF-style dictionary"""
+        try:
+            return {
+                'message_id': db_message.message_id,
+                'deposition_data_set_id': db_message.deposition_data_set_id,
+                'timestamp': db_message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if db_message.timestamp else '',
+                'sender': db_message.sender,
+                'context_type': db_message.context_type,
+                'context_value': db_message.context_value,
+                'parent_message_id': db_message.parent_message_id,
+                'message_subject': db_message.message_subject,
+                'message_text': db_message.message_text,
+                'message_type': db_message.message_type,
+                'send_status': db_message.send_status,
+                'content_type': db_message.content_type.value if hasattr(db_message.content_type, 'value') else str(db_message.content_type)
+            }
+        except Exception as e:
+            logger.error("Error converting DB message to dict: %s", e)
+            return {}
 
     def initializeDataStore(self):
         """Internalize data files"""
@@ -1487,7 +1590,7 @@ class MessagingIo(object):
         #
         return rtrnDict
 
-    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None, p_tmpltType="other"):  # CS 2024-04-04 add p_tmpltType arg
+    def sendSingle(self, depId, subject, msg, p_sender="auto", p_testemail=None, p_priority=None, p_attached_files=None, p_tmpltType="other"):  # CS 2024-04-04 add p_tmpltType arg
         """Sends a single message for depId with subject and msg. If p_testemail is set - will send notification there
         Different from autoMsg, this function sends customized message pre-composed and passed by subject and msg args.
         Although template type p_tmpltType is an arg, the message doesn't base on the template type which is only provided for record.
@@ -1505,6 +1608,70 @@ class MessagingIo(object):
         logger.info("Message %s", msg)
         logger.info("Test email %s", p_testemail)
 
+        # Try database-backed approach first
+        if self.__dataAccess:
+            try:
+                content_type = "notes-from-annotator"  # We are archiving notes
+                sender = p_sender or "auto"
+                
+                # Create database message object
+                db_msg = self._convertCifMessageToDb({
+                    'message_id': str(uuid.uuid4()),
+                    'deposition_data_set_id': depId,
+                    'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                    'sender': sender,
+                    'context_type': p_tmpltType,
+                    'context_value': None,
+                    'parent_message_id': '',
+                    'message_subject': subject or '',
+                    'message_text': msg or '',
+                    'message_type': 'text',
+                    'send_status': 'Y',
+                }, content_type=content_type)
+
+                # Store in database
+                ok = self.__dataAccess.create_message(db_msg)
+                if not ok:
+                    logger.error("Failed to create message in database for %s", depId)
+                    return False
+
+                # Ensure status row exists
+                status = MessageStatus(
+                    message_id=db_msg.message_id,
+                    deposition_data_set_id=depId,
+                    read_status='N',
+                    action_reqd='N',
+                    for_release='N'
+                )
+                self.__dataAccess.create_or_update_status(status)
+
+                # Handle file attachments if provided
+                attached_files = p_attached_files or []
+                for file_ref in attached_files:
+                    try:
+                        db_file_ref = MessageFileReference(
+                            ordinal_id=None,
+                            message_id=db_msg.message_id,
+                            deposition_data_set_id=depId,
+                            content_type=file_ref.get('content_type') or content_type,
+                            content_format=file_ref.get('content_format') or file_ref.get('format') or '',
+                            partition_number=file_ref.get('partition_number', 1),
+                            version_id=file_ref.get('version_id', 1),
+                            storage_type=file_ref.get('storage_type', 'archive'),
+                            upload_file_name=file_ref.get('upload_file_name') or file_ref.get('path') or ''
+                        )
+                        self.__dataAccess.create_file_reference(db_file_ref)
+                    except Exception as e:
+                        logger.warning("Failed to create file reference for %s: %s", file_ref, e)
+
+                logger.info("Successfully created message %s in database", db_msg.message_id)
+                return True
+
+            except Exception as e:
+                logger.error("Database sendSingle failed, falling back to CIF: %s", e)
+                # Fall through to CIF-based approach
+
+        # Fallback to original CIF-based approach
         self.__reqObj.setValue("content_type", "msgs")  # as opposed to "notes"
         self.__reqObj.setValue("filesource", "archive")
 
@@ -1588,6 +1755,37 @@ class MessagingIo(object):
         return rtrnText
 
     def get_message_list_from_depositor(self):
+        """Get list of messages from depositor using database when available"""
+        # Try database approach first
+        if self.__dataAccess:
+            try:
+                depId = self.__reqObj.getValue("identifier")
+                if not depId:
+                    return []
+                
+                messages = self.__dataAccess.messages.get_by_deposition(depId)
+                result = []
+                for msg in messages:
+                    try:
+                        # Filter for depositor messages
+                        if (msg.sender and msg.sender.lower() == "depositor" and 
+                            msg.content_type and 
+                            str(msg.content_type).lower() == 'messages-from-depositor'):
+                            result.append(self._convertDbMessageToDict(msg))
+                    except Exception as e:
+                        logger.warning("Error processing message %s: %s", msg.message_id, e)
+                        # Handle legacy string content_type
+                        if (msg.sender and msg.sender.lower() == "depositor"):
+                            result.append(self._convertDbMessageToDict(msg))
+                
+                logger.info("Retrieved %d depositor messages from database", len(result))
+                return result
+                
+            except Exception as e:
+                logger.error("Database get_message_list_from_depositor failed: %s", e)
+                # Fall through to CIF approach
+
+        # Fallback to original CIF-based approach
         message_list = []
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
@@ -1606,11 +1804,19 @@ class MessagingIo(object):
         return message_list
 
     def get_message_subject_from_depositor(self, message_id):
+        """Get subject of specific message from depositor"""
         message_list = self.get_message_list_from_depositor()
         logger.info("Depositor message list")
         for row in message_list:
             if row.get("message_id") == message_id:
-                return row.get("message_subject")
+                return row.get("message_subject") or ""
+        
+        # If not found in list, try to get latest subject as fallback
+        if message_list:
+            # Sort by timestamp and get latest
+            sorted_msgs = sorted(message_list, key=lambda x: x.get('timestamp', ''), reverse=True)
+            return sorted_msgs[0].get("message_subject") or ""
+        
         return ""
 
     def is_release_request(self, message_id):
@@ -1634,9 +1840,60 @@ class MessagingIo(object):
         """
         startTime = time.time()
         logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        
         bOk = False
-        #
+        
+        # Try database approach first
+        if self.__dataAccess:
+            try:
+                msg_id = p_msgStatusDict.get('message_id') or p_msgStatusDict.get('id') or p_msgStatusDict.get('messageId')
+                dep_id = p_msgStatusDict.get('deposition_data_set_id') or p_msgStatusDict.get('deposition') or self.__reqObj.getValue("identifier") or ''
+                
+                if not msg_id:
+                    logger.error("No message ID provided in markMsgAsRead")
+                    return False
+                
+                if self.__verbose:
+                    logger.info("Database request to mark msg read for msgID: [%s]", msg_id)
+                
+                # Get or create status
+                status = self.__dataAccess.status.get_by_message_id(msg_id)
+                if not status:
+                    # Create new status record
+                    is_release = self.is_release_request(message_id=msg_id)
+                    status = MessageStatus(
+                        message_id=msg_id,
+                        deposition_data_set_id=dep_id,
+                        read_status='Y',
+                        action_reqd=p_msgStatusDict.get('action_reqd', 'N') or 'N',
+                        for_release='Y' if is_release else p_msgStatusDict.get('for_release', 'N') or 'N'
+                    )
+                else:
+                    # Update existing status
+                    status.read_status = 'Y'
+                    # Don't overwrite existing action_reqd and for_release unless explicitly provided
+                    if 'action_reqd' in p_msgStatusDict:
+                        status.action_reqd = p_msgStatusDict['action_reqd']
+                    if 'for_release' in p_msgStatusDict:
+                        status.for_release = p_msgStatusDict['for_release']
+                
+                bOk = self.__dataAccess.create_or_update_status(status)
+                
+                if bOk:
+                    logger.info("Successfully marked message %s as read in database", msg_id)
+                else:
+                    logger.error("Failed to mark message %s as read in database", msg_id)
+                
+                endTime = time.time()
+                tDiff = endTime - startTime
+                logger.info("Completed marking read in %4.3f seconds", tDiff)
+                return bOk
+                
+            except Exception as e:
+                logger.error("Database markMsgAsRead failed: %s", e)
+                # Fall through to CIF approach
+        
+        # Fallback to original CIF-based approach
         try:
             mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
             mS.set(p_msgStatusDict)
@@ -1718,9 +1975,35 @@ class MessagingIo(object):
 
         """
         logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        # are all messages read?
+        
+        # Try database approach first
+        if self.__dataAccess:
+            try:
+                depId = self.__reqObj.getValue("identifier") or ''
+                if not depId:
+                    return True  # No messages to check
+                
+                messages = self.__dataAccess.messages.get_by_deposition(depId)
+                if not messages:
+                    return True  # No messages found
+                
+                for msg in messages:
+                    # Check if this message needs to be read (from depositor)
+                    if (msg.sender and msg.sender.lower() == "depositor"):
+                        status = self.__dataAccess.status.get_by_message_id(msg.message_id)
+                        if not status or (status.read_status or 'N') != 'Y':
+                            logger.info("Message %s is not read", msg.message_id)
+                            return False
+                
+                logger.info("All messages are read (database check)")
+                return True
+                
+            except Exception as e:
+                logger.error("Database areAllMsgsRead failed: %s", e)
+                # Fall through to CIF approach
+        
+        # Fallback to original CIF-based approach
         bAllMsgsRead = self.__globalMessageStatusCheck(p_statusToCheck="read_status", p_flagForFalseReturn="N")
-
         return bAllMsgsRead
 
     def areAllMsgsActioned(self):
@@ -1730,9 +2013,32 @@ class MessagingIo(object):
 
         """
         logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        # are all messages "actioned"?
+        
+        # Try database approach first
+        if self.__dataAccess:
+            try:
+                depId = self.__reqObj.getValue("identifier") or ''
+                if not depId:
+                    return True  # No messages to check
+                
+                messages = self.__dataAccess.messages.get_by_deposition(depId)
+                for msg in messages:
+                    # Check if this message requires action (from depositor)
+                    if (msg.sender and msg.sender.lower() == "depositor"):
+                        status = self.__dataAccess.status.get_by_message_id(msg.message_id)
+                        if status and (status.action_reqd or 'N') == 'Y':
+                            logger.info("Message %s requires action", msg.message_id)
+                            return False
+                
+                logger.info("All messages are actioned (database check)")
+                return True
+                
+            except Exception as e:
+                logger.error("Database areAllMsgsActioned failed: %s", e)
+                # Fall through to CIF approach
+        
+        # Fallback to original CIF-based approach
         bAllMsgsActioned = self.__globalMessageStatusCheck(p_statusToCheck="action_reqd", p_flagForFalseReturn="Y")
-
         return bAllMsgsActioned
 
     def anyReleaseFlags(self):
@@ -1742,7 +2048,29 @@ class MessagingIo(object):
 
         """
         logger.info("Starting")
-        # asking, no flags exist that indicate "for release"?
+        
+        # Try database approach first
+        if self.__dataAccess:
+            try:
+                depId = self.__reqObj.getValue("identifier") or ''
+                if not depId:
+                    return False  # No messages to check
+                
+                messages = self.__dataAccess.messages.get_by_deposition(depId)
+                for msg in messages:
+                    status = self.__dataAccess.status.get_by_message_id(msg.message_id)
+                    if status and (status.for_release or 'N') == 'Y':
+                        logger.info("Message %s has release flag", msg.message_id)
+                        return True
+                
+                logger.info("No release flags found (database check)")
+                return False
+                
+            except Exception as e:
+                logger.error("Database anyReleaseFlags failed: %s", e)
+                # Fall through to CIF approach
+        
+        # Fallback to original CIF-based approach
         bNoFlagsForRelease = self.__globalMessageStatusCheck(p_statusToCheck="for_release", p_flagForFalseReturn="Y")
         # NOTE: in order to make semantic sense, we need to return the boolean opposite of the above return value
         return not bNoFlagsForRelease
