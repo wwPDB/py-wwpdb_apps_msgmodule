@@ -236,12 +236,12 @@ class DatabaseIntegrationTests(unittest.TestCase):
         print(f"✓ Database integration test completed successfully for all {len(content_types)} content types")
     
     def test_message_models_integration(self):
-        """Test SQLAlchemy message models with actual database persistence across all content types"""
+        """Test SQLAlchemy message models with actual database persistence across all content types and message threading"""
         
         if not self.has_real_db_config:
             self.skipTest("No real database configuration available")
         
-        # Test all supported content types (same as database tables)
+        # Test all supported content types
         content_types = [
             "messages-to-depositor",
             "messages-from-depositor", 
@@ -253,10 +253,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
             dal = DataAccessLayer(self.test_db_config)
             
             created_message_ids = []
+            parent_messages = {}  # Track parent messages for threading
             
-            # Test each content type
+            # First, create initial messages for each content type
             for content_type in content_types:
-                with self.subTest(content_type=content_type):
+                with self.subTest(content_type=content_type, phase="initial"):
                     # Test MessageInfo model with database persistence
                     test_message_id = f"TEST_MODEL_{content_type.upper().replace('-', '_')}_{int(__import__('time').time())}"
                     msg_info = MessageInfo()
@@ -264,16 +265,18 @@ class DatabaseIntegrationTests(unittest.TestCase):
                     msg_info.message_id = test_message_id
                     msg_info.timestamp = datetime.now()  # Add required timestamp
                     msg_info.sender = f"test@{content_type.replace('-', '_')}.com"
-                    msg_info.message_subject = f"Integration Test for {content_type}"
-                    msg_info.message_text = f"This is a test message for {content_type} content type database integration"
+                    msg_info.message_subject = f"Initial message for {content_type}"
+                    msg_info.message_text = f"This is the first message in a thread for {content_type} content type"
                     msg_info.content_type = content_type
                     msg_info.message_type = "text"
                     msg_info.send_status = "Y"
+                    msg_info.parent_message_id = None  # Initial message has no parent
                     
                     # Save to database
                     dal.create_message(msg_info)
                     created_message_ids.append(test_message_id)
-                    print(f"✓ MessageInfo model saved to database for {content_type}: {test_message_id}")
+                    parent_messages[content_type] = test_message_id
+                    print(f"✓ Initial {content_type} message saved: {test_message_id}")
                     
                     # Verify data was saved by querying it back
                     session = dal.db_connection.get_session()
@@ -282,13 +285,46 @@ class DatabaseIntegrationTests(unittest.TestCase):
                         self.assertIsNotNone(saved_msg, f"Message should be found in database for {content_type}")
                         self.assertEqual(saved_msg.deposition_data_set_id, "D_1000000001")
                         self.assertEqual(saved_msg.content_type, content_type)
-                        self.assertEqual(saved_msg.sender, f"test@{content_type.replace('-', '_')}.com")
-                        print(f"✓ {content_type} message successfully persisted and retrieved from database")
+                        self.assertIsNone(saved_msg.parent_message_id, "Initial message should have no parent")
+                        print(f"✓ {content_type} initial message successfully persisted and verified")
+                    finally:
+                        session.close()
+            
+            # Now create reply messages that reference the parent messages
+            for content_type in content_types:
+                with self.subTest(content_type=content_type, phase="reply"):
+                    # Create a reply message
+                    reply_message_id = f"REPLY_{content_type.upper().replace('-', '_')}_{int(__import__('time').time())}"
+                    reply_msg = MessageInfo()
+                    reply_msg.deposition_data_set_id = "D_1000000001"
+                    reply_msg.message_id = reply_message_id
+                    reply_msg.timestamp = datetime.now()
+                    reply_msg.sender = f"reply@{content_type.replace('-', '_')}.com"
+                    reply_msg.message_subject = f"Re: Initial message for {content_type}"
+                    reply_msg.message_text = f"This is a reply to the initial {content_type} message, demonstrating message threading"
+                    reply_msg.content_type = content_type
+                    reply_msg.message_type = "text"
+                    reply_msg.send_status = "Y"
+                    reply_msg.parent_message_id = parent_messages[content_type]  # Reference parent message
+                    
+                    # Save reply to database
+                    dal.create_message(reply_msg)
+                    created_message_ids.append(reply_message_id)
+                    print(f"✓ Reply {content_type} message saved: {reply_message_id} (parent: {parent_messages[content_type]})")
+                    
+                    # Verify reply was saved with correct parent reference
+                    session = dal.db_connection.get_session()
+                    try:
+                        saved_reply = session.query(MessageInfo).filter_by(message_id=reply_message_id).first()
+                        self.assertIsNotNone(saved_reply, f"Reply message should be found for {content_type}")
+                        self.assertEqual(saved_reply.parent_message_id, parent_messages[content_type])
+                        self.assertEqual(saved_reply.content_type, content_type)
+                        print(f"✓ {content_type} reply message threading verified")
                     finally:
                         session.close()
             
             # Test file references and statuses for all created messages
-            for i, (content_type, test_message_id) in enumerate(zip(content_types, created_message_ids)):
+            for i, (content_type, test_message_id) in enumerate(zip(content_types * 2, created_message_ids)):  # *2 because we have initial + reply
                 # Test MessageFileReference model
                 file_ref = MessageFileReference()
                 file_ref.message_id = test_message_id
@@ -316,16 +352,34 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 dal.create_or_update_status(status)
                 print(f"✓ MessageStatus saved for {content_type}")
             
-            # Verify all related data across content types
+            # Verify message threading and relationships
             session = dal.db_connection.get_session()
             try:
-                # Check messages exist for each content type
+                # Check that we have the expected message threads
                 for content_type in content_types:
-                    msg_count = session.query(MessageInfo).filter_by(
+                    # Find all messages for this content type
+                    messages = session.query(MessageInfo).filter_by(
                         deposition_data_set_id="D_1000000001",
                         content_type=content_type
-                    ).count()
-                    self.assertGreater(msg_count, 0, f"Should have at least one message for {content_type}")
+                    ).order_by(MessageInfo.timestamp).all()
+                    
+                    # Should have at least 2 messages (initial + reply)
+                    self.assertGreaterEqual(len(messages), 2, f"Should have at least 2 messages for {content_type}")
+                    
+                    # Find parent and child messages
+                    parent_msg = None
+                    child_msg = None
+                    for msg in messages:
+                        if msg.parent_message_id is None:
+                            parent_msg = msg
+                        elif msg.parent_message_id == parent_messages[content_type]:
+                            child_msg = msg
+                    
+                    self.assertIsNotNone(parent_msg, f"Should find parent message for {content_type}")
+                    self.assertIsNotNone(child_msg, f"Should find child message for {content_type}")
+                    self.assertEqual(child_msg.parent_message_id, parent_msg.message_id)
+                    
+                    print(f"✓ Message threading verified for {content_type}: {parent_msg.message_id} -> {child_msg.message_id}")
                 
                 # Check total counts
                 total_msg_count = session.query(MessageInfo).filter_by(deposition_data_set_id="D_1000000001").count()
@@ -336,19 +390,20 @@ class DatabaseIntegrationTests(unittest.TestCase):
                     MessageStatus.message_id.in_(created_message_ids)
                 ).count()
                 
-                self.assertGreaterEqual(total_msg_count, len(content_types), f"Should have at least {len(content_types)} messages")
-                self.assertEqual(total_ref_count, len(content_types), f"Should have {len(content_types)} file references")
-                self.assertEqual(total_status_count, len(content_types), f"Should have {len(content_types)} statuses")
+                expected_messages = len(content_types) * 2  # Initial + reply for each content type
+                self.assertGreaterEqual(total_msg_count, expected_messages, f"Should have at least {expected_messages} messages")
+                self.assertEqual(total_ref_count, expected_messages, f"Should have {expected_messages} file references")
+                self.assertEqual(total_status_count, expected_messages, f"Should have {expected_messages} statuses")
                 
-                print(f"✓ All database models working correctly with persistence across all content types")
+                print(f"✓ All database models working correctly with message threading")
                 print(f"✓ Found {total_msg_count} total messages, {total_ref_count} file refs, {total_status_count} statuses")
-                print(f"✓ Successfully tested {len(content_types)} different content types")
+                print(f"✓ Successfully tested {len(content_types)} content types with message threading")
                 
             finally:
                 session.close()
                 
         except Exception as e:
-            self.fail(f"Message models integration with database failed: {e}")
+            self.fail(f"Message models integration with threading failed: {e}")
     
     def test_pdbx_message_wrappers_with_models(self):
         """Test the optimized PdbxMessage wrapper classes"""
