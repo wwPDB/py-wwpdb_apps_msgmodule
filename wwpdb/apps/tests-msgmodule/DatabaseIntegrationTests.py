@@ -234,9 +234,10 @@ class DatabaseIntegrationTests(unittest.TestCase):
             dal = DataAccessLayer(self.test_db_config)
             
             # Test MessageInfo model with database persistence
+            test_message_id = f"TEST_MODEL_{int(__import__('time').time())}"
             msg_info = MessageInfo()
             msg_info.deposition_data_set_id = "D_1000000001"
-            msg_info.message_id = f"TEST_MODEL_{int(__import__('time').time())}"
+            msg_info.message_id = test_message_id
             msg_info.timestamp = datetime.now()  # Add required timestamp
             msg_info.sender = "test@example.com"
             msg_info.message_subject = "Integration Test Message"
@@ -247,12 +248,12 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Save to database
             dal.create_message(msg_info)
-            print(f"✓ MessageInfo model saved to database: {msg_info.message_id}")
+            print(f"✓ MessageInfo model saved to database: {test_message_id}")
             
             # Verify data was saved by querying it back
             session = dal.db_connection.get_session()
             try:
-                saved_msg = session.query(MessageInfo).filter_by(message_id=msg_info.message_id).first()
+                saved_msg = session.query(MessageInfo).filter_by(message_id=test_message_id).first()
                 self.assertIsNotNone(saved_msg, "Message should be found in database")
                 self.assertEqual(saved_msg.deposition_data_set_id, "D_1000000001")
                 self.assertEqual(saved_msg.sender, "test@example.com")
@@ -263,7 +264,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Test MessageFileReference model
             file_ref = MessageFileReference()
-            file_ref.message_id = msg_info.message_id
+            file_ref.message_id = test_message_id  # Use stored ID
             file_ref.deposition_data_set_id = "D_1000000001"
             file_ref.content_type = "messages-to-depositor"
             file_ref.content_format = "pdbx"
@@ -278,7 +279,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Test MessageStatus model
             status = MessageStatus()
-            status.message_id = msg_info.message_id
+            status.message_id = test_message_id  # Use stored ID
             status.deposition_data_set_id = "D_1000000001"
             status.read_status = "N"
             status.action_reqd = "Y"
@@ -296,11 +297,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 self.assertGreater(msg_count, 0, "Should have at least one message for D_1000000001")
                 
                 # Check file reference exists  
-                ref_count = session.query(MessageFileReference).filter_by(message_id=msg_info.message_id).count()
+                ref_count = session.query(MessageFileReference).filter_by(message_id=test_message_id).count()
                 self.assertGreater(ref_count, 0, "Should have file reference for test message")
                 
                 # Check status exists
-                status_count = session.query(MessageStatus).filter_by(message_id=msg_info.message_id).count()
+                status_count = session.query(MessageStatus).filter_by(message_id=test_message_id).count()
                 self.assertGreater(status_count, 0, "Should have status for test message")
                 
                 print(f"✓ All database models working correctly with persistence")
