@@ -52,13 +52,16 @@ class DatabaseIntegrationTests(unittest.TestCase):
         try:
             from wwpdb.utils.config.ConfigInfo import ConfigInfo
             
-            # Use real site ID - typically WWPDB_DEPLOY_TEST or similar
-            site_id = os.getenv("WWPDB_SITE_ID", "WWPDB_DEPLOY_TEST")
+            # Use real site ID from environment (e.g., PDBE_EMDB_DEV_ROCKY_1)
+            site_id = os.getenv("WWPDB_SITE_ID")
+            if not site_id:
+                raise RuntimeError("WWPDB_SITE_ID environment variable not set")
+                
             config_info = ConfigInfo(site_id)
             
             # Get real database configuration (same as migrate_cif_to_db.py)
             host = config_info.get("SITE_DB_HOST_NAME")
-            user = config_info.get("SITE_DB_ADMIN_USER")
+            user = config_info.get("SITE_DB_ADMIN_USER") 
             database = config_info.get("WWPDB_MESSAGING_DB_NAME")
             port = config_info.get("SITE_DB_PORT_NUMBER", "3306")
             password = config_info.get("SITE_DB_ADMIN_PASS", "")
@@ -109,7 +112,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         # Test the database configuration functionality that scripts would use
         try:
             from wwpdb.utils.config.ConfigInfo import ConfigInfo
-            config_info = ConfigInfo("WWPDB_DEPLOY_TEST")
+            site_id = os.getenv("WWPDB_SITE_ID")
+            config_info = ConfigInfo(site_id)
             
             # Test that we can get the required database configuration values
             host = config_info.get("SITE_DB_HOST_NAME")
