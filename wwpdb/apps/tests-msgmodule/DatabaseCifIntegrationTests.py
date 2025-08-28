@@ -24,6 +24,9 @@ if __package__ is None or __package__ == "":
 else:
     from .commonsetup import TESTOUTPUT
 
+# Import ConfigInfo at module level to avoid mock contamination
+from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
+
 # Import the database components
 from wwpdb.apps.msgmodule.db import (
     DataAccessLayer,
@@ -59,14 +62,14 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
         
         # Get REAL database configuration from ConfigInfo like the scripts do
         try:
-            from wwpdb.utils.config.ConfigInfo import ConfigInfo
+            # ConfigInfo imported at module level as RealConfigInfo
             
             # Use real site ID from environment (e.g., PDBE_EMDB_DEV_ROCKY_1)
             site_id = os.getenv("WWPDB_SITE_ID")
             if not site_id:
                 raise RuntimeError("WWPDB_SITE_ID environment variable not set")
                 
-            config_info = ConfigInfo(site_id)
+            config_info = RealConfigInfo(site_id)
             
             # Get real database configuration (same as migrate_cif_to_db.py)
             host = config_info.get("SITE_DB_HOST_NAME")
