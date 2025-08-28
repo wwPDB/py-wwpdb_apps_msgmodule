@@ -100,20 +100,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
         if os.path.exists(self.test_output_dir):
             shutil.rmtree(self.test_output_dir, ignore_errors=True)
     
-    @patch('wwpdb.utils.config.ConfigInfo.ConfigInfo')
-    def test_database_initialization_functionality(self, mock_config_info):
+    def test_database_initialization_functionality(self):
         """Test database initialization functionality (not script import)"""
         
-        # Mock the ConfigInfo to return our test database config
-        mock_config = MagicMock()
-        mock_config.get.side_effect = lambda key, default=None: {
-            "SITE_DB_HOST_NAME": self.test_db_config["host"],
-            "SITE_DB_PORT_NUMBER": str(self.test_db_config["port"]),
-            "WWPDB_MESSAGING_DB_NAME": self.test_db_config["database"],
-            "SITE_DB_ADMIN_USER": self.test_db_config["username"],
-            "SITE_DB_ADMIN_PASS": self.test_db_config["password"],
-        }.get(key, default)
-        mock_config_info.return_value = mock_config
+        if not self.has_real_db_config:
+            self.skipTest("No real database configuration available")
         
         # Test the database configuration functionality that scripts would use
         try:
@@ -286,19 +277,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         
         print(f"✓ PdbxMessage wrapper dict compatibility working correctly")
     
-    def test_migration_functionality(self, mock_config_info):
+    def test_migration_functionality(self):
         """Test migration functionality without importing the script"""
-        
-        # Mock the ConfigInfo
-        mock_config = MagicMock()
-        mock_config.get.side_effect = lambda key, default=None: {
-            "SITE_DB_HOST_NAME": self.test_db_config["host"],
-            "SITE_DB_PORT_NUMBER": str(self.test_db_config["port"]),
-            "WWPDB_MESSAGING_DB_NAME": self.test_db_config["database"],
-            "SITE_DB_ADMIN_USER": self.test_db_config["username"],
-            "SITE_DB_ADMIN_PASS": self.test_db_config["password"],
-        }.get(key, default)
-        mock_config_info.return_value = mock_config
         
         # Test the core migration functionality - converting CIF data to model objects
         test_cif_data = {
