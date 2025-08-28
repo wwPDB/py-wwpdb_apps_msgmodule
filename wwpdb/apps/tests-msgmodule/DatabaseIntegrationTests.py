@@ -16,6 +16,7 @@ import unittest
 import os
 import tempfile
 import shutil
+from datetime import datetime
 
 # Import ConfigInfo at module level BEFORE any mock imports to avoid contamination
 from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
@@ -236,6 +237,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             msg_info = MessageInfo()
             msg_info.deposition_data_set_id = "D_1000000001"
             msg_info.message_id = f"TEST_MODEL_{int(__import__('time').time())}"
+            msg_info.timestamp = datetime.now()  # Add required timestamp
             msg_info.sender = "test@example.com"
             msg_info.message_subject = "Integration Test Message"
             msg_info.message_text = "This is a test message for database integration"
