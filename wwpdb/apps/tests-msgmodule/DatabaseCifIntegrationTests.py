@@ -17,15 +17,15 @@ import unittest
 import os
 from datetime import datetime
 
+# Import ConfigInfo at module level BEFORE any other imports to avoid contamination
+from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
+
 if __package__ is None or __package__ == "":
     from os import path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
     from commonsetup import TESTOUTPUT
 else:
     from .commonsetup import TESTOUTPUT
-
-# Import ConfigInfo at module level to avoid mock contamination
-from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
 
 # Import the database components
 from wwpdb.apps.msgmodule.db import (

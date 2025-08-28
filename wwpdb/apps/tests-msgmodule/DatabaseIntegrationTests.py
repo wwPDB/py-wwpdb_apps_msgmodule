@@ -16,6 +16,10 @@ import unittest
 import os
 import tempfile
 import shutil
+
+# Import ConfigInfo at module level BEFORE any mock imports to avoid contamination
+from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
+
 from unittest.mock import patch, MagicMock
 
 if __package__ is None or __package__ == "":
@@ -24,9 +28,6 @@ if __package__ is None or __package__ == "":
     from commonsetup import TESTOUTPUT, configInfo
 else:
     from .commonsetup import TESTOUTPUT, configInfo
-
-# Import ConfigInfo at module level to avoid mock contamination
-from wwpdb.utils.config.ConfigInfo import ConfigInfo as RealConfigInfo
 
 # Import the database components
 from wwpdb.apps.msgmodule.db import (
