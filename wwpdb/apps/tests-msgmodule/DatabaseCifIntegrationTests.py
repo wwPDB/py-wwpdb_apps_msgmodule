@@ -124,14 +124,14 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
             
             # Test basic database connectivity by attempting a simple query
             # This will fail if database doesn't exist or tables aren't created
-            session = dal.Session()
+            session = dal.get_session()
             
             # Check if the main tables exist by querying them
             message_count = session.query(MessageInfo).count()
             file_ref_count = session.query(MessageFileReference).count()
             status_count = session.query(MessageStatus).count()
             
-            session.close()
+            dal.close_session(session)
             
             print(f"✓ Database connection successful")
             print(f"✓ Found {message_count} messages, {file_ref_count} file refs, {status_count} statuses")
@@ -245,7 +245,8 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
             self.skipTest("No CIF test files found")
         
         # Test database PdbxMessageIo with REAL database config
-        db_msg_io = PdbxMessageIo(verbose=True, db_config=self.test_db_config)
+        site_id = os.getenv("WWPDB_SITE_ID")
+        db_msg_io = PdbxMessageIo(verbose=True, site_id=site_id, db_config=self.test_db_config)
         
         for test_file in self.test_files[:2]:  # Test first 2 files
             print(f"Testing database PdbxMessageIo with: {os.path.basename(test_file)}")
@@ -347,7 +348,8 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
             self.skipTest("No real database configuration available")
         
         # Test that both interfaces provide the same methods
-        db_msg_io = PdbxMessageIo(verbose=True, db_config=self.test_db_config)
+        site_id = os.getenv("WWPDB_SITE_ID")
+        db_msg_io = PdbxMessageIo(verbose=True, site_id=site_id, db_config=self.test_db_config)
         
         # Test basic interface compatibility
         expected_methods = [

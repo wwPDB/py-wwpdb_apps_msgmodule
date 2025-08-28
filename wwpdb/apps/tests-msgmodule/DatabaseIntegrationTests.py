@@ -153,8 +153,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✓ DataAccessLayer instantiated successfully with real database")
             
             # Test basic database connectivity
-            session = dal.Session()
-            session.close()
+            session = dal.get_session()
+            dal.close_session(session)
             print(f"✓ Database connection established and closed successfully")
             
         except Exception as e:
@@ -168,7 +168,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         
         try:
             # Test PdbxMessageIo with real database configuration
-            msg_io = PdbxMessageIo(verbose=True, log=sys.stdout, db_config=self.test_db_config)
+            site_id = os.getenv("WWPDB_SITE_ID")
+            msg_io = PdbxMessageIo(verbose=True, log=sys.stdout, site_id=site_id, db_config=self.test_db_config)
             
             self.assertIsNotNone(msg_io)
             print(f"✓ PdbxMessageIo instantiated with real database configuration")
