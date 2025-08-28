@@ -153,8 +153,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✓ DataAccessLayer instantiated successfully with real database")
             
             # Test basic database connectivity
-            session = dal.get_session()
-            dal.close_session(session)
+            session = dal.db_connection.get_session()
+            session.close()
             print(f"✓ Database connection established and closed successfully")
             
         except Exception as e:

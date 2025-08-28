@@ -124,14 +124,14 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
             
             # Test basic database connectivity by attempting a simple query
             # This will fail if database doesn't exist or tables aren't created
-            session = dal.get_session()
+            session = dal.db_connection.get_session()
             
             # Check if the main tables exist by querying them
             message_count = session.query(MessageInfo).count()
             file_ref_count = session.query(MessageFileReference).count()
             status_count = session.query(MessageStatus).count()
             
-            dal.close_session(session)
+            session.close()
             
             print(f"✓ Database connection successful")
             print(f"✓ Found {message_count} messages, {file_ref_count} file refs, {status_count} statuses")
