@@ -190,10 +190,16 @@ from wwpdb.apps.msgmodule.io.EmHeaderUtils import EmHeaderUtils
 
 import os
 import filecmp
+import uuid
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+# --- ADD: DB backend imports ---
+from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
+from wwpdb.apps.msgmodule.db.Models import MessageInfo as DBMessageInfo, MessageFileReference as DBMessageFileReference, MessageStatus as DBMessageStatus
+from wwpdb.io.locator.PathInfo import PathInfo
 
 
 class MessagingIo(object):
@@ -269,76 +275,113 @@ class MessagingIo(object):
         self.__msgsFrmDpstrFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/messages-from-depositor.cif"
         self.__notesFilePath = "/net/wwpdb_da/da_top/wwpdb_da_test/source/python/pdbx_v2/message/notes-from-annotator.cif"
 
+        # --- ADD: DB DataAccessLayer and PathInfo (read-only path resolution) ---
+        self.__dal = None
+        self.__pathInfo = PathInfo(siteId=self.__siteId)
+        self.__init_db_access()
+
     def setGroupId(self, groupId):
         #
         # Added by ZF
         #
         self.__groupId = groupId
 
+    def __init_db_access(self):
+        """Initialize DB data access layer from ConfigInfo"""
+        try:
+            cfg = self.__db_config_from_configinfo()
+            self.__dal = DataAccessLayer(cfg)
+            logger.info("MessagingIo DB backend initialized")
+        except Exception as e:
+            logger.exception("Failed to initialize DB backend for MessagingIo: %s", e)
+            raise
+
+    def __db_config_from_configinfo(self):
+        host = self.__cI.get("SITE_DB_HOST_NAME")
+        user = self.__cI.get("SITE_DB_ADMIN_USER")
+        database = self.__cI.get("WWPDB_MESSAGING_DB_NAME")
+        port = int(self.__cI.get("SITE_DB_PORT_NUMBER", "3306"))
+        password = self.__cI.get("SITE_DB_ADMIN_PASS", "")
+        if not all([host, user, database]):
+            raise RuntimeError("Missing required DB configuration (SITE_DB_HOST_NAME, SITE_DB_ADMIN_USER, WWPDB_MESSAGING_DB_NAME)")
+
+        return {
+            "host": host,
+            "port": port,
+            "database": database,
+            "username": user,
+            "password": password,
+            "charset": "utf8mb4",
+        }
+
+    def __db_message_to_dict(self, m: DBMessageInfo) -> dict:
+        """Normalize DB MessageInfo to legacy dict used across UI/rendering."""
+        ts = m.timestamp.strftime("%Y-%m-%d %H:%M:%S") if m.timestamp else ""
+        return {
+            "ordinal_id": str(m.ordinal_id) if m.ordinal_id is not None else "",
+            "message_id": m.message_id,
+            "deposition_data_set_id": m.deposition_data_set_id,
+            "timestamp": ts,
+            "sender": m.sender or "",
+            "context_type": m.context_type or "",
+            "context_value": m.context_value or "",
+            "parent_message_id": m.parent_message_id or "",
+            "message_subject": m.message_subject or "",
+            "message_text": m.message_text or "",
+            "message_type": m.message_type or "text",
+            "send_status": m.send_status or "Y",
+            "content_type": m.content_type,
+        }
+
+    def get_message_list_from_depositor(self):
+        """Return list of messages-from-depositor as list[dict] (legacy shape)."""
+        depId = self.__reqObj.getValue("identifier")
+        out = []
+        try:
+            msgs = self.__dal.get_deposition_messages(depId)
+            for m in msgs:
+                if m.content_type == "messages-from-depositor":
+                    out.append(self.__db_message_to_dict(m))
+        except Exception:
+            logger.exception("DB get_message_list_from_depositor failed")
+        return out
+
+    def get_message_subject_from_depositor(self, message_id):
+        """Return subject for given message_id (from depositor), or empty string."""
+        try:
+            m = self.__dal.get_message_by_id(message_id)
+            if m and m.content_type == "messages-from-depositor":
+                return m.message_subject or ""
+        except Exception:
+            logger.exception("DB get_message_subject_from_depositor failed")
+        return ""
+
+    def __getMsgsByStatus(self, p_statusToCheck, p_flagForInclusion):
+        """Return list of message_ids matching status flag (DB backend)."""
+        rtrnList = []
+        try:
+            depId = self.__reqObj.getValue("identifier")
+            msgs = self.__dal.get_deposition_messages(depId)
+            for m in msgs:
+                st = self.__dal.status.get_by_message_id(m.message_id)
+                if not st:
+                    continue
+                val = getattr(st, p_statusToCheck, None)
+                if val == p_flagForInclusion:
+                    rtrnList.append(m.message_id)
+            # Special case: for action_reqd=N also include annotator messages to avoid To-Do UI flags
+            if p_statusToCheck == "action_reqd":
+                for m in msgs:
+                    if m.content_type == "messages-to-depositor" and m.message_id not in rtrnList:
+                        rtrnList.append(m.message_id)
+        except Exception:
+            logger.exception("DB __getMsgsByStatus failed")
+        return rtrnList
+
     def initializeDataStore(self):
-        """Internalize data files"""
-
-        if self.__isWorkflow():
-            logger.info("--------------------------------------------")
-            logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-
-            dirp = os.path.dirname(self.__dbFilePath)
-
-            @lockutils.synchronized("msgmoduledb-lock", external=True, lock_path=dirp)
-            def initdb():
-                if not os.access(self.__dbFilePath, os.R_OK):
-                    logger.debug("DB File not present %s", self.__dbFilePath)
-
-                    msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                    modelFilePath = msgDI.getFilePath(contentType="model", format="pdbx")
-                    logger.info("CStrack+++ read modelFilePath = %s", modelFilePath)
-
-                    # parse info from model file
-                    if modelFilePath is not None and os.access(modelFilePath, os.R_OK):
-                        #
-                        containerList = []
-                        try:
-                            #########################################################################################################
-                            # parse model cif file and verify blockname
-                            #########################################################################################################
-                            pdbxReader = IoAdapterCore(self.__verbose, self.__lfh)
-                            containerList = pdbxReader.readFile(inputFilePath=modelFilePath, selectList=MessagingIo.ctgrsReqrdFrmModelFile)
-
-                            if len(containerList) > 1:
-                                # Jetison the extra data blocks
-                                containerList = containerList[0:1]
-
-                            dataBlockName = containerList[0].getName().encode("utf-8")
-                            logger.debug("--------------------------------------------\n")
-                            logger.debug("identified datablock name %s in sample pdbx data file at: %s", dataBlockName, modelFilePath)
-                            #
-                            #
-                        except Exception as _e:  # noqa: F841
-                            logger.exception("problem processing pdbx data file: %s", modelFilePath)
-
-                        try:
-                            myPersist = PdbxPersist(self.__verbose, self.__lfh)
-                            myPersist.setContainerList(containerList)
-                            myPersist.store(self.__dbFilePath)
-
-                            logger.debug("shelved cif data to %s", self.__dbFilePath)
-
-                        except:  # noqa: E722 pylint: disable=bare-except
-                            logger.exception("Failed to shelve cif data")
-
-                    else:
-                        logger.debug("pdbx data file not found/accessible at: %s", modelFilePath)
-                else:
-                    logger.info("skipping creation of database file b/c already exists at: %s", self.__dbFilePath)
-
-            # #### End of initdb definition - execute
-
-            initdb()
-
-        # Not a WF
-        else:
-            logger.debug("Not a workflow - noop")
-        #
+        """DB backend: no local CIF persist. Kept for API compatibility."""
+        logger.info("initializeDataStore() no-op under DB backend")
+        return
 
     def __getCatObj(self, p_ctgryNm):
         # Not caching open state for MessagingIo as single use right now
@@ -437,105 +480,34 @@ class MessagingIo(object):
         return bSuccess, rtrnList
 
     def getMsg(self, p_msgId, p_depId):  # pylint: disable=unused-argument
-        """Get data for a single message
-
-        :Helpers:
-            wwpdb.apps.msgmodule.io.MessagingDataImport
-            mmcif_utils.message.PdbxMessageIo
-
-        :param `p_msgId`:    unique message ID
-        :param `p_depId`:    ID of deposition dataset for message being requested
-
-        :Returns:
-            dictionary representing a given message and its attributes
-
-        """
-        logger.info("--------------------------------------------\n")
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        contentType = self.__reqObj.getValue("content_type")
-        logger.info("contentType is: %s", contentType)
-        bCommHstryRqstd = True if (contentType == "commhstry") else False
+        """Get data for a single message (DB backend)."""
+        logger.info("getMsg() via DB backend for %s", p_msgId)
         msgDict = {}
-        # bSuccess = False
-        recordSetLst = []
-        # """
-        #  {'context_value': 'validation', 'sender': 'annotator', 'context_type': 'report', 'timestamp': '2013-08-15 09:18:15',
-        #   'ordinal_id': '7', 'message_subject': 'RE: Arginine residue clarification', 'message_id': '7164e940-9f6c-43e6-9ea8-b78226c75e1f',
-        #   'deposition_data_set_id': 'D_000000', 'message_text': 'Will look into this.', 'send_status': 'N',
-        #   'message_type': 'text', 'parent_message_id': 'ff9f8dfd-4a69-43ab-815e-617ce866e0d0'}
-        # """
-
         try:
-            if self.__isWorkflow():
-                # determine path(s) to cif datafiles that contain the data we are seeking
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                if contentType == "msgs" or bCommHstryRqstd:
-                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
-                    self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                if contentType == "notes" or bCommHstryRqstd:
-                    self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
+            m = self.__dal.get_message_by_id(p_msgId)
+            if not m:
+                return {}
+            record = self.__db_message_to_dict(m)
 
-            # obtain data from relevant datafiles based on contentType requested
-            if contentType == "msgs" or bCommHstryRqstd:
-                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
-                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
+            # legacy display transformations
+            record["timestamp"] = self.__convertToLocalTimeZone(record["timestamp"]) if record.get("timestamp") else ""
 
-                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
-                    if ok:
-                        recordSetLst = (
-                            pdbxMsgIo_frmDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+            msgType = record.get("message_type")
+            msgText = self.__decodeCifToUtf8(record.get("message_text", ""))
+            if msgType not in ["archive_manual", "forward_manual"]:
+                msgText = self.__protectAngleBrackets(msgText)
+            record["message_text"] = self.__protectLineBreaks(msgText)
 
-                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
-                    if ok:
-                        recordSetLst.extend(
-                            pdbxMsgIo_toDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+            msgSubj = self.__decodeCifToUtf8(record.get("message_subject", ""))
+            if msgType not in ["archive_manual", "forward_manual"]:
+                msgSubj = self.__protectLineBreaks(self.__protectAngleBrackets(msgSubj))
+            record["message_subject"] = msgSubj
 
-            if contentType == "notes" or bCommHstryRqstd:
-                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
+            record["sender"] = self.__protectAngleBrackets(record.get("sender", ""))
 
-                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
-
-                    if ok:
-                        if contentType == "notes":
-                            recordSetLst = (
-                                pdbxMsgIo_notes.getMessageInfo()
-                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                        elif bCommHstryRqstd:
-                            fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
-                            recordSetLst.extend(onlyArchvdCommsLst)
-
-            for record in recordSetLst:
-
-                if record["message_id"] == p_msgId:
-                    msgType = record["message_type"]
-                    record["timestamp"] = self.__convertToLocalTimeZone(record["timestamp"])
-
-                    msgText = self.__decodeCifToUtf8(record["message_text"])
-                    if msgType not in ["archive_manual", "forward_manual"]:
-                        msgText = self.__protectAngleBrackets(msgText)
-                    record["message_text"] = self.__protectLineBreaks(msgText)
-
-                    msgSubj = self.__decodeCifToUtf8(record["message_subject"])
-                    if msgType not in ["archive_manual", "forward_manual"]:
-                        msgSubj = self.__protectLineBreaks(self.__protectAngleBrackets(msgSubj))
-                    record["message_subject"] = msgSubj
-
-                    record["sender"] = self.__protectAngleBrackets(record["sender"])
-
-                    msgDict = record
-
-        #
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("In getting messages")
+            msgDict = record
+        except Exception:
+            logger.exception("DB getMsg failure")
 
         return msgDict
 
@@ -550,203 +522,99 @@ class MessagingIo(object):
         p_colSearchDict=None,
         p_bThreadedRslts=False,  # pylint: disable=unused-argument
     ):
-        """Retrieval of messages for a given deposition dataset ID
-
-        :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
-        :param `p_bServerSide`:        boolean indicating whether server-side processing is being utilized
-
-        ONLY USED IF p_bServerSide IS True:
-        :param `p_iDisplayStart`:      DataTables related parameter for indicating start index of record
-                                         for set of records currently being retrieved for display on screen
-        :param `p_iDisplayLength`:     DataTables related parameter for indicating limit of total records
-                                        to be displayed on screen (i.e. only subset of entire resultset is being shown)
-        :param `p_sSrchFltr`:          DataTables related parameter indicating search term against which records will be filtered
-        :param `p_bThreadedRslts`:    Whether the messages are to be displayed in conventional chronological order or threaded message view
-
-
-        """
-        logger.info("--------------------------------------------")
-        logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        """Retrieval of messages for a given deposition dataset ID (DB backend)."""
+        logger.info("getMsgRowList() via DB backend")
         contentType = str(self.__reqObj.getValue("content_type"))
-        logger.info("contentType is: %s", contentType)
-        #
-        rtrnDict = {}
-        rtrnList = fullRsltSet = []
-        iTotalRecords = iTotalDisplayRecords = 0
-        recordSetLst = []
-        origCommsLst = []
-        #
         bCommHstryRqstd = True if (contentType == "commhstry") else False
 
+        rtrnDict = {}
+        fullRsltSet = []
         try:
-            if self.__isWorkflow():
-                # determine path(s) to cif datafiles that contain the data we are seeking
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                if contentType == "msgs" or bCommHstryRqstd:
-                    self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
-                    self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                if contentType == "notes" or bCommHstryRqstd:
-                    self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
+            depId = self.__reqObj.getValue("identifier")
+            all_msgs = self.__dal.get_deposition_messages(depId)
 
-            # obtain data from relevant datafiles based on contentType requested
-            if contentType == "msgs" or bCommHstryRqstd:
-                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
-                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
-
-                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
-                    if ok:
-                        recordSetLst = (
-                            pdbxMsgIo_frmDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-
-                        if bCommHstryRqstd:
-                            origCommsLst.extend(pdbxMsgIo_frmDpstr.getOrigCommReferenceInfo())
-
-                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
-                    if ok:
-                        msgsToDpstrLst = pdbxMsgIo_toDpstr.getMessageInfo()
-                        rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = len(msgsToDpstrLst)
-                        recordSetLst.extend(msgsToDpstrLst)  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-
-                        if bCommHstryRqstd:
-                            origCommsLst.extend(pdbxMsgIo_toDpstr.getOrigCommReferenceInfo())
-
-                    else:
-                        # no messages content created yet
-                        rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = 0
-                else:
-                    # A vary rare race condition. MessagingDataImport will create file - but might be createed simultaneously in another process during time from creation - to detecting
-                    # file present.
-                    # no messages content created yet
-                    rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = 0
-
+            recordSetLst = []
             if contentType == "notes" or bCommHstryRqstd:
-                logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
+                for m in all_msgs:
+                    if m.content_type == "notes-from-annotator":
+                        recordSetLst.append(self.__db_message_to_dict(m))
+            if contentType == "msgs" or bCommHstryRqstd:
+                for m in all_msgs:
+                    if m.content_type in ("messages-from-depositor", "messages-to-depositor"):
+                        recordSetLst.append(self.__db_message_to_dict(m))
 
-                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+            # Count messages to depositor
+            if contentType == "msgs" or bCommHstryRqstd:
+                msgs_to_dpstr_count = sum(1 for m in all_msgs if m.content_type == "messages-to-depositor")
+                rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = msgs_to_dpstr_count
+            
+            if contentType == "notes":
+                notes_count = sum(1 for m in all_msgs if m.content_type == "notes-from-annotator")
+                rtrnDict["CURRENT_NUM_NOTES"] = notes_count
 
-                    if ok:
-                        if contentType == "notes":
-                            recordSetLst = (
-                                pdbxMsgIo_notes.getMessageInfo()
-                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                            rtrnDict["CURRENT_NUM_NOTES"] = len(recordSetLst)
-                        elif bCommHstryRqstd:
-                            fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
-                            recordSetLst.extend(onlyArchvdCommsLst)
-                            origCommsLst.extend(pdbxMsgIo_notes.getOrigCommReferenceInfo())
-                    else:
-                        # no notes content created yet
-                        rtrnDict["CURRENT_NUM_NOTES"] = 0
-            #
-            recordSetLst = [record for record in recordSetLst if (record["send_status"] == p_sSendStatus)]
-            # Need to sort by datetime using e.g.:   aDateTime = datetime.strptime('2013-08-14 15:41:52', '%Y-%m-%d %H:%M:%S')
-            recordSetLst.sort(key=lambda record: datetime.strptime(record["timestamp"], "%Y-%m-%d %H:%M:%S"))
-            #
-            if bCommHstryRqstd:
-                if self.__verbose and self.__debug and self.__debugLvl2:
-                    for idx, row in enumerate(origCommsLst):
-                        logger.debug("-- row[%s]: %r", idx, row)
-                self.__augmentWithOrigCommData(recordSetLst, origCommsLst)
-            #
-            if self.__verbose and self.__debug and self.__debugLvl2:
-                for idx, row in enumerate(recordSetLst):
-                    logger.debug("before processing for threading -- row[%s]: %r", idx, row)
-            #
+            # filter by send_status
+            recordSetLst = [r for r in recordSetLst if r.get("send_status", "Y") == p_sSendStatus]
+
+            # sort by timestamp
+            def _key(r):
+                try:
+                    return datetime.strptime(r["timestamp"], "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    return datetime.min
+
+            recordSetLst.sort(key=_key)
+
+            # threading (kept, though parent-child IDs from DB already included if present)
             if p_bThreadedRslts:
                 self.__doThreadedHandling(recordSetLst, rtrnDict)
-            #
-            if self.__verbose and self.__debug and self.__debugLvl2:
-                for idx, row in enumerate(recordSetLst):
-                    logger.debug("after processing for threading -- row[%s]: %r", idx, row)
-            #
+
+            # transform to list rows
             fullRsltSet = self.__trnsfrmMsgDictToLst(recordSetLst, bCommHstryRqstd)
-            #
-            # """
-            # if( self.__verbose and self.__debug ):
-            #     for idx,row in enumerate(fullRsltSet):
-            #         logger.info("+%s.%s() Dictionary type message list now transformed to list data type -- rowidx# %s: %r\n"
-            #                  % (self.__class__.__name__, sys._getframe().f_code.co_name,idx,row ))
-            # """
-            #
+
             if p_bServerSide:
                 columnList = (self.getMsgColList(bCommHstryRqstd))[1]
-                #
                 iTotalRecords = len(fullRsltSet)
 
+                rtrnList = fullRsltSet
                 if p_sSrchFltr and len(p_sSrchFltr) > 1:
-                    if self.__debug:
-                        logger.debug("p_sSrchFltr is: %r", p_sSrchFltr)
-
-                    filteredRsltSet = self.__filterRsltSet(fullRsltSet, p_sGlobalSrchFilter=p_sSrchFltr)
-                    iTotalDisplayRecords = len(filteredRsltSet)
-                    rtrnList = filteredRsltSet
-
-                elif len(p_colSearchDict) > 0:  # applying column specific filtering here
-                    fltrdRsltSet = self.__filterRsltSet(fullRsltSet, p_dictColSrchFilter=p_colSearchDict)
-                    iTotalDisplayRecords = len(fltrdRsltSet)
-                    rtrnList = fltrdRsltSet
+                    rtrnList = self.__filterRsltSet(fullRsltSet, p_sGlobalSrchFilter=p_sSrchFltr)
+                    iTotalDisplayRecords = len(rtrnList)
+                elif p_colSearchDict and len(p_colSearchDict) > 0:
+                    rtrnList = self.__filterRsltSet(fullRsltSet, p_dictColSrchFilter=p_colSearchDict)
+                    iTotalDisplayRecords = len(rtrnList)
                 else:
-                    # no search filter in place
                     iTotalDisplayRecords = iTotalRecords
-                    rtrnList = fullRsltSet
 
-                ##################################################################
-                # we also need to accommodate any sorting requested by the user
-                ##################################################################
-
-                # number of columns selected for sorting --
+                # sorting via DataTables params
                 iSortingCols = int(self.__reqObj.getValue("iSortingCols")) if self.__reqObj.getValue("iSortingCols") else 0
-                #
-                ordL = []
-                descL = []
+                ordL, descL = [], []
                 for i in range(iSortingCols):
                     iS = str(i)
                     idxCol = int(self.__reqObj.getValue("iSortCol_" + iS)) if self.__reqObj.getValue("iSortCol_" + iS) else 0
                     sortFlag = self.__reqObj.getValue("bSortable_" + iS) if self.__reqObj.getValue("bSortable_" + iS) else "false"
                     sortOrder = self.__reqObj.getValue("sSortDir_" + iS) if self.__reqObj.getValue("sSortDir_" + iS) else "asc"
                     if sortFlag == "true":
-                        # idxCol at this point reflects display order and not necessarily the true index of the column as it sits in persistent storage
-                        # so can reference "mDataProp_[idxCol]" parameter sent by DataTables which will give true name of the column being sorted
                         colName = self.__reqObj.getValue("mDataProp_" + str(idxCol)) if self.__reqObj.getValue("mDataProp_" + str(idxCol)) else ""
                         colIndx = columnList.index(colName)
-                        #
-                        if self.__verbose:
-                            logger.info("colIndx for %s is %s as derived from columnList is %r", colName, colIndx, columnList)
-                        #
                         ordL.append(colIndx)
                         if sortOrder == "desc":
                             descL.append(colIndx)
-                #
                 if len(ordL) > 0:
-                    if self.__verbose and self.__debug and self.__debugLvl2:
-                        for idx, row in enumerate(rtrnList):
-                            logger.debug("+rtrnList JUST BEFORE CALL TO ORDERBY -- rowidx# %s: %r", idx, row)
                     rtrnList = self.__orderBy(rtrnList, ordL, descL)
 
-                if self.__verbose:
-                    logger.info("p_iDisplayStart is %s and p_iDisplayLength is %s", p_iDisplayStart, p_iDisplayLength)
-                    #
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("In getting message row")
-        #
-        if p_bServerSide:
-            if p_iDisplayLength > 0:
-                rtrnDict["RECORD_LIST"] = rtrnList[(p_iDisplayStart) : (p_iDisplayStart + p_iDisplayLength)]
+                if p_iDisplayLength and p_iDisplayLength > 0:
+                    rtrnDict["RECORD_LIST"] = rtrnList[(p_iDisplayStart) : (p_iDisplayStart + p_iDisplayLength)]
+                else:
+                    rtrnDict["RECORD_LIST"] = rtrnList
+                rtrnDict["TOTAL_RECORDS"] = iTotalRecords
+                rtrnDict["TOTAL_DISPLAY_RECORDS"] = iTotalDisplayRecords
+                return rtrnDict
             else:
-                rtrnDict["RECORD_LIST"] = rtrnList
-            rtrnDict["TOTAL_RECORDS"] = iTotalRecords
-            rtrnDict["TOTAL_DISPLAY_RECORDS"] = iTotalDisplayRecords
-            return rtrnDict
-        else:
+                rtrnDict["RECORD_LIST"] = fullRsltSet
+                return rtrnDict
+
+        except Exception:
+            logger.exception("DB getMsgRowList failure")
             rtrnDict["RECORD_LIST"] = fullRsltSet
             return rtrnDict
 
@@ -818,89 +686,62 @@ class MessagingIo(object):
         return rtrnList
 
     def getFilesRfrncd(self, p_depDataSetId, p_msgIdFilter=None):  # pylint: disable=unused-argument
-        """Retrieve list of files referenced by any messages for this dataset ID
-
-        :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
-
+        """Retrieve list of files referenced by any messages (DB backend).
+        Returns dict: { message_id: [ {upload_file_name, relative_file_url}, ... ] }
         """
-        logger.info("--------------------------------------------")
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
-        recordSetLst = []
+        logger.info("getFilesRfrncd() via DB backend")
         rtrnDict = {}
-        #
         try:
-            if self.__isWorkflow():
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
-                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
+            depId = self.__reqObj.getValue("identifier")
+            messages = []
+            if p_msgIdFilter:
+                m = self.__dal.get_message_by_id(p_msgIdFilter)
+                if m and m.deposition_data_set_id == depId:
+                    messages = [m]
+            else:
+                messages = self.__dal.get_deposition_messages(depId)
 
-            if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                with LockFile(
-                    self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
-                    pid = os.getpid()
-                    ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
-                if ok:
-                    recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+            for m in messages:
+                refs = self.__dal.file_references.get_by_message_id(m.message_id)
+                for ref in refs:
+                    # Resolve archive path (read-only) for UI download
+                    try:
+                        archive_path = self.__pathInfo.getFilePath(
+                            dataSetId=ref.deposition_data_set_id,
+                            contentType=ref.content_type,
+                            formatType=ref.content_format,
+                            fileSource="archive",
+                            versionId=str(ref.version_id) if ref.version_id else "latest",
+                        )
+                    except Exception:
+                        archive_path = ""
 
-            if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                with LockFile(
-                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as _lf, FileSizeLogger(  # noqa: F841
-                    self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-                ) as _fsl:  # noqa: F841
-                    pid = os.getpid()
-                    ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
-                if ok:
-                    recordSetLst.extend(mIIo2.getFileReferenceInfo())  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-            #
-            if self.__verbose and self.__debug and self.__debugLvl2:
-                for idx, row in enumerate(recordSetLst):
-                    logger.info("row[%s]: %r", idx, row)
-            #
-            rtrnDict = self.__trnsfrmFileRefDictToLst(recordSetLst, p_msgIdFilter)
-
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("In getting referenced files")
-        #
+                    if m.message_id not in rtrnDict:
+                        rtrnDict[m.message_id] = []
+                    # Keep legacy keys
+                    rtrnDict[m.message_id].append(
+                        {
+                            "upload_file_name": ref.upload_file_name or "",
+                            "relative_file_url": archive_path or "",
+                        }
+                    )
+        except Exception:
+            logger.exception("DB getFilesRfrncd failure")
         return rtrnDict
 
     def getMsgReadList(self, p_depDataSetId):  # pylint: disable=unused-argument
-        """For a given deposition dataset ID, retrieve list of messages already read
-
-        :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
-
-        """
-        logger.info("--------------------------------------------")
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        """For a given deposition dataset ID, retrieve list of messages already read (DB backend)."""
+        logger.info("getMsgReadList() via DB backend")
         return self.__getMsgsByStatus("read_status", "Y")
 
     def getMsgNoActionReqdList(self, p_depDataSetId):  # pylint: disable=unused-argument
-        """For a given deposition dataset ID retrieve list of messages for which action is required
-
-        :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
-
-        """
-        logger.info("--------------------------------------------\n")
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        """For a given deposition dataset ID retrieve list of messages for which action is required (DB backend)."""
+        logger.info("getMsgNoActionReqdList() via DB backend")
         return self.__getMsgsByStatus("action_reqd", "N")
 
     def getMsgForReleaseList(self, p_depDataSetId):  # pylint: disable=unused-argument
-        """For a given deposition dataset ID retrieve list of messages for which action is required
-
-        :param `p_depDataSetId`:       ID of deposition dataset for which list of messages being requested
-
-        """
-        logger.info("--------------------------------------------\n")
-        logger.info("Starting %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        """For a given deposition dataset ID retrieve list of messages for which action is required (DB backend)."""
+        logger.info("getMsgForReleaseList() via DB backend")
         return self.__getMsgsByStatus("for_release", "Y")
 
     def getNotesList(self):
@@ -938,172 +779,117 @@ class MessagingIo(object):
         return rtrnList
 
     def processMsg(self, p_msgObj):
-        """handle processing for live or draft messages
-
-        :Params:
-            :param `p_msgObj`: messsage object
-
-        :Returns:
-            bOk : boolean indicating success/failure
-            bPdbxMdlFlUpdtd : boolean indicating whether new version of pdbx model file is being generated by this message
-            failedFileRefs : list of file references that failed processing
-
-        """
+        """Create/update message + file refs + optional email (DB backend)."""
         startTime = time.time()
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        logger.info("processMsg() via DB backend")
         bOk = False
         bPdbxMdlFlUpdtd = False
-        msgFileRefs = []
         failedFileRefs = []
         bVldtnRprtBeingSent = False
-        #
+
         try:
-            if self.__verbose and self.__debug:
-                logger.info("p_msgObj.isLive is: %r", p_msgObj.isLive)
-            if p_msgObj.isLive:  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
-                mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
-                mI.set(p_msgObj.getMsgDict())
-                if self.__verbose and self.__debug:
-                    logger.info("p_msgObj.getMsgDict() is: %r", p_msgObj.getMsgDict())
-            #
-            outputFilePth = p_msgObj.getOutputFileTarget(self.__reqObj)  # determine which datafile needs to be updated
-            if self.__verbose and self.__debug:
-                logger.info("outputFilePth is: %s", outputFilePth)
-            #
-            if p_msgObj.contentType == "msgs" and self.__isWorkflow():
-                # in workflow environment we need to know path of messaging data file in deposit storage area
-                # b/c this needs to be kept in sync as well for any updates
-                msgDE = MessagingDataExport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                depUiMsgsToDpstrFilePath = msgDE.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                if self.__verbose:
-                    logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
+            # Build DB message object from msgObj
+            md = p_msgObj.getMsgDict()
+            # MessageInfo fields
+            dbmsg = DBMessageInfo(
+                message_id=md.get("message_id", None) or md.get("message_id") or md.get("message_id"),
+                deposition_data_set_id=md["deposition_data_set_id"],
+                timestamp=datetime.strptime(md.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()), "%Y-%m-%d %H:%M:%S"),
+                sender=md["sender"],
+                context_type=md.get("context_type"),
+                context_value=md.get("context_value"),
+                parent_message_id=md.get("parent_message_id"),
+                message_subject=md.get("message_subject", ""),
+                message_text=md.get("message_text", ""),
+                message_type=md.get("message_type", "text"),
+                send_status=md.get("send_status", "Y"),
+                content_type="notes-from-annotator" if p_msgObj.contentType == "notes" else "messages-to-depositor",
+            )
 
-            if not os.access(outputFilePth, os.F_OK):
-                logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
+            # If message_id not set by caller, generate one
+            if not dbmsg.message_id:
+                dbmsg.message_id = str(uuid.uuid4())
+                p_msgObj.messageId = dbmsg.message_id
+
+            # Create message if not exists; else update (draft mutations)
+            existing = self.__dal.get_message_by_id(dbmsg.message_id)
+            if existing:
+                # update mutable fields (subject/text/send_status/timestamp)
+                existing.message_subject = dbmsg.message_subject
+                existing.message_text = dbmsg.message_text
+                existing.send_status = dbmsg.send_status
+                existing.timestamp = dbmsg.timestamp
+                bOk = self.__dal.create_message(existing)  # create() uses add+commit; for merge semantics we can call update()
+            else:
+                bOk = self.__dal.create_message(dbmsg)
+
+            if not bOk:
+                return False, False, []
+
+            # Register file references (no file writes; just metadata)
+            if p_msgObj.isBeingSent and not self.__groupId:
+                # mirror legacy mapping but only record references provided by front-end selection
+                # for each token in p_msgObj.fileReferences, resolve content type/format, and store with default partition/version
+                msgFileRefs = []
+                auxFilePartNum = 0
+                bAtLeastOneAuxFile = False
+                workingFileRefsList = list(p_msgObj.fileReferences or [])
+
+                # Expand batch-val-report tokens if present (no copies)
+                if "val-report-batch" in workingFileRefsList:
+                    workingFileRefsList.remove("val-report-batch")
+                    for t in ["val-report", "val-report-full", "val-data", "val-data-cif", "val-report-wwpdb-2fo-fc-edmap-coef", "val-report-wwpdb-fo-fc-edmap-coef"]:
+                        if t not in workingFileRefsList:
+                            workingFileRefsList.append(t)
+
+                for fileRef in workingFileRefsList:
+                    auxFileIndx = str(fileRef.split("aux-file")[1]) if "aux-file" in fileRef else ""
+                    if len(auxFileIndx) > 0 and not bAtLeastOneAuxFile:
+                        auxFilePartNum = 1
+                        bAtLeastOneAuxFile = True
+                    elif len(auxFileIndx) > 0:
+                        auxFilePartNum += 1
+
+                    contentType, contentFormat = self.__getContentTypeAndFormat("aux-file" if len(auxFileIndx) > 0 else fileRef, auxFileIndx)
+                    try:
+                        ref = DBMessageFileReference(
+                            message_id=dbmsg.message_id,
+                            deposition_data_set_id=dbmsg.deposition_data_set_id,
+                            content_type=(contentType + "-annotate") if contentType else "",
+                            content_format=contentFormat or "",
+                            partition_number=auxFilePartNum if len(auxFileIndx) > 0 else 1,
+                            version_id=1,  # we are not creating milestones; version defaults to 1
+                            storage_type="archive",
+                            upload_file_name=self.__reqObj.getValue("auxFilePath" + auxFileIndx) if len(auxFileIndx) > 0 else None,
+                        )
+                        self.__dal.create_file_reference(ref)
+                        msgFileRefs.append(ref)
+                        # flags for email wording
+                        if ref.content_type in ("validation-report-annotate", "validation-report-full-annotate"):
+                            bVldtnRprtBeingSent = True
+                    except Exception:
+                        failedFileRefs.append(fileRef)
+
+                if failedFileRefs:
+                    return False, False, failedFileRefs
+
+            # Optionally send notification email
+            if bOk and not self.__groupId:
                 try:
-                    # file may not exist b/c it is the first time that an
-                    # annotator is sending a message in which case we create a new file
-                    f = open(outputFilePth, "w")
-                    f.close()
-                except IOError:
-                    logger.error("problem creating messaging output file at: %s", outputFilePth)
-            #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-            with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
-                outputFilePth, verbose=self.__verbose, log=self.__lfh
-            ) as _fsl:  # noqa: F841
-                pid = os.getpid()
-                bGotContent = mIIo.read(
-                    outputFilePth, "msgingmod" + str(pid)
-                )  # may return False if there was a file but the file had no content yet (i.e. no annotator messages yet)
+                    if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
+                        self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
+                except Exception:
+                    logger.exception("Warning: problem sending notification email.")
 
-            if self._sanityCheck(p_msgObj.contentType, bGotContent, mIIo, outputFilePth):
-                mIIo.newBlock("messages")
-                #
-                if p_msgObj.isLive:
-                    mI.setOrdinalId(id=mIIo.nextMessageOrdinal())
-                    mIIo.appendMessage(mI.get())
-                    p_msgObj.messageId = mI.getMessageId()
-                    if self.__verbose and self.__debug:
-                        logger.info("mI.get() is now: %s", mI.get())
-                        logger.info("mI.getMessageId() is now: %s", mI.getMessageId())
-                        logger.info("p_msgObj.messageId is now: %s", p_msgObj.messageId)
-                        logger.info("p_msgObj.isReminderMsg is now: %s", p_msgObj.isReminderMsg)
-                elif p_msgObj.isDraft:
-                    # if this is a draft we are updating the already existing draft copy of the message which we find by matching message id
+            return True, bPdbxMdlFlUpdtd, failedFileRefs
 
-                    recordSetLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                    #
-                    rowToUpdate = None
-                    for rowIdx, record in enumerate(recordSetLst):
-                        if record["message_id"] == p_msgObj.messageId:
-                            rowToUpdate = rowIdx
-                            break
+        except Exception:
+            logger.exception("DB processMsg failed")
+            return False, False, []
 
-                    # ['context_value', 'sender', 'context_type', 'timestamp', 'ordinal_id', 'message_subject', 'deposition_data_set_id', 'message_text', 'send_status', 'message_type',
-                    # 'message_id', 'parent_message_id']
-                    mIIo.update("pdbx_deposition_message_info", "send_status", p_msgObj.sendStatus, iRow=rowToUpdate)
-                    mIIo.update("pdbx_deposition_message_info", "message_subject", p_msgObj.messageSubject, iRow=rowToUpdate)
-                    mIIo.update("pdbx_deposition_message_info", "message_text", p_msgObj.messageText, iRow=rowToUpdate)
-
-                    # update timestamp
-                    gmtTmStmp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-                    mIIo.update("pdbx_deposition_message_info", "timestamp", gmtTmStmp, iRow=rowToUpdate)
-
-                # handle any file references
-                if p_msgObj.isBeingSent and not self.__groupId:  # i.e. not executed for messages remaining in "draft" state
-
-                    bSuccess, msgFileRefs, failedFileRefs = self.__handleFileReferences(p_msgObj)
-                    if bSuccess:
-                        flRefOrdinalId = mIIo.nextFileReferenceOrdinal()
-                        for mfr in msgFileRefs:
-                            # note: msgFileRefs only gets populated with given member if the associated file was successfully copied to deposition side
-                            mfr.setOrdinalId(id=flRefOrdinalId)
-                            mIIo.appendFileReference(mfr.get())
-                            flRefOrdinalId += 1
-
-                            if mfr.getContentType() == "model-annotate" and mfr.getContentFormat() == "pdbx":
-                                bPdbxMdlFlUpdtd = True
-                            if mfr.getContentType() == "validation-report-annotate" or mfr.getContentType() == "validation-report-full-annotate":
-                                bVldtnRprtBeingSent = True
-
-                    else:
-                        # something went wrong with handling of the file references, so abort and return failure status to calling code
-                        return bSuccess, False, failedFileRefs
-
-                # if this is a message to be archived or forwarded, handle reference to the original communication
-                if ("archive" in p_msgObj.messageType or "forward" in p_msgObj.messageType) and "noorig" not in p_msgObj.messageType:
-                    self._handleOrigCommReferences(p_msgObj, mIIo)
-
-                self._updateSnapshotHistory(outputFilePth)
-
-                with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf:  # noqa: F841
-                    bOk = mIIo.write(outputFilePth)
-
-                # Write message to depositor message file and send email
-                if bOk and not self.__groupId:
-                    if self.__isWorkflow() and p_msgObj.contentType == "msgs":
-                        # update copy of messages-to-depositor file in depositor file system if necessary
-                        with LockFile(
-                            depUiMsgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                        ) as _lf:  # noqa: F841
-                            mIIo.write(depUiMsgsToDpstrFilePath)
-
-                        try:
-                            # send notification email to contact authors
-                            if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                        except:  # noqa: E722 pylint: disable=bare-except
-                            logger.exception("Warning: problem sending notification email.")
-
-                    elif self.__isWorkflow() and p_msgObj.contentType == "notes" and p_msgObj.isNoteEmail:
-                        try:
-                            # send notification email to contact authors
-                            if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                        except:  # noqa: E722  pylint: disable=bare-except
-                            logger.exception("Warning: problem sending notification email.")
-
-                    else:
-                        # execution here is for DEV TESTING purposes
-                        if self.__devMode and p_msgObj.contentType == "msgs":
-                            try:
-                                if p_msgObj.isBeingSent and not p_msgObj.isReminderMsg:
-                                    self.__sendNotificationEmail(p_msgObj, bVldtnRprtBeingSent)
-                            except:  # noqa: E722 pylint: disable=bare-except
-                                logger.exception("Warning: problem sending notification email.")
-
-            else:  # failed sanity check
-                logger.info("Message data append failed\n")
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("Message data append failed")
-            bOk = False
-
-        endTime = time.time()
-        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        #
-        return bOk, bPdbxMdlFlUpdtd, failedFileRefs
+        finally:
+            endTime = time.time()
+            logger.info("Completed processMsg in %d seconds", endTime - startTime)
 
     def _updateSnapshotHistory(self, outputFilePth):
         """a safety measure by which we keep up to five historical snapshots of
@@ -1622,94 +1408,92 @@ class MessagingIo(object):
         return False
 
     def markMsgAsRead(self, p_msgStatusDict):
-        """handle request to mark message as already "read"
-
-        :Params:
-            :param `p_msgStatusDict`:    dictionary representing message status entity to be submitted
-
-
-        :Returns:
-            boolean indicating success/failure
-
-        """
+        """Mark message as read (DB backend)."""
         startTime = time.time()
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        logger.info("markMsgAsRead() via DB backend")
         bOk = False
-        #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
-            mS.set(p_msgStatusDict)
-            msgId = mS.getMessageId()
-            #
-            if self.__verbose:
-                logger.info("request to mark msg read for msgID: [%s]", msgId)
-            #
-            if self.__isWorkflow():
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
-
-            #
-            if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
-                try:
-                    f = open(self.__msgsToDpstrFilePath, "w")  # noqa: F841
-                    f.close()
-                    logger.info("Creating %s", self.__msgsToDpstrFilePath)
-                except IOError:
-                    pass
-            #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-            with LockFile(
-                self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-            ) as _lf, FileSizeLogger(
-                self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
-            ) as _fsl:  # noqa: F841
-                pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
-            if ok:
-                recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                msgAlreadySeen = False
-                for idx, record in enumerate(recordSetLst):
-                    if record["message_id"] == msgId:
-                        msgAlreadySeen = True
-                        if record["read_status"] == "Y":
-                            # message had already been marked as "read" so can return True to caller
-                            return True
-                        else:
-                            # message not been marked as read before - but is in the list of messages in recordSetLst
-                            mIIo.update("pdbx_deposition_message_status", "read_status", "Y", idx)
-
-                mIIo.newBlock("messages")
-                if not msgAlreadySeen:
-                    logger.info("new message: %s", msgId)
-                    if self.is_release_request(message_id=msgId):
-                        mS.setReadyForRelStatus("Y")
-                    mIIo.appendMsgReadStatus(mS.get())
-                with LockFile(
-                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as _lf:  # noqa: F841
-                    mIIo.write(self.__msgsToDpstrFilePath)
-
-                bOk = ok
-
+            msgId = p_msgStatusDict.get("message_id")
+            depId = p_msgStatusDict.get("deposition_data_set_id") or self.__reqObj.getValue("identifier")
+            # fetch existing status (if any)
+            existing = self.__dal.status.get_by_message_id(msgId)
+            if existing:
+                existing.read_status = "Y"
+                existing.deposition_data_set_id = depId
+                bOk = self.__dal.status.create_or_update(existing)
             else:
-                # OR if there was no container list BUT the file is accessible-->indicates no content yet b/c no messages sent to depositor yet
-                if os.access(self.__msgsToDpstrFilePath, os.W_OK):
-                    mIIo.newBlock("messages")
-                    mIIo.appendMsgReadStatus(mS.get())
-                    with LockFile(
-                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                    ) as _lf:  # noqa: F841
-                        mIIo.write(self.__msgsToDpstrFilePath)
-                    bOk = True
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.exception("Message read status data update failed")
+                st = DBMessageStatus(
+                    message_id=msgId,
+                    deposition_data_set_id=depId,
+                    read_status="Y",
+                    action_reqd="N",
+                    for_release="Y" if self.is_release_request(msgId) else "N",
+                )
+                bOk = self.__dal.status.create_or_update(st)
+        except Exception:
+            logger.exception("DB markMsgAsRead failed")
+            bOk = False
 
         endTime = time.time()
-        logger.info("Completed at %s (%d seconds)", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        #
+        logger.info("Completed markMsgAsRead in %d seconds", endTime - startTime)
         return bOk
+
+    def __globalMessageStatusCheck(self, p_statusToCheck, p_flagForFalseReturn):
+        """DB backend implementation."""
+        startTime = time.time()
+        logger.info("globalMessageStatusCheck(%s) via DB", p_statusToCheck)
+        depId = self.__reqObj.getValue("identifier")
+        try:
+            msgs = self.__dal.get_deposition_messages(depId)
+
+            # Build maps
+            id_to_status = {}
+            for m in msgs:
+                st = self.__dal.status.get_by_message_id(m.message_id)
+                if st:
+                    id_to_status[m.message_id] = st
+
+            # Interpret queries
+            if p_statusToCheck == "approval_no_correct":
+                # Any depositor message with approval-without-correction still needing action?
+                for m in msgs:
+                    if m.content_type == "messages-from-depositor" and (m.context_type in (self.__approval_no_correct_message_subjects or [])):
+                        st = id_to_status.get(m.message_id)
+                        if not st or st.action_reqd == "Y":
+                            return True
+                return False
+
+            if p_statusToCheck == "for_release":
+                # Flags across both annotator and depositor messages
+                for m in msgs:
+                    st = id_to_status.get(m.message_id)
+                    if st and st.for_release == p_flagForFalseReturn:
+                        return False
+                # Also: if new depositor message is a release request and no matching status row yet
+                for m in msgs:
+                    if m.content_type == "messages-from-depositor" and self.is_release_request(m.message_id):
+                        if m.message_id not in id_to_status:
+                            return False
+                return True
+
+            # Default behavior: every depositor message must have status != flagForFalseReturn
+            for m in msgs:
+                if m.content_type != "messages-from-depositor":
+                    continue
+                st = id_to_status.get(m.message_id)
+                if not st and p_statusToCheck not in ["for_release", "approval_no_correct"]:
+                    return False
+                if st and getattr(st, p_statusToCheck, None) == p_flagForFalseReturn:
+                    return False
+            return True
+
+        except Exception:
+            logger.exception("DB __globalMessageStatusCheck failed")
+            # be conservative on error
+            return False
+        finally:
+            endTime = time.time()
+            logger.info("Completed globalMessageStatusCheck in %d seconds", endTime - startTime)
 
     def areAllMsgsRead(self):
         """
@@ -1816,92 +1600,35 @@ class MessagingIo(object):
         return bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords
 
     def tagMsg(self, p_msgStatusDict):
-        """handle request to have message tagged with user designated classifications (i.e. "action required" or marking as "unread")
-
-        :Params:
-            :param `p_msgStatusDict`:    dictionary representing message status entity to be submitted
-
-
-        :Returns:
-            boolean indicating success/failure
-
-        """
+        """Update message user tags (action_reqd/unread/for_release) (DB backend)."""
         startTime = time.time()
-        logger.info("Starting at %s", time.strftime("%Y %m %d %H:%M:%S", time.localtime()))
-        #
+        logger.info("tagMsg() via DB backend")
         bOk = False
-        #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
-            mS.set(p_msgStatusDict)
-            msgId = mS.getMessageId()
-            #
-            if self.__verbose:
-                logger.info("--- request to tag msg with user classification(s) for msgID: [%s]", msgId)
-            #
-            if self.__isWorkflow():
-                msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
-                self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
-                logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
-            #
-            if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
-                try:
-                    f = open(self.__msgsToDpstrFilePath, "w")
-                    f.close()
-                    logger.info("Creating %s file", self.__msgsToDpstrFilePath)
-                except IOError:
-                    pass
-            #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-            msgAlreadySeen = False
-            with LockFile(
-                self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-            ) as _lf, FileSizeLogger(
-                self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
-            ) as _fsl:  # noqa: F841
-                pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
-            if ok:
-                # i.e. get here if mIIo successfully read/obtained container list,
+            msgId = p_msgStatusDict.get("message_id")
+            depId = p_msgStatusDict.get("deposition_data_set_id") or self.__reqObj.getValue("identifier")
 
-                recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+            existing = self.__dal.status.get_by_message_id(msgId)
+            if not existing:
+                existing = DBMessageStatus(
+                    message_id=msgId,
+                    deposition_data_set_id=depId,
+                )
+            # only permitted fields are updated
+            if "action_reqd" in p_msgStatusDict:
+                existing.action_reqd = p_msgStatusDict["action_reqd"]
+            if "read_status" in p_msgStatusDict:
+                existing.read_status = p_msgStatusDict["read_status"]
+            if "for_release" in p_msgStatusDict:
+                existing.for_release = p_msgStatusDict["for_release"]
 
-                for idx, record in enumerate(recordSetLst):
-                    if record["message_id"] == msgId:
-                        msgAlreadySeen = True
-                        mIIo.update("pdbx_deposition_message_status", "action_reqd", p_msgStatusDict["action_reqd"], idx)
-                        if record["read_status"] == "Y":  # i.e. only pertinent updates of 'read_status' in this method are when user is setting read flag back to 'N' for unread
-                            mIIo.update("pdbx_deposition_message_status", "read_status", p_msgStatusDict["read_status"], idx)
-                        mIIo.update("pdbx_deposition_message_status", "for_release", p_msgStatusDict["for_release"], idx)
-                        break
-
-                mIIo.newBlock("messages")
-                if msgAlreadySeen is not True:  # which can occur if this is the first time any msgStatus is being recorded in the msgsToDpstrFile
-                    mIIo.appendMsgReadStatus(mS.get())
-                with LockFile(
-                    self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                ) as _lf:  # noqa: F841
-                    mIIo.write(self.__msgsToDpstrFilePath)
-                bOk = ok
-
-            else:
-                # OR if there was no container list BUT the file is accessible-->indicates no content yet b/c no messages sent to depositor yet
-                if os.access(self.__msgsToDpstrFilePath, os.W_OK):
-                    mIIo.newBlock("messages")
-                    mIIo.appendMsgReadStatus(mS.get())
-                    with LockFile(
-                        self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
-                    ) as _lf:  # noqa: F841
-                        mIIo.write(self.__msgsToDpstrFilePath)
-                    bOk = True
-
-        except:  # noqa: E722 pylint: disable=bare-except
-            logger.info("Update message tags failed")
-            logger.exception("Update message tags failure")
+            bOk = self.__dal.status.create_or_update(existing)
+        except Exception:
+            logger.exception("DB tagMsg failed")
+            bOk = False
 
         endTime = time.time()
-        logger.info("Completed at %s (%d seconds)\n", time.strftime("%Y %m %d %H:%M:%S", time.localtime()), endTime - startTime)
-        #
+        logger.info("Completed tagMsg in %d seconds", endTime - startTime)
         return bOk
 
         ################################################################################################################
