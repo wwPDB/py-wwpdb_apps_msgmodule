@@ -355,7 +355,7 @@ class DatabaseCifIntegrationTests(unittest.TestCase):
         expected_methods = [
             'read', 'write', 'getCategory', 'getMessageInfo', 
             'getFileReferenceInfo', 'getMsgStatusInfo', 'getOrigCommReferenceInfo',
-            'appendMessage', 'appendFileReference', 'appendMsgStatus'
+            'appendMessage', 'appendFileReference', 'appendMsgReadStatus'
         ]
         
         for method_name in expected_methods:
