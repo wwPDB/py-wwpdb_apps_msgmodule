@@ -161,7 +161,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             self.fail(f"DataAccessLayer integration failed with real database: {e}")
     
     def test_pdbx_message_io_with_real_config(self):
-        """Test PdbxMessageIo with real database configuration"""
+        """Test PdbxMessageIo with real database configuration and actual database writes"""
         
         if not self.has_real_db_config:
             self.skipTest("No real database configuration available")
@@ -174,74 +174,141 @@ class DatabaseIntegrationTests(unittest.TestCase):
             self.assertIsNotNone(msg_io)
             print(f"✓ PdbxMessageIo instantiated with real database configuration")
             
-            # Test reading with a realistic path (from existing test data pattern)
-            test_file_path = os.path.join(
-                os.path.dirname(__file__), 
-                "test_data", 
-                "D_0000265933_messages-to-depositor_P1.cif.V1"
-            )
+            # Create a test message and actually write it to the database
+            test_dep_id = "D_1000000001"
+            test_msg_id = f"TEST_DB_WRITE_{int(__import__('time').time())}"
             
-            # Test path parsing and database operations
-            try:
-                result = msg_io.read(test_file_path)
-                print(f"✓ Database read operation completed: {result}")
-                
-                # Try to get some data to verify database connection
-                messages = msg_io.getMessageInfo()
-                file_refs = msg_io.getFileReferenceInfo()
-                statuses = msg_io.getMsgStatusInfo()
-                
-                print(f"✓ Retrieved {len(messages)} messages, {len(file_refs)} file refs, {len(statuses)} statuses")
-                
-            except Exception as e:
-                print(f"Database operation result: {e}")
-                # Even if specific deposition doesn't exist, connection was tested
-                
+            # Create test message data
+            test_message = {
+                "deposition_data_set_id": test_dep_id,
+                "message_id": test_msg_id,
+                "sender": "test@integration.com",
+                "message_subject": "Database Integration Test Message", 
+                "message_text": "This message was created by DatabaseIntegrationTests to verify database write operations",
+                "content_type": "messages-to-depositor",
+                "message_type": "text",
+                "send_status": "Y"
+            }
+            
+            # Add the message to PdbxMessageIo
+            msg_io.appendMessage(test_message)
+            
+            # Write to database (using synthetic path for DB backend)
+            success = msg_io.write(f"/synthetic/{test_dep_id}_messages-to-depositor_P1.cif")
+            self.assertTrue(success, "Database write operation should succeed")
+            print(f"✓ Successfully wrote test message {test_msg_id} to database")
+            
+            # Verify the message was written by reading it back
+            msg_io2 = PdbxMessageIo(verbose=True, log=sys.stdout, site_id=site_id, db_config=self.test_db_config)
+            read_success = msg_io2.read(f"/synthetic/{test_dep_id}_messages-to-depositor_P1.cif")
+            self.assertTrue(read_success, "Database read operation should succeed")
+            
+            messages = msg_io2.getMessageInfo()
+            
+            # Find our test message
+            test_msg_found = False
+            for msg in messages:
+                if msg.get("message_id") == test_msg_id:
+                    test_msg_found = True
+                    self.assertEqual(msg.get("deposition_data_set_id"), test_dep_id)
+                    self.assertEqual(msg.get("sender"), "test@integration.com")
+                    self.assertEqual(msg.get("message_subject"), "Database Integration Test Message")
+                    break
+            
+            self.assertTrue(test_msg_found, f"Test message {test_msg_id} should be found in database")
+            print(f"✓ Successfully verified test message {test_msg_id} was persisted and can be read back")
+            print(f"✓ Database round-trip test completed successfully")
+            
         except Exception as e:
             self.fail(f"PdbxMessageIo integration failed with real database: {e}")
     
     def test_message_models_integration(self):
-        """Test SQLAlchemy message models"""
+        """Test SQLAlchemy message models with actual database persistence"""
         
-        # Test MessageInfo model
-        msg_info = MessageInfo()
-        msg_info.deposition_data_set_id = "D_1000000001"
-        msg_info.message_id = "TEST_MSG_001"
-        msg_info.sender = "test@example.com"
-        msg_info.message_subject = "Integration Test Message"
-        msg_info.message_text = "This is a test message for database integration"
-        msg_info.content_type = "messages-to-depositor"
+        if not self.has_real_db_config:
+            self.skipTest("No real database configuration available")
         
-        self.assertEqual(msg_info.deposition_data_set_id, "D_1000000001")
-        self.assertEqual(msg_info.message_id, "TEST_MSG_001")
-        self.assertEqual(msg_info.content_type, "messages-to-depositor")
-        print(f"✓ MessageInfo model working correctly")
-        
-        # Test MessageFileReference model
-        file_ref = MessageFileReference()
-        file_ref.message_id = "TEST_MSG_001"
-        file_ref.deposition_data_set_id = "D_1000000001"
-        file_ref.content_type = "messages-to-depositor"
-        file_ref.content_format = "pdbx"
-        file_ref.partition_number = 1
-        file_ref.version_id = 1
-        file_ref.storage_type = "archive"
-        
-        self.assertEqual(file_ref.content_type, "messages-to-depositor")
-        self.assertEqual(file_ref.content_format, "pdbx")
-        print(f"✓ MessageFileReference model working correctly")
-        
-        # Test MessageStatus model
-        status = MessageStatus()
-        status.message_id = "TEST_MSG_001"
-        status.deposition_data_set_id = "D_1000000001"
-        status.read_status = "N"
-        status.action_reqd = "Y"
-        status.for_release = "N"
-        
-        self.assertEqual(status.read_status, "N")
-        self.assertEqual(status.action_reqd, "Y")
-        print(f"✓ MessageStatus model working correctly")
+        try:
+            # Create DataAccessLayer for database operations
+            dal = DataAccessLayer(self.test_db_config)
+            
+            # Test MessageInfo model with database persistence
+            msg_info = MessageInfo()
+            msg_info.deposition_data_set_id = "D_1000000001"
+            msg_info.message_id = f"TEST_MODEL_{int(__import__('time').time())}"
+            msg_info.sender = "test@example.com"
+            msg_info.message_subject = "Integration Test Message"
+            msg_info.message_text = "This is a test message for database integration"
+            msg_info.content_type = "messages-to-depositor"
+            msg_info.message_type = "text"
+            msg_info.send_status = "Y"
+            
+            # Save to database
+            dal.create_message(msg_info)
+            print(f"✓ MessageInfo model saved to database: {msg_info.message_id}")
+            
+            # Verify data was saved by querying it back
+            session = dal.db_connection.get_session()
+            try:
+                saved_msg = session.query(MessageInfo).filter_by(message_id=msg_info.message_id).first()
+                self.assertIsNotNone(saved_msg, "Message should be found in database")
+                self.assertEqual(saved_msg.deposition_data_set_id, "D_1000000001")
+                self.assertEqual(saved_msg.sender, "test@example.com")
+                self.assertEqual(saved_msg.content_type, "messages-to-depositor")
+                print(f"✓ MessageInfo model successfully persisted and retrieved from database")
+            finally:
+                session.close()
+            
+            # Test MessageFileReference model
+            file_ref = MessageFileReference()
+            file_ref.message_id = msg_info.message_id
+            file_ref.deposition_data_set_id = "D_1000000001"
+            file_ref.content_type = "messages-to-depositor"
+            file_ref.content_format = "pdbx"
+            file_ref.partition_number = 1
+            file_ref.version_id = 1
+            file_ref.storage_type = "archive"
+            file_ref.upload_file_name = f"test_file_{int(__import__('time').time())}.cif"
+            
+            # Save to database
+            dal.create_file_reference(file_ref)
+            print(f"✓ MessageFileReference model saved to database")
+            
+            # Test MessageStatus model
+            status = MessageStatus()
+            status.message_id = msg_info.message_id
+            status.deposition_data_set_id = "D_1000000001"
+            status.read_status = "N"
+            status.action_reqd = "Y"
+            status.for_release = "N"
+            
+            # Save to database
+            dal.create_or_update_status(status)
+            print(f"✓ MessageStatus model saved to database")
+            
+            # Verify all related data
+            session = dal.db_connection.get_session()
+            try:
+                # Check message exists
+                msg_count = session.query(MessageInfo).filter_by(deposition_data_set_id="D_1000000001").count()
+                self.assertGreater(msg_count, 0, "Should have at least one message for D_1000000001")
+                
+                # Check file reference exists  
+                ref_count = session.query(MessageFileReference).filter_by(message_id=msg_info.message_id).count()
+                self.assertGreater(ref_count, 0, "Should have file reference for test message")
+                
+                # Check status exists
+                status_count = session.query(MessageStatus).filter_by(message_id=msg_info.message_id).count()
+                self.assertGreater(status_count, 0, "Should have status for test message")
+                
+                print(f"✓ All database models working correctly with persistence")
+                print(f"✓ Found {msg_count} messages, {ref_count} file refs, {status_count} statuses for test data")
+                
+            finally:
+                session.close()
+                
+        except Exception as e:
+            self.fail(f"Message models integration with database failed: {e}")
     
     def test_pdbx_message_wrappers_with_models(self):
         """Test the optimized PdbxMessage wrapper classes"""
