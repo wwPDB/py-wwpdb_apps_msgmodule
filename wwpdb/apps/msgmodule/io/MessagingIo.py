@@ -154,8 +154,11 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
-from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
-from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
+# Database-backed message classes (instead of CIF-based)
+from wwpdb.apps.msgmodule.db.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+# from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+# from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 
 #
@@ -164,8 +167,12 @@ from mmcif.io.PdbxReader import PdbxReader
 #
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
-from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
-from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport
+# Database-backed stubs that provide the same interface
+from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
+from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport
+# Original file-based imports (no longer used)
+# from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
+# from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.apps.msgmodule.models.Message import AutoMessage, AutoNote

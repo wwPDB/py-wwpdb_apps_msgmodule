@@ -7,7 +7,7 @@ data access layer, and bridge to existing Message models.
 """
 
 # Import SQLAlchemy models directly
-from .Models import (
+from wwpdb.apps.msgmodule.db.Models import (
     Base,
     MessageInfo,
     MessageFileReference,
@@ -15,9 +15,22 @@ from .Models import (
 )
 
 # Import database services
-from .DataAccessLayer import (
+from wwpdb.apps.msgmodule.db.DataAccessLayer import (
     DataAccessLayer,
 )
+
+# Import database-backed message I/O classes
+from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+from wwpdb.apps.msgmodule.db.PdbxMessage import (
+    PdbxMessageInfo,
+    PdbxMessageFileReference,
+    PdbxMessageOrigCommReference,
+    PdbxMessageStatus,
+)
+
+# Import compatibility stubs
+from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
+from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport
 
 __all__ = [
     # SQLAlchemy Models
@@ -27,4 +40,13 @@ __all__ = [
     "MessageStatus",
     # Database Services
     "DataAccessLayer",
+    # Database-backed message I/O classes
+    "PdbxMessageIo",
+    "PdbxMessageInfo",
+    "PdbxMessageFileReference",
+    "PdbxMessageOrigCommReference",
+    "PdbxMessageStatus",
+    # Compatibility stubs
+    "MessagingDataImport",
+    "MessagingDataExport",
 ]
