@@ -695,126 +695,93 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 pass
     
     def test_messaging_io_with_different_content_types(self):
-        """Test MessagingIo with different content types and message flows"""
-        
+        """DB-only: exercise messaging across content types via PdbxMessageIo (no file I/O)"""
         if not self.has_real_db_config:
             self.skipTest("No real database configuration available")
-        
-        # Mock request object with different content types
-        from unittest.mock import MagicMock
-        
+
+        site_id = os.getenv("WWPDB_SITE_ID")
+        test_dep_id = "D_1000000001"
         content_types = [
             "messages-to-depositor",
-            "messages-from-depositor", 
-            "notes-from-annotator"
+            "messages-from-depositor",
+            "notes-from-annotator",
         ]
-        
+
         for content_type in content_types:
             with self.subTest(content_type=content_type):
-                mock_req_obj = MagicMock()
-                mock_req_obj.getValue.side_effect = lambda key: {
-                    "identifier": "D_1000000001",
-                    "instance": "instance_1", 
-                    "sessionid": f"test_session_{content_type}",
-                    "filesource": "archive",
-                    "content_type": content_type
-                }.get(key, "")
-                
-                try:
-                    msg_io = MessagingIo(reqObj=mock_req_obj, verbose=True, log=sys.stdout)
-                    
-                    # Test message submission for this content type
-                    test_subject = f"Test message for {content_type}"
-                    test_message = f"This tests {content_type} workflow with database backend"
-                    
-                    success = msg_io.submitMsg(
-                        p_subject=test_subject,
-                        p_text=test_message,
-                        p_sender=f"test@{content_type.replace('-', '_')}.com",
-                        p_messageType="text"
-                    )
-                    
-                    print(f"✓ {content_type}: Message submission result: {success}")
-                    
-                    # Test message list retrieval for this content type
-                    messages = msg_io.getMsgList()
-                    msg_count = len(messages) if messages else 0
-                    print(f"✓ {content_type}: Retrieved {msg_count} messages")
-                    
-                except Exception as e:
-                    # Log but don't fail for expected environment issues
-                    if any(keyword in str(e).lower() for keyword in ["path", "file", "directory"]):
-                        print(f"⚠ {content_type}: Expected environment limitation: {e}")
-                    else:
-                        print(f"✗ {content_type}: Unexpected error: {e}")
-        
-        print(f"✓ MessagingIo multi-content-type integration test completed")
+                msg_io = PdbxMessageIo(verbose=True, log=sys.stdout, site_id=site_id, db_config=self.test_db_config)
+
+                test_msg_id = f"DB_ONLY_{content_type.upper().replace('-', '_')}_{int(__import__('time').time())}"
+                test_message = {
+                    "deposition_data_set_id": test_dep_id,
+                    "message_id": test_msg_id,
+                    "sender": f"test@{content_type.replace('-', '_')}.com",
+                    "message_subject": f"DB-only test for {content_type}",
+                    "message_text": f"Validating DB adaptor for {content_type}",
+                    "content_type": content_type,
+                    "message_type": "text",
+                    "send_status": "Y",
+                }
+
+                # Append to in-memory buffer and persist to DB (path used only to parse context)
+                msg_io.appendMessage(test_message)
+                self.assertTrue(msg_io.write(f"/synthetic/{test_dep_id}_{content_type}_P1.cif"), "DB write should succeed")
+
+                # Read back from DB and verify
+                msg_io2 = PdbxMessageIo(verbose=True, log=sys.stdout, site_id=site_id, db_config=self.test_db_config)
+                self.assertTrue(msg_io2.read(f"/synthetic/{test_dep_id}_{content_type}_P1.cif"), "DB read should succeed")
+                msgs = msg_io2.getMessageInfo() or []
+                self.assertTrue(any(m.get("message_id") == test_msg_id for m in msgs), "Inserted message should be present")
+
+        print("✓ DB-only multi-content-type test completed")
     
     def test_messaging_io_database_vs_file_backend_compatibility(self):
-        """Test that MessagingIo works the same whether using database or file backend"""
-        
+        """DB-only: legacy file-backed MessagingIo API must be absent; DB adaptor must function"""
         if not self.has_real_db_config:
             self.skipTest("No real database configuration available")
-        
+
         from unittest.mock import MagicMock
-        
-        # Test with database backend (should be default when db_config is available)
         mock_req_obj = MagicMock()
         mock_req_obj.getValue.side_effect = lambda key: {
             "identifier": "D_1000000001",
             "instance": "instance_1",
             "sessionid": "compatibility_test",
-            "filesource": "archive"
+            "filesource": "archive",
         }.get(key, "")
-        
-        try:
-            msg_io = MessagingIo(reqObj=mock_req_obj, verbose=True, log=sys.stdout)
-            
-            # Test core interface methods exist and are callable
-            expected_methods = [
-                'submitMsg', 'getMsgList', 'markMsgAsRead', 'tagMsg',
-                'globalMessageStatusCheck', 'getMsgsByStatus'
-            ]
-            
-            for method_name in expected_methods:
-                self.assertTrue(hasattr(msg_io, method_name), 
-                              f"MessagingIo should have {method_name} method")
-                method = getattr(msg_io, method_name)
-                self.assertTrue(callable(method), 
-                              f"MessagingIo.{method_name} should be callable")
-            
-            print(f"✓ All expected MessagingIo methods are available and callable")
-            
-            # Test that the interface behaves consistently
-            # (Note: specific behavior may vary based on backend, but interface should be same)
-            test_subject = "Backend Compatibility Test"
-            test_message = "Testing interface consistency across backends"
-            
-            try:
-                result = msg_io.submitMsg(
-                    p_subject=test_subject,
-                    p_text=test_message,
-                    p_sender="compatibility@test.com",
-                    p_messageType="text"
-                )
-                print(f"✓ submitMsg interface works: {result}")
-            except Exception as e:
-                print(f"⚠ submitMsg test: {e}")
-            
-            try:
-                messages = msg_io.getMsgList()
-                print(f"✓ getMsgList interface works: {type(messages)} with {len(messages) if messages else 0} items")
-            except Exception as e:
-                print(f"⚠ getMsgList test: {e}")
-            
-            print(f"✓ MessagingIo interface compatibility verified")
-            
-        except Exception as e:
-            if any(keyword in str(e).lower() for keyword in ["path", "file", "directory", "config"]):
-                print(f"⚠ Compatibility test limited by environment: {e}")
-                print(f"✓ Core interface verification completed")
-            else:
-                self.fail(f"MessagingIo compatibility test failed: {e}")
+
+        # Instantiate MessagingIo and assert legacy file-backed methods are gone
+        msg_io = MessagingIo(reqObj=mock_req_obj, verbose=True, log=sys.stdout)
+        legacy_methods = [
+            "submitMsg", "getMsgList", "markMsgAsRead", "tagMsg",
+            "globalMessageStatusCheck", "getMsgsByStatus",
+        ]
+        for name in legacy_methods:
+            self.assertFalse(hasattr(msg_io, name), f"Legacy method should be removed in DB-only architecture: {name}")
+
+        # Smoke-check DB adaptor (no CIF/files)
+        site_id = os.getenv("WWPDB_SITE_ID")
+        db_io = PdbxMessageIo(verbose=True, log=sys.stdout, site_id=site_id, db_config=self.test_db_config)
+        self.assertIsNotNone(db_io)
+
+        dep_id = "D_1000000001"
+        content_type = "messages-to-depositor"
+        ctx_path = f"/synthetic/{dep_id}_{content_type}_P1.cif"  # context only, no file I/O
+
+        self.assertTrue(db_io.read(ctx_path), "DB adaptor should accept synthetic context path")
+        db_io.appendMessage({
+            "message_id": f"DB_ONLY_IFACE_{int(__import__('time').time())}",
+            "deposition_data_set_id": dep_id,
+            "sender": "db-only@test.com",
+            "message_subject": "DB-only interface check",
+            "message_text": "Ensuring DB path works without CIF I/O",
+            "content_type": content_type,
+            "message_type": "text",
+            "send_status": "Y",
+        })
+        self.assertTrue(db_io.write("/synthetic/output"), "DB write should succeed without files")
+        self.assertTrue(db_io.read(ctx_path), "DB read should work without files")
+
+        print("✓ DB-only interface verified; legacy file-backed API absent")
 
 
 if __name__ == "__main__":
