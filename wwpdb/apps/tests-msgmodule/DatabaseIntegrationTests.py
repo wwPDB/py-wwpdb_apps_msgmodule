@@ -26,6 +26,27 @@ if __package__ is None or __package__ == "":
 else:
     from .commonsetup import TESTOUTPUT, configInfo
 
+# CRITICAL: Restore real ConfigInfo for database integration tests
+# The commonsetup.py mocks ConfigInfo, but we need the real one for database connectivity
+import importlib
+if 'wwpdb.utils.config.ConfigInfo' in sys.modules:
+    # Remove the mock
+    del sys.modules['wwpdb.utils.config.ConfigInfo']
+
+# Now import the real ConfigInfo
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
+
+# Test that we can get real database configuration
+try:
+    test_config = ConfigInfo('PDBE_DEV')
+    test_host = test_config.get('SITE_DB_HOST_NAME')
+    if test_host:
+        print(f"✓ Real ConfigInfo restored - SITE_DB_HOST_NAME: {test_host}")
+    else:
+        print("⚠ ConfigInfo restored but no database config found")
+except Exception as e:
+    print(f"✗ Failed to restore real ConfigInfo: {e}")
+
 # Import MessagingIo for high-level integration tests
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 
@@ -102,10 +123,10 @@ class DatabaseIntegrationTests(unittest.TestCase):
     def setUp(self):
         """Set up test - MessagingIo should handle database connections automatically"""
         
-        # Verify WWPDB_SITE_ID is set for database adaptors to work
+        # Set WWPDB_SITE_ID to a working value for database tests
+        # Based on our diagnostics, PDBE_DEV has proper database configuration
+        os.environ["WWPDB_SITE_ID"] = "PDBE_DEV"
         site_id = os.getenv("WWPDB_SITE_ID")
-        if not site_id:
-            raise unittest.SkipTest("WWPDB_SITE_ID environment variable not set - database adaptors cannot connect")
         
         print(f"Testing MessagingIo with database adaptors (site_id={site_id})")
         print("Database connections will be handled automatically by PdbxMessageIo adaptors")
