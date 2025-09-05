@@ -123,10 +123,10 @@ class DatabaseIntegrationTests(unittest.TestCase):
     def setUp(self):
         """Set up test - MessagingIo should handle database connections automatically"""
         
-        # Set WWPDB_SITE_ID to a working value for database tests
-        # Based on our diagnostics, PDBE_DEV has proper database configuration
-        os.environ["WWPDB_SITE_ID"] = "PDBE_DEV"
+        # Verify WWPDB_SITE_ID is set for database adaptors to work
         site_id = os.getenv("WWPDB_SITE_ID")
+        if not site_id:
+            raise unittest.SkipTest("WWPDB_SITE_ID environment variable not set - database adaptors cannot connect")
         
         print(f"Testing MessagingIo with database adaptors (site_id={site_id})")
         print("Database connections will be handled automatically by PdbxMessageIo adaptors")
