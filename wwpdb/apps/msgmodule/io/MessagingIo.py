@@ -489,7 +489,7 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
                 if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
                     if ok:
                         recordSetLst = (
@@ -497,7 +497,7 @@ class MessagingIo(object):
                         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
                 if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
                     if ok:
                         recordSetLst.extend(
@@ -508,7 +508,7 @@ class MessagingIo(object):
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
                 if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_notes.read(self.__notesFilePath)
 
                     if ok:
@@ -603,7 +603,7 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
                 if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
                     if ok:
                         recordSetLst = (
@@ -614,7 +614,7 @@ class MessagingIo(object):
                             origCommsLst.extend(pdbxMsgIo_frmDpstr.getOrigCommReferenceInfo())
 
                 if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
                     if ok:
                         msgsToDpstrLst = pdbxMsgIo_toDpstr.getMessageInfo()
@@ -637,7 +637,7 @@ class MessagingIo(object):
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
                 if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     ok = pdbxMsgIo_notes.read(self.__notesFilePath)
 
                     if ok:
@@ -846,7 +846,7 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
@@ -856,7 +856,7 @@ class MessagingIo(object):
                     recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
             if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                mIIo2 = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
@@ -923,7 +923,7 @@ class MessagingIo(object):
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
             if os.access(self.__notesFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__notesFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
@@ -997,7 +997,7 @@ class MessagingIo(object):
                 except IOError:
                     logger.error("problem creating messaging output file at: %s", outputFilePth)
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
                 outputFilePth, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
@@ -1600,7 +1600,7 @@ class MessagingIo(object):
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
         logger.info("self.__msgsFromDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
-        mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+        mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
         with LockFile(
             self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
         ) as _lf, FileSizeLogger(  # noqa: F841
@@ -1667,7 +1667,7 @@ class MessagingIo(object):
                 except IOError:
                     pass
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             with LockFile(
                 self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
             ) as _lf, FileSizeLogger(
@@ -1788,7 +1788,7 @@ class MessagingIo(object):
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
             if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath)
 
                 if bGotContent:
@@ -1860,7 +1860,7 @@ class MessagingIo(object):
                 except IOError:
                     pass
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             msgAlreadySeen = False
             with LockFile(
                 self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
@@ -1933,8 +1933,8 @@ class MessagingIo(object):
         msgsFrmDpstrLst = []
         msgStatusLst = []
         fileSizeToDpstr = 0
-        mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-        mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+        mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        mIIo2 = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
         try:
             # GET LIST OF IDS OF MSGS FROM DEPOSITOR
@@ -2077,7 +2077,7 @@ class MessagingIo(object):
             if os.access(self.__msgsToDpstrFilePath, os.R_OK):
                 fileSizeBytes = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
                 if fileSizeBytes > 0:
-                    mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     with LockFile(
                         self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf, FileSizeLogger(  # noqa: F841
@@ -2914,7 +2914,7 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841

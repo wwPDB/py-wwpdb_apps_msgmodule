@@ -66,18 +66,17 @@ class PdbxMessageIo:
     write(filePath) commits pending rows to DB.
     """
 
-    def __init__(self, verbose=True, log=sys.stderr, site_id: Optional[str] = None, db_config: Optional[Dict] = None):
+    def __init__(self, site_id: str, verbose=True, log=sys.stderr, db_config: Optional[Dict] = None):
         self.__verbose = verbose
         self.__lfh = log
-        self.__site_id = site_id
-        if not self.__site_id:
-            try:
-                self.__site_id = os.getenv("WWPDB_SITE_ID")
-            except Exception as e:
-                if self.__verbose:
-                    self.__lfh.write(f"PdbxMessageIo: Failed to read WWPDB_SITE_ID from environment: {e}\n")
-                raise ValueError(f"Failed to read WWPDB_SITE_ID from environment: {e}")
         
+        # site_id is now required - no fallback to environment
+        if not site_id:
+            raise ValueError("site_id parameter is required for PdbxMessageIo.")
+        
+        self.__site_id = site_id
+        if self.__verbose:
+            self.__lfh.write(f"PdbxMessageIo: Using site_id: {repr(self.__site_id)}\n")
         if not db_config:
             cI = ConfigInfo(self.__site_id)
             
