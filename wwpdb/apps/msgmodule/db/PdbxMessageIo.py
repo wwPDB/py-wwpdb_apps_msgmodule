@@ -80,14 +80,47 @@ class PdbxMessageIo:
         
         if not db_config:
             cI = ConfigInfo(self.__site_id)
+            
+            # Debug configuration values
+            host = cI.get("SITE_DB_HOST_NAME")
+            port = cI.get("SITE_DB_PORT_NUMBER", "3306")
+            database = cI.get("WWPDB_MESSAGING_DB_NAME")
+            username = cI.get("SITE_DB_ADMIN_USER")
+            password = cI.get("SITE_DB_ADMIN_PASS", "")
+            
+            if self.__verbose:
+                self.__lfh.write(f"PdbxMessageIo: Database config for site_id={self.__site_id}:\n")
+                self.__lfh.write(f"  SITE_DB_HOST_NAME: {host}\n")
+                self.__lfh.write(f"  SITE_DB_PORT_NUMBER: {port}\n") 
+                self.__lfh.write(f"  WWPDB_MESSAGING_DB_NAME: {database}\n")
+                self.__lfh.write(f"  SITE_DB_ADMIN_USER: {username}\n")
+                self.__lfh.write(f"  SITE_DB_ADMIN_PASS: {'***' if password else 'None'}\n")
+            
             db_config = {
-                "host": cI.get("SITE_DB_HOST_NAME"),
-                "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
-                "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
-                "username": cI.get("SITE_DB_ADMIN_USER"),
-                "password": cI.get("SITE_DB_ADMIN_PASS", ""),
+                "host": host,
+                "port": int(port),
+                "database": database,
+                "username": username,
+                "password": password,
                 "charset": "utf8mb4",
             }
+            
+            # Validate critical configuration
+            if not host:
+                if self.__verbose:
+                    self.__lfh.write(f"PdbxMessageIo: ERROR - SITE_DB_HOST_NAME not configured for site_id={self.__site_id}\n")
+                raise ValueError(f"Database host not configured for site_id={self.__site_id}. Check SITE_DB_HOST_NAME in ConfigInfo.")
+            
+            if not database:
+                if self.__verbose:
+                    self.__lfh.write(f"PdbxMessageIo: ERROR - WWPDB_MESSAGING_DB_NAME not configured for site_id={self.__site_id}\n")
+                raise ValueError(f"Database name not configured for site_id={self.__site_id}. Check WWPDB_MESSAGING_DB_NAME in ConfigInfo.")
+            
+            if not username:
+                if self.__verbose:
+                    self.__lfh.write(f"PdbxMessageIo: ERROR - SITE_DB_ADMIN_USER not configured for site_id={self.__site_id}\n")
+                raise ValueError(f"Database username not configured for site_id={self.__site_id}. Check SITE_DB_ADMIN_USER in ConfigInfo.")
+        
         self._dal = DataAccessLayer(db_config)
 
         # Current context selected by read(filePath)
