@@ -186,7 +186,8 @@ from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
 
 #
 from mmcif_utils.persist.PdbxPersist import PdbxPersist
-from mmcif_utils.persist.LockFile import LockFile
+# from wwpdb.apps.msgmodule.db.LockFile import LockFile
+from wwpdb.apps.msgmodule.db.LockFile import LockFile
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from oslo_concurrency import lockutils

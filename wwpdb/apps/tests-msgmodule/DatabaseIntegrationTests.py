@@ -55,7 +55,8 @@ class MockRequestObject:
             'msg_category': None,
             # Required by MessagingIo constructor - can be empty/default
             'groupid': '',  # Empty is fine
-            'WWPDB_SITE_ID': os.getenv('WWPDB_SITE_ID', '')  # Use env or empty
+            'WWPDB_SITE_ID': os.getenv('WWPDB_SITE_ID', ''),  # Use env or empty
+            'filesource': 'archive'  # This triggers workflow mode which uses database adaptors
         }
         
     def getValue(self, key):

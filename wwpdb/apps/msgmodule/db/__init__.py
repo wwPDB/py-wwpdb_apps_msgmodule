@@ -32,6 +32,9 @@ from wwpdb.apps.msgmodule.db.PdbxMessage import (
 from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport
 
+# Import database-compatible file system utilities
+from wwpdb.apps.msgmodule.db.LockFile import LockFile
+
 __all__ = [
     # SQLAlchemy Models
     "Base",
@@ -49,4 +52,6 @@ __all__ = [
     # Compatibility stubs
     "MessagingDataImport",
     "MessagingDataExport",
+    # Database-compatible file system utilities
+    "LockFile",
 ]
