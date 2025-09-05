@@ -71,7 +71,12 @@ class PdbxMessageIo:
         self.__lfh = log
         self.__site_id = site_id
         if not self.__site_id:
-            raise ValueError("site_id is required")
+            try:
+                self.__site_id = os.getenv("WWPDB_SITE_ID")
+            except Exception as e:
+                if self.__verbose:
+                    self.__lfh.write(f"PdbxMessageIo: Failed to read WWPDB_SITE_ID from environment: {e}\n")
+                raise ValueError(f"Failed to read WWPDB_SITE_ID from environment: {e}")
         
         if not db_config:
             cI = ConfigInfo(self.__site_id)
