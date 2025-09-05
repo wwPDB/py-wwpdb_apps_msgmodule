@@ -33,7 +33,7 @@ from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport
 
 # Import database-compatible file system utilities
-from wwpdb.apps.msgmodule.db.LockFile import LockFile
+from wwpdb.apps.msgmodule.db.LockFile import LockFile, FileSizeLogger
 
 __all__ = [
     # SQLAlchemy Models
@@ -54,4 +54,5 @@ __all__ = [
     "MessagingDataExport",
     # Database-compatible file system utilities
     "LockFile",
+    "FileSizeLogger",
 ]

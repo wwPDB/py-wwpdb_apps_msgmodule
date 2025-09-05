@@ -17,6 +17,97 @@ class LockFileTimeoutException(Exception):
     pass
 
 
+class FileSizeLogger:
+    """
+    Drop-in replacement for MessagingIo's FileSizeLogger.
+    
+    Automatically detects dummy paths returned by database adaptors and uses
+    no-op operations for them, while preserving real file size logging for actual paths.
+    """
+    
+    def __init__(self, filePath, verbose=False, log=sys.stderr):
+        """
+        Initialize FileSizeLogger with same interface as original.
+        
+        Args:
+            filePath: Path to file to log size for
+            verbose: Enable verbose logging (default False)
+            log: File handle for logging (default sys.stderr)
+        """
+        self.__filePath = filePath
+        self.__verbose = verbose
+        self.__debug = True
+        self._is_dummy = self._is_dummy_path(filePath)
+        
+    def _is_dummy_path(self, file_path):
+        """
+        Check if a file path is a dummy path returned by database adaptors.
+        """
+        if not file_path:
+            return False
+        
+        # Normalize path for comparison
+        normalized = os.path.normpath(str(file_path))
+        
+        # Check for common dummy path patterns
+        dummy_indicators = ['/dummy/', '\\dummy\\', 'dummy/messaging', 'dummy\\messaging']
+        
+        return any(indicator in normalized for indicator in dummy_indicators)
+    
+    def __enter__(self):
+        """
+        Enter the file size logger context.
+        """
+        if self._is_dummy:
+            # No-op for dummy paths
+            if self.__verbose and self.__debug:
+                # Use a logger since that's what the original does
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"+{self.__class__.__name__} -- bypassing filesize logging for dummy path: {self.__filePath}")
+            return self
+        else:
+            # Use real file size logging for actual paths
+            try:
+                filesize = os.stat(self.__filePath).st_size
+                if self.__verbose and self.__debug:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"+{self.__class__.__name__} -- filesize for {self.__filePath} before call: {filesize} bytes.")
+            except (OSError, FileNotFoundError):
+                # File doesn't exist yet, that's ok
+                if self.__verbose and self.__debug:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"+{self.__class__.__name__} -- file {self.__filePath} does not exist yet.")
+            return self
+
+    def __exit__(self, exc_type, value, tb):
+        """
+        Exit the file size logger context.
+        """
+        if self._is_dummy:
+            # No-op for dummy paths
+            if self.__verbose and self.__debug:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"+{self.__class__.__name__} -- bypassing filesize logging cleanup for dummy path: {self.__filePath}")
+        else:
+            # Use real file size logging for actual paths
+            try:
+                filesize = os.stat(self.__filePath).st_size
+                if self.__verbose and self.__debug:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"+{self.__class__.__name__} -- filesize for {self.__filePath} after call: {filesize} bytes.")
+            except (OSError, FileNotFoundError):
+                # File might have been deleted or never created
+                if self.__verbose and self.__debug:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.debug(f"+{self.__class__.__name__} -- file {self.__filePath} not found after call.")
+
+
 class LockFile:
     """
     Drop-in replacement for mmcif_utils.persist.LockFile.

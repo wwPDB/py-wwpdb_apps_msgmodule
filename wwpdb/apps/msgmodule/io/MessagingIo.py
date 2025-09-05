@@ -187,7 +187,7 @@ from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
 #
 from mmcif_utils.persist.PdbxPersist import PdbxPersist
 # from wwpdb.apps.msgmodule.db.LockFile import LockFile
-from wwpdb.apps.msgmodule.db.LockFile import LockFile
+from wwpdb.apps.msgmodule.db.LockFile import LockFile, FileSizeLogger
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from oslo_concurrency import lockutils
@@ -5156,27 +5156,27 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             logger.info("following email address found to be invalid: %s\n", email)
         return False
 
+# # FileSizeLogger is now imported from wwpdb.apps.msgmodule.db.LockFile
+# class FileSizeLogger(object):
+#     """Simple class to support trace logging for file size before and after a given action"""
 
-class FileSizeLogger(object):
-    """Simple class to support trace logging for file size before and after a given action"""
+#     def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
+#         """Prepare the file size logger. Specify the file to report on"""
+#         self.__filePath = filePath
+#         #
+#         # self.__lfh = log
+#         self.__verbose = verbose
+#         self.__debug = True
+#         #
 
-    def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
-        """Prepare the file size logger. Specify the file to report on"""
-        self.__filePath = filePath
-        #
-        # self.__lfh = log
-        self.__verbose = verbose
-        self.__debug = True
-        #
+#     def __enter__(self):
+#         filesize = os.stat(self.__filePath).st_size
+#         if self.__verbose and self.__debug:
+#             logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
 
-    def __enter__(self):
-        filesize = os.stat(self.__filePath).st_size
-        if self.__verbose and self.__debug:
-            logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
+#         return self
 
-        return self
-
-    def __exit__(self, exc_type, value, tb):
-        filesize = os.stat(self.__filePath).st_size
-        if self.__verbose and self.__debug:
-            logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
+#     def __exit__(self, exc_type, value, tb):
+#         filesize = os.stat(self.__filePath).st_size
+#         if self.__verbose and self.__debug:
+#             logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
