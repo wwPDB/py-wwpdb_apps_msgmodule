@@ -52,17 +52,36 @@ class MockRequestObject:
             'message_state': message_state,
             'msg_id': msg_id,
             'parent_msg_id': None,
-            'msg_category': None
+            'msg_category': None,
+            # Required by MessagingIo constructor - can be empty/default
+            'groupid': '',  # Empty is fine
+            'WWPDB_SITE_ID': os.getenv('WWPDB_SITE_ID', '')  # Use env or empty
         }
         
     def getValue(self, key):
-        return self._values.get(key)
+        return self._values.get(key, '')  # Return empty string for missing keys
         
     def getRawValue(self, key):
-        return self._values.get(key)
+        return self._values.get(key, '')
         
     def getValueList(self, key):
         return []
+    
+    def newSessionObj(self):
+        """Mock session object for MessagingIo"""
+        return MockSessionObject()
+
+
+class MockSessionObject:
+    """Mock session object for MessagingIo"""
+    
+    def getPath(self):
+        """Return a test session path"""
+        return "/tmp/test_session"
+    
+    def getRelativePath(self):
+        """Return a relative session path"""
+        return "test_session"
 
 
 class DatabaseIntegrationTests(unittest.TestCase):
@@ -169,8 +188,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
     def test_messaging_io_mark_as_read_with_database(self):
         """Test MessagingIo.markMsgAsRead() with database backend"""
         try:
+            # Create mock request object for MessagingIo constructor
+            req_obj = MockRequestObject(identifier="D_1000000001")
+            
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create message status dict for marking as read
             msg_status_dict = {
