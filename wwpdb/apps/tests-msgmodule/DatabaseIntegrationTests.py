@@ -169,7 +169,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsg() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsg() - should work even if message doesn't exist
             result = messaging_io.getMsg(
@@ -217,7 +218,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.tagMsg() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create message status dict for tagging
             msg_status_dict = {
@@ -242,7 +244,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.checkAvailFiles() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call checkAvailFiles()
             result = messaging_io.checkAvailFiles("D_1000000001")
@@ -259,7 +262,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getFilesRfrncd() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getFilesRfrncd()
             result = messaging_io.getFilesRfrncd("D_1000000001")
@@ -276,7 +280,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgReadList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgReadList()
             result = messaging_io.getMsgReadList("D_1000000001")
@@ -293,7 +298,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgNoActionReqdList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgNoActionReqdList()
             result = messaging_io.getMsgNoActionReqdList("D_1000000001")
@@ -310,7 +316,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgForReleaseList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgForReleaseList()
             result = messaging_io.getMsgForReleaseList("D_1000000001")
@@ -327,7 +334,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.get_message_list_from_depositor() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call get_message_list_from_depositor()
             result = messaging_io.get_message_list_from_depositor()
@@ -344,7 +352,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.get_message_subject_from_depositor() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call get_message_subject_from_depositor()
             result = messaging_io.get_message_subject_from_depositor("NONEXISTENT_MSG_ID")
@@ -361,7 +370,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.is_release_request() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call is_release_request()
             result = messaging_io.is_release_request("NONEXISTENT_MSG_ID")
@@ -395,7 +405,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             message_obj = Message.fromReqObj(req_obj, verbose=True)
             
             # Create MessagingIo instance
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Step 2: Write the message
             write_success = messaging_io.processMsg(message_obj, req_obj)
