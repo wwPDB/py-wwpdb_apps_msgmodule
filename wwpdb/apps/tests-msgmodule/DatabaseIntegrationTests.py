@@ -81,8 +81,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
     def test_messaging_io_get_message_list_with_database(self):
         """Test MessagingIo.getMsgRowList() with database backend - core READ operation"""
         try:
+            # Create mock request object for MessagingIo constructor
+            req_obj = MockRequestObject(identifier="D_1000000001")
+            
             # Create MessagingIo instance - database adaptors will be used automatically
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgRowList() with search parameters
             message_list = messaging_io.getMsgRowList(
@@ -126,8 +129,11 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             print(f"✓ Created real Message object: isLive={message_obj.isLive}, contentType={message_obj.contentType}")
             
+            # Create mock request object for MessagingIo constructor
+            req_obj = MockRequestObject(identifier="D_1000000001")
+            
             # Create MessagingIo instance - database adaptors will be used automatically
-            messaging_io = MessagingIo(p_msgObjFilePath=None, p_verbose=True)
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call processMsg() method with real Message object
             success = messaging_io.processMsg(message_obj, req_obj)
