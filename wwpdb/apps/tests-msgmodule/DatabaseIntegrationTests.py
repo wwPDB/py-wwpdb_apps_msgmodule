@@ -155,7 +155,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 print(f"✓ MessagingIo.getMsgRowList returned data: {type(msg_list)}")
                 
             # Test with different parameters (server-side processing)
-            msg_list_server = msg_io.getMsgRowList(dep_id, p_bServerSide=True, p_iDisplayStart=0, p_iDisplayLength=10)
+            msg_list_server = msg_io.getMsgRowList(dep_id, p_bServerSide=True, p_iDisplayStart=0, p_iDisplayLength=10, p_colSearchDict={})
             self.assertIsNotNone(msg_list_server, "Server-side getMsgRowList should work")
             print("✓ MessagingIo.getMsgRowList server-side processing working")
             
@@ -170,14 +170,21 @@ class DatabaseIntegrationTests(unittest.TestCase):
         
         msg_io = MessagingIo(reqObj=self.mock_req_obj, verbose=True, log=sys.stdout)
         
-        # Create a mock message object (based on the interface)
+        # Create a proper mock message object (based on the MessagingIo interface)
         class MockMessage:
             def __init__(self, data):
                 self.data = data
                 self.isLive = True  # Based on processMsg implementation
                 
-            def __getattr__(self, name):
-                return self.data.get(name, "")
+            def getMsgDict(self):
+                """Return message data as dict - method expected by MessagingIo.processMsg()"""
+                return self.data
+                
+            def getOutputFileTarget(self, req_obj):
+                """Return output file target - method expected by MessagingIo.processMsg()"""
+                content_type = self.data.get("content_type", "messages-to-depositor")
+                dep_id = self.data.get("deposition_data_set_id", "D_1000000001")
+                return f"/dummy/{dep_id}_{content_type}_P1.cif"
         
         # Test message processing
         test_msg_data = {
@@ -358,6 +365,16 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 self.isLive = True
                 for key, value in data.items():
                     setattr(self, key, value)
+                    
+            def getMsgDict(self):
+                """Return message data as dict - method expected by MessagingIo.processMsg()"""
+                return self.data
+                
+            def getOutputFileTarget(self, req_obj):
+                """Return output file target - method expected by MessagingIo.processMsg()"""
+                content_type = self.data.get("content_type", "messages-to-depositor")
+                dep_id = self.data.get("deposition_data_set_id", "D_1000000001")
+                return f"/dummy/{dep_id}_{content_type}_P1.cif"
         
         test_message_data = {
             "message_id": f"WORKFLOW_TEST_{int(__import__('time').time())}",
