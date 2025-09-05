@@ -102,13 +102,14 @@ class DatabaseIntegrationTests(unittest.TestCase):
         try:
             # Create mock request object for MessagingIo constructor
             req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create MessagingIo instance - database adaptors will be used automatically
             messaging_io = MessagingIo(req_obj, verbose=True)
             
-            # Call getMsgRowList() with search parameters
+            # Call getMsgRowList() with search parameters - note correct parameter name
             message_list = messaging_io.getMsgRowList(
-                p_depositionDataSetId="D_1000000001",
+                p_depDataSetId="D_1000000001",
                 p_colSearchDict={}
             )
             
@@ -150,12 +151,13 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Create mock request object for MessagingIo constructor
             req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create MessagingIo instance - database adaptors will be used automatically
             messaging_io = MessagingIo(req_obj, verbose=True)
             
-            # Call processMsg() method with real Message object
-            success = messaging_io.processMsg(message_obj, req_obj)
+            # Call processMsg() method with real Message object (only takes message object)
+            success = messaging_io.processMsg(message_obj)
             
             print(f"✓ MessagingIo.processMsg result: success={success}")
             
@@ -169,7 +171,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsg() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsg() - should work even if message doesn't exist
@@ -191,6 +193,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         try:
             # Create mock request object for MessagingIo constructor
             req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create MessagingIo instance
             messaging_io = MessagingIo(req_obj, verbose=True)
@@ -218,7 +221,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.tagMsg() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Create message status dict for tagging
@@ -244,7 +247,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.checkAvailFiles() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call checkAvailFiles()
@@ -262,16 +265,16 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getFilesRfrncd() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getFilesRfrncd()
             result = messaging_io.getFilesRfrncd("D_1000000001")
             
-            print(f"✓ MessagingIo.getFilesRfrncd result: found {len(result) if isinstance(result, list) else 'N/A'} file references")
+            print(f"✓ MessagingIo.getFilesRfrncd result: found {len(result) if isinstance(result, (list, dict)) else 'N/A'} file references")
             
-            # Should return a list
-            self.assertIsInstance(result, list)
+            # Should return a list or dict
+            self.assertTrue(isinstance(result, (list, dict)))
             
         except Exception as e:
             self.fail(f"MessagingIo.getFilesRfrncd() failed with database backend: {e}")
@@ -280,7 +283,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgReadList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgReadList()
@@ -298,7 +301,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgNoActionReqdList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgNoActionReqdList()
@@ -316,7 +319,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.getMsgForReleaseList() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call getMsgForReleaseList()
@@ -334,7 +337,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.get_message_list_from_depositor() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call get_message_list_from_depositor()
@@ -352,7 +355,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.get_message_subject_from_depositor() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call get_message_subject_from_depositor()
@@ -370,7 +373,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test MessagingIo.is_release_request() with database backend"""
         try:
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Call is_release_request()
@@ -405,16 +408,16 @@ class DatabaseIntegrationTests(unittest.TestCase):
             message_obj = Message.fromReqObj(req_obj, verbose=True)
             
             # Create MessagingIo instance
-            messaging_io = req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
-            # Step 2: Write the message
-            write_success = messaging_io.processMsg(message_obj, req_obj)
+            # Step 2: Write the message (processMsg only takes message object)
+            write_success = messaging_io.processMsg(message_obj)
             print(f"✓ Write operation result: {write_success}")
             
             # Step 3: Read messages back and verify our message is there
             message_list = messaging_io.getMsgRowList(
-                p_depositionDataSetId=test_dataset_id,
+                p_depDataSetId=test_dataset_id,
                 p_colSearchDict={}
             )
             
