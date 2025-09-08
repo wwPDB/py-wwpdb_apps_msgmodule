@@ -383,8 +383,8 @@ class TestMessagingIoPersistence(unittest.TestCase):
             self.assertEqual(api_result.get('message_id'), db_msg.message_id)
             print(f"   ✅ Step 4: API and DB data consistent")
         
-        # 5. Test message listing
-        msg_list = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
+        # 5. Test message listing - ensure content_type is set to trigger DB loading
+        msg_list = io_for_read.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         records = msg_list.get("RECORD_LIST", msg_list) if isinstance(msg_list, dict) else msg_list
         found_in_list = any(r.get("message_id") == message_id for r in records)
         if found_in_list:
