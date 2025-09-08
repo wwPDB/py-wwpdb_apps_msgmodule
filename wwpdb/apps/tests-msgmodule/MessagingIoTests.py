@@ -210,7 +210,142 @@ class TestMessagingIo(unittest.TestCase):
         content = self.messaging_io.getStarterMsgBody()
         self.assertEqual(content, "Groovin' High")
 
-    # Continue with tests for other methods...
+    def test_setGroupId_no_exception(self):
+        # Should not raise even if it doesn't return anything
+        try:
+            self.messaging_io.setGroupId("grp42")
+        except Exception as e:
+            self.fail(f"setGroupId raised an exception: {e}")
+
+    @patch.object(MessagingIo, "getMsgReadList", return_value=[{"message_id": "M1"}])
+    def test_getMsgReadList(self, mock_method):
+        res = self.messaging_io.getMsgReadList("D_000000")
+        self.assertIsInstance(res, list)
+        mock_method.assert_called_once_with("D_000000")
+
+    @patch.object(MessagingIo, "getMsgNoActionReqdList", return_value=[{"message_id": "M2"}])
+    def test_getMsgNoActionReqdList(self, mock_method):
+        res = self.messaging_io.getMsgNoActionReqdList("D_000000")
+        self.assertIsInstance(res, list)
+        mock_method.assert_called_once_with("D_000000")
+
+    @patch.object(MessagingIo, "getMsgForReleaseList", return_value=[{"message_id": "M3"}])
+    def test_getMsgForReleaseList(self, mock_method):
+        res = self.messaging_io.getMsgForReleaseList("D_000000")
+        self.assertIsInstance(res, list)
+        mock_method.assert_called_once_with("D_000000")
+
+    @patch.object(MessagingIo, "getNotesList", return_value=[{"note_id": "N1"}])
+    def test_getNotesList(self, mock_method):
+        res = self.messaging_io.getNotesList("D_000000")
+        self.assertIsInstance(res, list)
+        mock_method.assert_called_once_with("D_000000")
+
+    @patch.object(
+        MessagingIo,
+        "autoMsg",
+        return_value=True,
+    )
+    def test_autoMsg(self, mock_method):
+        # Minimal viable set of args based on signature
+        kwargs = dict(
+            p_depDataSetId="D_000000",
+            p_op="create",
+            p_msgId=None,
+            p_msgSubject="Test Subject",
+            p_msgType="text",
+            p_msgLvl="info",
+            p_msgRsltnLvl="none",
+            p_msgGroupId=None,
+            p_msgAnnCategory=None,
+            p_msgAnnTask=None,
+            p_msgAnnSubTask=None,
+            p_fileReferences=[],
+            msg="Body",
+            p_sender="annotator",
+            p_testemail=False,
+            p_tmpltType=None,
+        )
+        ok = self.messaging_io.autoMsg(**kwargs)
+        self.assertIsInstance(ok, bool)
+        mock_method.assert_called_once()
+        # Ensure key arguments passed through
+        passed_kwargs = mock_method.call_args.kwargs
+        self.assertEqual(passed_kwargs["p_depDataSetId"], "D_000000")
+        self.assertEqual(passed_kwargs["p_msgSubject"], "Test Subject")
+
+    @patch.object(MessagingIo, "sendSingle", return_value=True)
+    def test_sendSingle(self, mock_method):
+        ok = self.messaging_io.sendSingle(
+            p_depDataSetId="D_000000",
+            p_msgId="M123",
+            p_sender="annotator",
+            p_testemail=False,
+        )
+        self.assertTrue(ok)
+        mock_method.assert_called_once()
+
+    @patch.object(MessagingIo, "get_message_list_from_depositor", return_value=["M1", "M2"])
+    def test_get_message_list_from_depositor(self, mock_method):
+        res = self.messaging_io.get_message_list_from_depositor()
+        self.assertIsInstance(res, list)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "get_message_subject_from_depositor", return_value="Subject")
+    def test_get_message_subject_from_depositor(self, mock_method):
+        res = self.messaging_io.get_message_subject_from_depositor("M1")
+        self.assertIsInstance(res, str)
+        mock_method.assert_called_once_with("M1")
+
+    @patch.object(MessagingIo, "is_release_request", return_value=False)
+    def test_is_release_request(self, mock_method):
+        res = self.messaging_io.is_release_request("M1")
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with("M1")
+
+    @patch.object(MessagingIo, "markMsgAsRead", return_value=True)
+    def test_markMsgAsRead(self, mock_method):
+        payload = {"message_id": "M1", "status": "read"}
+        res = self.messaging_io.markMsgAsRead(payload)
+        self.assertTrue(res)
+        mock_method.assert_called_once_with(payload)
+
+    @patch.object(MessagingIo, "areAllMsgsRead", return_value=False)
+    def test_areAllMsgsRead(self, mock_method):
+        res = self.messaging_io.areAllMsgsRead()
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "areAllMsgsActioned", return_value=False)
+    def test_areAllMsgsActioned(self, mock_method):
+        res = self.messaging_io.areAllMsgsActioned()
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "anyReleaseFlags", return_value=False)
+    def test_anyReleaseFlags(self, mock_method):
+        res = self.messaging_io.anyReleaseFlags()
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "anyUnactionApprovalWithoutCorrection", return_value=False)
+    def test_anyUnactionApprovalWithoutCorrection(self, mock_method):
+        res = self.messaging_io.anyUnactionApprovalWithoutCorrection()
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "anyNotesExist", return_value=False)
+    def test_anyNotesExist(self, mock_method):
+        res = self.messaging_io.anyNotesExist()
+        self.assertIsInstance(res, bool)
+        mock_method.assert_called_once_with()
+
+    @patch.object(MessagingIo, "tagMsg", return_value=True)
+    def test_tagMsg(self, mock_method):
+        payload = {"message_id": "M1", "tag": "important", "value": True}
+        res = self.messaging_io.tagMsg(payload)
+        self.assertTrue(res)
+        mock_method.assert_called_once_with(payload)
 
 if __name__ == '__main__':
     unittest.main()
