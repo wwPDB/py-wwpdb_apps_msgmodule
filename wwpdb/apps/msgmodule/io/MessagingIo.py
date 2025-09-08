@@ -987,15 +987,19 @@ class MessagingIo(object):
                 if self.__verbose:
                     logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
 
-            if not os.access(outputFilePth, os.F_OK):
-                logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
-                try:
-                    # file may not exist b/c it is the first time that an
-                    # annotator is sending a message in which case we create a new file
-                    f = open(outputFilePth, "w")
-                    f.close()
-                except IOError:
-                    logger.error("problem creating messaging output file at: %s", outputFilePth)
+            # Skip file operations for database-backed storage (dummy paths)
+            if not outputFilePth.startswith("/dummy"):
+                if not os.access(outputFilePth, os.F_OK):
+                    logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
+                    try:
+                        # file may not exist b/c it is the first time that an
+                        # annotator is sending a message in which case we create a new file
+                        f = open(outputFilePth, "w")
+                        f.close()
+                    except IOError:
+                        logger.error("problem creating messaging output file at: %s", outputFilePth)
+            else:
+                logger.info("Using database storage - skipping file operations for: %s", outputFilePth)
             #
             mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
@@ -1138,14 +1142,17 @@ class MessagingIo(object):
                 except IOError:
                     logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth + srcVrsn)
 
-        if os.access(outputFilePth, os.F_OK):
-            try:
-                shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
-            except IOError:
-                logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
-
+        # Skip file backup operations for database-backed storage (dummy paths)
+        if not outputFilePth.startswith("/dummy"):
+            if os.access(outputFilePth, os.F_OK):
+                try:
+                    shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
+                except IOError:
+                    logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
+            else:
+                logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
         else:
-            logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
+            logger.info("Using database storage - skipping file backup operations for: %s", outputFilePth)
 
         if self.__verbose:
             logger.info("COMPLETED")

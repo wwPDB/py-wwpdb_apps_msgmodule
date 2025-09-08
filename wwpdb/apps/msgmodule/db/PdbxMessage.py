@@ -11,6 +11,7 @@ PdbxMessage classes but work with the existing SQLAlchemy models from Models.py.
 """
 
 import sys
+import uuid
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -119,6 +120,12 @@ class PdbxMessageInfo(_BasePdbxMessage):
     def __init__(self, verbose: bool = False, log=sys.stderr):
         model = MessageInfo()
         super().__init__(model, verbose, log)
+        
+        # Auto-generate message ID if not provided
+        if not model.message_id:
+            generated_id = str(uuid.uuid4())
+            model.message_id = generated_id
+            self._row_dict["message_id"] = generated_id
 
     def setTimestamp(self, v):
         if isinstance(v, datetime):
