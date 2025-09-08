@@ -352,8 +352,15 @@ class PdbxMessageIo:
 
         # Load messages for deposition (optionally filter content_type)
         msgs = self._dal.get_deposition_messages(self._deposition_id)
+        if self.__verbose:
+            logger.info("DB _load_from_db: Found %d total messages for deposition %s", len(msgs), self._deposition_id)
+            for m in msgs:
+                logger.info("  Message %s: content_type=%s, subject=%s", m.message_id, m.content_type, m.message_subject)
+        
         if self._content_type:
             msgs = [m for m in msgs if m.content_type == self._content_type]
+            if self.__verbose:
+                logger.info("DB _load_from_db: After filtering by content_type=%s, found %d messages", self._content_type, len(msgs))
 
         self._loaded_messages = [
             {
