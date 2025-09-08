@@ -386,7 +386,8 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # 5. Test message listing - ensure content_type is set to trigger DB loading
         msg_list = io_for_read.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         records = msg_list.get("RECORD_LIST", msg_list) if isinstance(msg_list, dict) else msg_list
-        found_in_list = any(r.get("message_id") == message_id for r in records)
+        # Records are lists with message_id at index 1 (per message attrib list order)
+        found_in_list = any(r[1] == message_id for r in records if len(r) > 1)
         if found_in_list:
             print(f"   ✅ Step 5: Message found in listing")
         else:
