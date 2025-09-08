@@ -111,11 +111,6 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
     # ---- Helper methods ----
 
-    def _new_test_msg_id(self, prefix="PERSIST"):
-        timestamp = int(time.time())
-        pid = os.getpid()
-        return f"{prefix}_{timestamp}_{pid}"
-
     def _new_io(self, dep_id=None, **req_extra):
         req = self._Req(self.site_id, dep_id or self.dep_id, extra=req_extra or {})
         return self.MessagingIo(req, verbose=True)
@@ -193,11 +188,13 @@ class TestMessagingIoPersistence(unittest.TestCase):
             created_at
         FROM pdbx_deposition_message_info 
         WHERE created_at >= :since_time
-            AND (message_id LIKE 'PERSIST_%' 
-                 OR message_id LIKE 'WRITE_READ_%'
-                 OR message_id LIKE 'IT_%'
-                 OR sender LIKE '%test%'
-                 OR sender LIKE '%persist%')
+            AND (sender LIKE '%test%'
+                 OR sender LIKE '%persist%'
+                 OR sender LIKE '%cycle%'
+                 OR sender LIKE '%status%'
+                 OR message_subject LIKE '%TEST%'
+                 OR message_subject LIKE '%PERSIST%'
+                 OR message_subject LIKE '%CYCLE%')
         ORDER BY created_at DESC
         """
         results = self._query_database_direct(query, {"since_time": since_time})
@@ -209,20 +206,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
         """Write a message and verify it's properly persisted in the database."""
         print(f"\n📝 Creating message for persistence verification...")
         
-        msg_id = self._new_test_msg_id("PERSIST_MSG")
-        subject = f"PERSISTENCE VERIFICATION: {msg_id}"
+        subject = "PERSISTENCE VERIFICATION TEST"
         body = f"Message created at {datetime.utcnow().isoformat()}Z for persistence testing"
         
-        print(f"   Message ID: {msg_id}")
         print(f"   Subject: {subject}")
 
-        # Create and process message
+        # Create and process message - let system generate ID
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
             sender="persistence@test.com",
             subject=subject,
             message_text=body,
-            msg_id=msg_id,
         )
         msg_obj = self.Message.fromReqObj(req_for_msg, verbose=True)
 
@@ -233,21 +227,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertTrue(write_ok, "Message should be written successfully")
         print(f"   ✅ Message written successfully")
         
-        # Debug: Check if message ID changed after processing
-        final_msg_id = msg_obj.messageId
-        print(f"   🔍 Debug: Original msg_id: {msg_id}")
-        print(f"   🔍 Debug: Final messageId after processMsg: {final_msg_id}")
-        
-        # Use the final message ID for verification (in case it changed)
-        search_msg_id = final_msg_id if final_msg_id else msg_id
-        print(f"   🔍 Debug: Searching for msg_id: {search_msg_id}")
+        # Get the message ID
+        message_id = msg_obj.messageId
+        self.assertIsNotNone(message_id, "Message should have an ID")
+        print(f"   🆔 Message ID: {message_id}")
 
-        # Verify in database directly
-        db_results = self._verify_message_in_db(search_msg_id)
-        self.assertTrue(len(db_results) > 0, f"Message {search_msg_id} should exist in database")
+        # Verify in database
+        db_results = self._verify_message_in_db(message_id)
+        self.assertTrue(len(db_results) > 0, f"Message {message_id} should exist in database")
         
         db_msg = db_results[0]
-        self.assertEqual(db_msg.message_id, search_msg_id)
+        self.assertEqual(db_msg.message_id, message_id)
         self.assertEqual(db_msg.deposition_data_set_id, self.dep_id)
         self.assertEqual(db_msg.message_subject, subject)
         self.assertIn("persistence testing", db_msg.message_text)
@@ -264,19 +254,15 @@ class TestMessagingIoPersistence(unittest.TestCase):
         """Write message status changes and verify they're persisted."""
         print(f"\n📊 Testing message status persistence...")
         
-        msg_id = self._new_test_msg_id("PERSIST_STATUS")
-        subject = f"STATUS PERSISTENCE TEST: {msg_id}"
+        subject = "STATUS PERSISTENCE TEST"
         body = f"Message for status persistence testing: {datetime.utcnow().isoformat()}Z"
-        
-        print(f"   Message ID: {msg_id}")
 
-        # Create message first
+        # Create message first - let system generate ID
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
             sender="status@test.com",
             subject=subject,
             message_text=body,
-            msg_id=msg_id,
         )
         msg_obj = self.Message.fromReqObj(req_for_msg, verbose=True)
 
@@ -285,10 +271,15 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
         self.assertTrue(write_ok, "Message should be written successfully")
 
+        # Get the message ID
+        message_id = msg_obj.messageId
+        self.assertIsNotNone(message_id, "Message should have an ID")
+        print(f"   🆔 Message ID: {message_id}")
+
         # Mark message as read
         status_dict = {
             "deposition_data_set_id": self.dep_id,
-            "message_id": msg_id,
+            "message_id": message_id,
             "read_status": "Y",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -298,7 +289,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # Tag message as action required
         tag_dict = {
             "deposition_data_set_id": self.dep_id,
-            "message_id": msg_id,
+            "message_id": message_id,
             "action_reqd": "Y",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -306,13 +297,13 @@ class TestMessagingIoPersistence(unittest.TestCase):
         print(f"   🏷️  Tag as action required result: {tag_result}")
 
         # Verify status in database
-        status_results = self._verify_message_status_in_db(msg_id)
+        status_results = self._verify_message_status_in_db(message_id)
         if len(status_results) > 0:
             print(f"   ✅ Status records found in database: {len(status_results)}")
             for status in status_results:
                 print(f"      Status: read={status.read_status}, action_required={status.action_reqd}, release={status.for_release}")
         else:
-            print(f"   ⚠️  No status records found for {msg_id}")
+            print(f"   ⚠️  No status records found for {message_id}")
 
     def test_03_list_recent_test_messages(self):
         """List all recent test messages to verify persistence."""
@@ -332,19 +323,15 @@ class TestMessagingIoPersistence(unittest.TestCase):
         """Complete end-to-end test with full verification."""
         print(f"\n🔄 Comprehensive read-write cycle test...")
         
-        msg_id = self._new_test_msg_id("PERSIST_CYCLE")
-        subject = f"COMPREHENSIVE CYCLE TEST: {msg_id}"
+        subject = "COMPREHENSIVE CYCLE TEST"
         body = f"Complete test message created at {datetime.utcnow().isoformat()}Z"
-        
-        print(f"   Message ID: {msg_id}")
 
-        # 1. Write message
+        # 1. Write message - let system generate ID
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
             sender="cycle@test.com",
             subject=subject,
             message_text=body,
-            msg_id=msg_id,
         )
         msg_obj = self.Message.fromReqObj(req_for_msg, verbose=True)
 
@@ -354,17 +341,13 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertTrue(write_ok)
         print(f"   ✅ Step 1: Message written")
         
-        # Debug: Check if message ID changed after processing
-        final_msg_id = msg_obj.messageId
-        print(f"   🔍 Debug: Original msg_id: {msg_id}")
-        print(f"   🔍 Debug: Final messageId after processMsg: {final_msg_id}")
-        
-        # Use the final message ID for verification (in case it changed)
-        search_msg_id = final_msg_id if final_msg_id else msg_id
-        print(f"   🔍 Debug: Searching for msg_id: {search_msg_id}")
+        # Get the message ID
+        message_id = msg_obj.messageId
+        self.assertIsNotNone(message_id, "Message should have an ID")
+        print(f"   🆔 Message ID: {message_id}")
 
         # 2. Read back via MessagingIo API
-        api_result = io.getMsg(p_msgId=search_msg_id, p_depId=self.dep_id)
+        api_result = io.getMsg(p_msgId=message_id, p_depId=self.dep_id)
         if api_result:
             print(f"   ✅ Step 2: Message read via API")
             print(f"      API Subject: {api_result.get('message_subject', 'N/A')}")
@@ -372,7 +355,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
             print(f"   ⚠️  Step 2: Message not found via API")
 
         # 3. Verify in database directly
-        db_results = self._verify_message_in_db(search_msg_id)
+        db_results = self._verify_message_in_db(message_id)
         
         # Debug: Show what message IDs are actually in the database
         all_msgs_query = """
@@ -402,14 +385,14 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # 5. Test message listing
         msg_list = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         records = msg_list.get("RECORD_LIST", msg_list) if isinstance(msg_list, dict) else msg_list
-        found_in_list = any(r.get("message_id") == msg_id for r in records)
+        found_in_list = any(r.get("message_id") == message_id for r in records)
         if found_in_list:
             print(f"   ✅ Step 5: Message found in listing")
         else:
             print(f"   ⚠️  Step 5: Message not found in listing (may be filtered)")
 
         print(f"\n🎯 PERSISTENCE VERIFICATION COMPLETE")
-        print(f"   Message ID: {msg_id}")
+        print(f"   Message ID: {message_id}")
         print(f"   Database Record: CONFIRMED")
         print(f"   API Access: {'CONFIRMED' if api_result else 'CHECK REQUIRED'}")
         print(f"   Data Consistency: {'CONFIRMED' if api_result else 'N/A'}")
