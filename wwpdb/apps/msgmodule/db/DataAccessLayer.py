@@ -39,6 +39,8 @@ class DatabaseConnection:
                 f"?charset={self.db_config.get('charset', 'utf8mb4')}"
             )
             
+            logger.info(f"Attempting database connection to: mysql+pymysql://{self.db_config['username']}:***@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']}")
+            
             # Create engine
             self._engine = create_engine(
                 connection_string,
@@ -48,6 +50,11 @@ class DatabaseConnection:
                 echo=False  # Set to True for SQL debugging
             )
             
+            # Test connection
+            with self._engine.connect() as conn:
+                conn.execute("SELECT 1")
+                logger.info("Database connection test successful")
+            
             # Create session factory
             self._session_factory = sessionmaker(bind=self._engine)
             
@@ -55,6 +62,7 @@ class DatabaseConnection:
             
         except Exception as e:
             logger.error(f"Failed to setup database: {e}")
+            logger.error(f"Database config: host={self.db_config.get('host')}, port={self.db_config.get('port')}, database={self.db_config.get('database')}, username={self.db_config.get('username')}")
             raise
     
     def get_session(self) -> Session:
@@ -94,6 +102,11 @@ class BaseDAO(Generic[ModelType]):
                 return True
         except SQLAlchemyError as e:
             logger.error(f"Error creating {self.model_class.__name__}: {e}")
+            logger.error(f"Record data: {obj.__dict__ if hasattr(obj, '__dict__') else str(obj)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error creating {self.model_class.__name__}: {e}")
+            logger.error(f"Record data: {obj.__dict__ if hasattr(obj, '__dict__') else str(obj)}")
             return False
     
     def get_by_id(self, record_id: str, id_field: str = 'ordinal_id') -> Optional[ModelType]:

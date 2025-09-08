@@ -120,7 +120,15 @@ class PdbxMessageIo:
                     self.__lfh.write(f"PdbxMessageIo: ERROR - SITE_DB_ADMIN_USER not configured for site_id={self.__site_id}\n")
                 raise ValueError(f"Database username not configured for site_id={self.__site_id}. Check SITE_DB_ADMIN_USER in ConfigInfo.")
         
-        self._dal = DataAccessLayer(db_config)
+        try:
+            self._dal = DataAccessLayer(db_config)
+            
+            if self.__verbose:
+                self.__lfh.write(f"PdbxMessageIo: Database adapter initialized successfully\n")
+        except Exception as e:
+            if self.__verbose:
+                self.__lfh.write(f"PdbxMessageIo: ERROR - Failed to initialize database adapter: {e}\n")
+            raise ValueError(f"Failed to initialize database adapter for site_id={self.__site_id}: {e}") from e
 
         # Current context selected by read(filePath)
         self._deposition_id: Optional[str] = None
@@ -229,6 +237,8 @@ class PdbxMessageIo:
             logger.info("DB MessageIo write() pending: msgs=%d files=%d statuses=%d",
                         len(self._pending_messages), len(self._pending_file_refs), len(self._pending_statuses))
         
+        success = True
+        
         # Messages
         for m in self._pending_messages:
             msg = ORMMessageInfo(
@@ -245,7 +255,9 @@ class PdbxMessageIo:
                 send_status=m.get("send_status", "Y"),
                 content_type=m.get("content_type", self._content_type),
             )
-            self._dal.create_message(msg)
+            if not self._dal.create_message(msg):
+                logger.error(f"Failed to create message with ID: {m['message_id']}")
+                success = False
 
         # File references
         for fr in self._pending_file_refs:
@@ -259,7 +271,9 @@ class PdbxMessageIo:
                 storage_type=fr.get("storage_type", "archive"),
                 upload_file_name=fr.get("upload_file_name"),
             )
-            self._dal.create_file_reference(ref)
+            if not self._dal.create_file_reference(ref):
+                logger.error(f"Failed to create file reference for message ID: {fr['message_id']}")
+                success = False
 
         # Status
         for st in self._pending_statuses:
@@ -270,18 +284,24 @@ class PdbxMessageIo:
                 action_reqd=st.get("action_reqd", "N"),
                 for_release=st.get("for_release", "N"),
             )
-            self._dal.create_or_update_status(status)
+            if not self._dal.create_or_update_status(status):
+                logger.error(f"Failed to create/update status for message ID: {st['message_id']}")
+                success = False
 
         # merge in-memory origcomm refs (not persisted)
         self._loaded_origcomm_refs.extend(self._pending_origcomm_refs)
 
-        # clear pendings and refresh loaded view
-        self._pending_messages.clear()
-        self._pending_file_refs.clear()
-        self._pending_statuses.clear()
-        self._pending_origcomm_refs.clear()
-        self._load_from_db()
-        return True
+        # clear pendings and refresh loaded view only if all operations succeeded
+        if success:
+            self._pending_messages.clear()
+            self._pending_file_refs.clear()
+            self._pending_statuses.clear()
+            self._pending_origcomm_refs.clear()
+            self._load_from_db()
+        else:
+            logger.error("Database write operations failed - keeping pending data for potential retry")
+        
+        return success
 
     # --------- Style/container compatibility (no-ops for DB) ---------
 
