@@ -28,13 +28,51 @@ logger = logging.getLogger(__name__)
 def _parse_context_from_path(file_path: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Extract deposition id and content_type from file path using PathInfo.splitFileName.
+    
+    For database-backed operation, we handle multiple path formats:
+    1. Workflow dummy paths: /dummy/messaging/D_1000000001/D_1000000001_messages-to-depositor_P1.cif.V1
+    2. Legacy hardcoded paths: /net/wwpdb_da/.../messages-to-depositor.cif
+    3. Any other format: try to extract deposition ID from context or return None for "all messages"
     """
+    # Handle legacy hardcoded file paths (non-workflow mode)
+    if not file_path.startswith("/dummy"):
+        # This is a legacy hardcoded path like "/net/wwpdb_da/.../messages-to-depositor.cif"
+        filename = os.path.basename(file_path)
+        if "messages-to-depositor" in filename:
+            return None, "messages-to-depositor"  # No specific deposition, but filter by content type
+        elif "messages-from-depositor" in filename:
+            return None, "messages-from-depositor"
+        elif "notes-from-annotator" in filename:
+            return None, "notes-from-annotator"
+        else:
+            return None, None  # No filtering
+    
+    # Handle workflow dummy paths
     pi = PathInfo()
     filename = os.path.basename(file_path)
     result = pi.splitFileName(filename)
     
     if result and len(result) >= 2:
-        return result[0], result[1]
+        dep_id = result[0]
+        content_type = result[1]
+        
+        # Validate that content_type is one of the expected values
+        valid_content_types = {'messages-from-depositor', 'messages-to-depositor', 'notes-from-annotator'}
+        if content_type in valid_content_types:
+            return dep_id, content_type
+        else:
+            # Invalid content_type, return dep_id but no content filtering
+            return dep_id, None
+    
+    # If we can't parse properly with splitFileName, try a simpler parse
+    # This handles cases where MessagingIo doesn't provide proper dummy paths
+    # but we might still be able to extract a deposition ID
+    simple_result = pi.splitFileName(filename)
+    if simple_result and len(simple_result) >= 1:
+        # Even if content_type parsing failed, we might have a valid deposition ID
+        dep_id = simple_result[0]
+        if dep_id and dep_id.startswith('D_'):
+            return dep_id, None
     
     return None, None
 
@@ -151,20 +189,31 @@ class PdbxMessageIo:
 
     # --------- Query (read) API ---------
 
-    def read(self, filePath: str, logtag: str = "") -> bool:
-        """Select deposition_id and content_type context; load existing rows from DB."""
+    def read(self, filePath: str, logtag: str = "", deposition_id: str = None) -> bool:
+        """Select deposition_id and content_type context; load existing rows from DB.
+        
+        Args:
+            filePath: File path to parse for context (workflow) or content type (legacy)
+            logtag: Optional logging tag
+            deposition_id: Optional explicit deposition ID (overrides path parsing)
+        """
         dep_id, content_type = _parse_context_from_path(filePath)
-        if dep_id:
+        
+        # Use explicit deposition_id if provided, otherwise use parsed
+        if deposition_id:
+            self._deposition_id = deposition_id
+        elif dep_id:
             self._deposition_id = dep_id
+            
         if content_type:
             self._content_type = content_type
 
         if self.__verbose:
-            logger.info("DB MessageIo read() filePath=%s dep_id=%s content_type=%s logtag=%s", filePath, self._deposition_id, self._content_type, logtag)
+            logger.info("DB MessageIo read() filePath=%s dep_id=%s content_type=%s logtag=%s", 
+                       filePath, self._deposition_id, self._content_type, logtag)
 
-        if not self._deposition_id:
-            return False
-
+        # Always try to load from DB, even if no deposition_id
+        # _load_from_db() will handle the no-deposition case gracefully
         self._load_from_db()
         return True
 
@@ -350,12 +399,18 @@ class PdbxMessageIo:
         self._loaded_file_refs.clear()
         self._loaded_statuses.clear()
 
-        # Load messages for deposition (optionally filter content_type)
-        msgs = self._dal.get_deposition_messages(self._deposition_id)
-        if self.__verbose:
-            logger.info("DB _load_from_db: Found %d total messages for deposition %s", len(msgs), self._deposition_id)
-            for m in msgs:
-                logger.info("  Message %s: content_type=%s, subject=%s", m.message_id, m.content_type, m.message_subject)
+        if self._deposition_id:
+            # Load messages for specific deposition (optionally filter content_type)
+            msgs = self._dal.get_deposition_messages(self._deposition_id)
+            if self.__verbose:
+                logger.info("DB _load_from_db: Found %d total messages for deposition %s", len(msgs), self._deposition_id)
+                for m in msgs:
+                    logger.info("  Message %s: content_type=%s, subject=%s", m.message_id, m.content_type, m.message_subject)
+        else:
+            # No deposition ID available - this is an error condition
+            if self.__verbose:
+                logger.error("DB _load_from_db: No deposition_id specified - cannot load messages without deposition context")
+            return  # Return with empty loaded_messages
         
         # Only filter by content_type if explicitly set (not empty/None)
         if self._content_type:
@@ -364,7 +419,7 @@ class PdbxMessageIo:
                 logger.info("DB _load_from_db: After filtering by content_type=%s, found %d messages", self._content_type, len(msgs))
         else:
             if self.__verbose:
-                logger.info("DB _load_from_db: No content_type filter, returning all %d messages", len(msgs))
+                logger.info("DB _load_from_db: No content_type filter, returning all %d messages for deposition", len(msgs))
 
         self._loaded_messages = [
             {
