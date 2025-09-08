@@ -26,6 +26,11 @@ class TestMessagingIoPersistence(unittest.TestCase):
         if not cls.site_id:
             raise unittest.SkipTest("Set WWPDB_SITE_ID to run persistence verification tests.")
 
+        # CRITICAL: Restore real ConfigInfo for database integration tests
+        # Remove any mocked ConfigInfo
+        if 'wwpdb.utils.config.ConfigInfo' in sys.modules:
+            del sys.modules['wwpdb.utils.config.ConfigInfo']
+
         # Import real dependencies
         from wwpdb.utils.config.ConfigInfo import ConfigInfo
         from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
@@ -89,9 +94,10 @@ class TestMessagingIoPersistence(unittest.TestCase):
                 "message_state": message_state,
                 "msg_id": msg_id,
                 "parent_msg_id": None,
-                "filesource": "archive",      # triggers workflow/db path
+                "filesource": "archive",      # CRITICAL: triggers workflow/db path
                 "WWPDB_SITE_ID": site_id,
                 "SITE_ID": site_id,
+                "groupid": "",  # Empty is fine
             }
             if extra:
                 self._vals.update(extra)
@@ -145,10 +151,11 @@ class TestMessagingIoPersistence(unittest.TestCase):
         SELECT 
             message_id,
             deposition_data_set_id,
-            read_flag,
-            action_reqd_flag,
-            for_release_flag,
-            timestamp
+            read_status,
+            action_reqd,
+            for_release,
+            created_at,
+            updated_at
         FROM pdbx_deposition_message_status 
         WHERE message_id = :msg_id
         """
@@ -273,7 +280,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         status_dict = {
             "deposition_data_set_id": self.dep_id,
             "message_id": msg_id,
-            "read_flag": "Y",
+            "read_status": "Y",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         read_result = io.markMsgAsRead(status_dict)
@@ -283,7 +290,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         tag_dict = {
             "deposition_data_set_id": self.dep_id,
             "message_id": msg_id,
-            "action_reqd_flag": "Y",
+            "action_reqd": "Y",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         tag_result = io.tagMsg(tag_dict)
@@ -294,7 +301,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         if len(status_results) > 0:
             print(f"   ✅ Status records found in database: {len(status_results)}")
             for status in status_results:
-                print(f"      Status: read={status.read_flag}, action_required={status.action_reqd_flag}, release={status.for_release_flag}")
+                print(f"      Status: read={status.read_status}, action_required={status.action_reqd}, release={status.for_release}")
         else:
             print(f"   ⚠️  No status records found for {msg_id}")
 
