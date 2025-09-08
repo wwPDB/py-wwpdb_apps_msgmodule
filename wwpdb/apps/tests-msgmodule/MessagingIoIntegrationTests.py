@@ -97,6 +97,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         def getValue(self, k): return self._vals.get(k, "")
         def getRawValue(self, k): return self._vals.get(k, "")
         def getValueList(self, k): return []
+        def setValue(self, k, v): self._vals[k] = v
         def newSessionObj(self): return TestMessagingIoDBIntegration._Sess()
         def getSessionObj(self): return TestMessagingIoDBIntegration._Sess()
 
