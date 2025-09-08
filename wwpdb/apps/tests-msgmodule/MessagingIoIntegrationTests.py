@@ -110,28 +110,28 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         req = self._Req(self.site_id, dep_id or self.dep_id, extra=req_extra or {})
         return self.MessagingIo(req, verbose=True)
 
-    def _cleanup_message_best_effort(self, message_id):
-        """Try to delete the test message directly from DB (best-effort; ignore failures)."""
-        try:
-            from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
-            cI = self.ConfigInfo(self.site_id)
-            db_cfg = {
-                "host": cI.get("SITE_DB_HOST_NAME"),
-                "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
-                "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
-                "username": cI.get("SITE_DB_ADMIN_USER"),
-                "password": cI.get("SITE_DB_ADMIN_PASS", ""),
-                "charset": "utf8mb4",
-            }
-            dal = DataAccessLayer(db_cfg)
-            with dal.db_connection.get_session() as sess:
-                sess.execute(
-                    "DELETE FROM pdbx_deposition_message_info WHERE message_id = :mid",
-                    {"mid": message_id},
-                )
-                sess.commit()
-        except Exception as e:
-            print(f"(cleanup skipped/failed) {e}")
+    # def _cleanup_message_best_effort(self, message_id):
+    #     """Try to delete the test message directly from DB (best-effort; ignore failures)."""
+    #     try:
+    #         from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
+    #         cI = self.ConfigInfo(self.site_id)
+    #         db_cfg = {
+    #             "host": cI.get("SITE_DB_HOST_NAME"),
+    #             "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
+    #             "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
+    #             "username": cI.get("SITE_DB_ADMIN_USER"),
+    #             "password": cI.get("SITE_DB_ADMIN_PASS", ""),
+    #             "charset": "utf8mb4",
+    #         }
+    #         dal = DataAccessLayer(db_cfg)
+    #         with dal.db_connection.get_session() as sess:
+    #             sess.execute(
+    #                 "DELETE FROM pdbx_deposition_message_info WHERE message_id = :mid",
+    #                 {"mid": message_id},
+    #             )
+    #             sess.commit()
+    #     except Exception as e:
+    #         print(f"(cleanup skipped/failed) {e}")
 
     # ---- Core smoke tests (reads, writes) ----
 
@@ -197,7 +197,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             if not found:
                 print(f"⚠ wrote {msg_id} but didn’t see it immediately (records={len(records)})")
 
-        self._cleanup_message_best_effort(msg_id)
+        # self._cleanup_message_best_effort(msg_id)
 
     # ---- File helpers ----
 
