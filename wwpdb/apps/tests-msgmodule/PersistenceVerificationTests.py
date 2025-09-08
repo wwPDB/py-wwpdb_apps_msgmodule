@@ -229,16 +229,25 @@ class TestMessagingIoPersistence(unittest.TestCase):
         io = self._new_io()
         write_res = io.processMsg(msg_obj)
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
-        
+
         self.assertTrue(write_ok, "Message should be written successfully")
         print(f"   ✅ Message written successfully")
+        
+        # Debug: Check if message ID changed after processing
+        final_msg_id = msg_obj.messageId
+        print(f"   🔍 Debug: Original msg_id: {msg_id}")
+        print(f"   🔍 Debug: Final messageId after processMsg: {final_msg_id}")
+        
+        # Use the final message ID for verification (in case it changed)
+        search_msg_id = final_msg_id if final_msg_id else msg_id
+        print(f"   🔍 Debug: Searching for msg_id: {search_msg_id}")
 
         # Verify in database directly
-        db_results = self._verify_message_in_db(msg_id)
-        self.assertTrue(len(db_results) > 0, f"Message {msg_id} should exist in database")
+        db_results = self._verify_message_in_db(search_msg_id)
+        self.assertTrue(len(db_results) > 0, f"Message {search_msg_id} should exist in database")
         
         db_msg = db_results[0]
-        self.assertEqual(db_msg.message_id, msg_id)
+        self.assertEqual(db_msg.message_id, search_msg_id)
         self.assertEqual(db_msg.deposition_data_set_id, self.dep_id)
         self.assertEqual(db_msg.message_subject, subject)
         self.assertIn("persistence testing", db_msg.message_text)
@@ -344,9 +353,18 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
         self.assertTrue(write_ok)
         print(f"   ✅ Step 1: Message written")
+        
+        # Debug: Check if message ID changed after processing
+        final_msg_id = msg_obj.messageId
+        print(f"   🔍 Debug: Original msg_id: {msg_id}")
+        print(f"   🔍 Debug: Final messageId after processMsg: {final_msg_id}")
+        
+        # Use the final message ID for verification (in case it changed)
+        search_msg_id = final_msg_id if final_msg_id else msg_id
+        print(f"   🔍 Debug: Searching for msg_id: {search_msg_id}")
 
         # 2. Read back via MessagingIo API
-        api_result = io.getMsg(p_msgId=msg_id, p_depId=self.dep_id)
+        api_result = io.getMsg(p_msgId=search_msg_id, p_depId=self.dep_id)
         if api_result:
             print(f"   ✅ Step 2: Message read via API")
             print(f"      API Subject: {api_result.get('message_subject', 'N/A')}")
@@ -354,7 +372,20 @@ class TestMessagingIoPersistence(unittest.TestCase):
             print(f"   ⚠️  Step 2: Message not found via API")
 
         # 3. Verify in database directly
-        db_results = self._verify_message_in_db(msg_id)
+        db_results = self._verify_message_in_db(search_msg_id)
+        
+        # Debug: Show what message IDs are actually in the database
+        all_msgs_query = """
+        SELECT message_id, deposition_data_set_id, message_subject 
+        FROM pdbx_deposition_message_info 
+        WHERE deposition_data_set_id = :dep_id
+        ORDER BY created_at DESC LIMIT 10
+        """
+        all_msgs = self._query_database_direct(all_msgs_query, {"dep_id": self.dep_id})
+        print(f"   🔍 Debug: Recent messages in DB for {self.dep_id}:")
+        for msg in all_msgs:
+            print(f"      - {msg.message_id}: {msg.message_subject}")
+        
         self.assertTrue(len(db_results) > 0)
         db_msg = db_results[0]
         print(f"   ✅ Step 3: Message verified in database")
