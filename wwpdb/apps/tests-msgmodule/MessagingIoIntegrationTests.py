@@ -135,12 +135,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     # ---- Core smoke tests (reads, writes) ----
 
-    def test_01_initializeDataStore(self):
+    def test_initializeDataStore(self):
         io = self._new_io()
         # Must not raise
         io.initializeDataStore()
 
-    def test_02_getMsgColList(self):
+    def test_getMsgColList(self):
         io = self._new_io()
         # Most impls accept a history flag; False is a safe default
         ok, cols = io.getMsgColList(False)
@@ -148,12 +148,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         self.assertIsInstance(cols, list)
         self.assertTrue(any(cols))
 
-    def test_03_setGroupId(self):
+    def test_setGroupId(self):
         io = self._new_io()
         # Should not raise
         io.setGroupId("grp-it")
 
-    def test_04_getMsgRowList_read_path(self):
+    def test_getMsgRowList_read_path(self):
         io = self._new_io()
         res = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         self.assertTrue(isinstance(res, (dict, list)))
@@ -161,12 +161,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             self.assertIn("RECORD_LIST", res)
             self.assertIsInstance(res["RECORD_LIST"], list)
 
-    def test_05_getMsg_specific(self):
+    def test_getMsg_specific(self):
         io = self._new_io()
         res = io.getMsg(p_msgId="NONEXISTENT_MSG", p_depId=self.dep_id)
         self.assertTrue(res is None or isinstance(res, dict))
 
-    def test_06_processMsg_write_then_read(self):
+    def test_processMsg_write_then_read(self):
         msg_id = self._new_msg_id("WRITE_READ")
         subject = f"IT write/read {msg_id}"
         body = f"Created at {datetime.utcnow().isoformat()}Z"
@@ -201,41 +201,41 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     # ---- File helpers ----
 
-    def test_07_checkAvailFiles(self):
+    def test_checkAvailFiles(self):
         io = self._new_io()
         avail = io.checkAvailFiles(self.dep_id)
         self.assertTrue(isinstance(avail, (list, dict)))
 
-    def test_08_getFilesRfrncd(self):
+    def test_getFilesRfrncd(self):
         io = self._new_io()
         refs = io.getFilesRfrncd(self.dep_id)
         self.assertTrue(isinstance(refs, (list, dict)))
 
     # ---- Lists/filters ----
 
-    def test_09_getMsgReadList(self):
+    def test_getMsgReadList(self):
         io = self._new_io()
         out = io.getMsgReadList(self.dep_id)
         self.assertIsInstance(out, list)
 
-    def test_10_getMsgNoActionReqdList(self):
+    def test_getMsgNoActionReqdList(self):
         io = self._new_io()
         out = io.getMsgNoActionReqdList(self.dep_id)
         self.assertIsInstance(out, list)
 
-    def test_11_getMsgForReleaseList(self):
+    def test_getMsgForReleaseList(self):
         io = self._new_io()
         out = io.getMsgForReleaseList(self.dep_id)
         self.assertIsInstance(out, list)
 
-    def test_12_getNotesList(self):
+    def test_getNotesList(self):
         io = self._new_io()
         out = io.getNotesList()
         self.assertIsInstance(out, list)
 
     # ---- Writes/changes and helpers ----
 
-    def test_13_markMsgAsRead_and_tagMsg(self):
+    def test_markMsgAsRead_and_tagMsg(self):
         io = self._new_io()
         status_dict = {
             "deposition_data_set_id": self.dep_id,
@@ -255,7 +255,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         ok_tag = io.tagMsg(tag_dict)
         self.assertIsInstance(ok_tag, bool)
 
-    def test_14_autoMsg(self):
+    def test_autoMsg(self):
         io = self._new_io()
         result = io.autoMsg(
             p_depIdList=[self.dep_id],
@@ -270,7 +270,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         self.assertIn('success', result[self.dep_id])
         self.assertIn('pdbx_model_updated', result[self.dep_id])
 
-    def test_15_sendSingle(self):
+    def test_sendSingle(self):
         io = self._new_io()
         ok = io.sendSingle(
             depId=self.dep_id,
@@ -282,7 +282,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         )
         self.assertIsInstance(ok, bool)
 
-    def test_16_getMsgTmpltDataItems_and_getStarterMsgBody(self):
+    def test_getMsgTmpltDataItems_and_getStarterMsgBody(self):
         io = self._new_io()
         d = {}
         io.getMsgTmpltDataItems(d)   # Should not raise; content impl-dependent
@@ -292,12 +292,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     # ---- Depositor-facing helpers ----
 
-    def test_17_get_message_list_from_depositor(self):
+    def test_get_message_list_from_depositor(self):
         io = self._new_io()
         out = io.get_message_list_from_depositor()
         self.assertIsInstance(out, list)
 
-    def test_18_get_message_subject_from_depositor_and_is_release_request(self):
+    def test_get_message_subject_from_depositor_and_is_release_request(self):
         io = self._new_io()
         subj = io.get_message_subject_from_depositor("NONEXISTENT_MSG")
         self.assertTrue(subj is None or isinstance(subj, str))
@@ -306,7 +306,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     # ---- Summary/boolean probes ----
 
-    def test_19_summary_booleans(self):
+    def test_summary_booleans(self):
         io = self._new_io()
         self.assertIsInstance(io.areAllMsgsRead(), bool)
         self.assertIsInstance(io.areAllMsgsActioned(), bool)
