@@ -4,8 +4,15 @@ from io import StringIO
 import sys
 import os
 
+if __package__ is None or __package__ == "":
+    from os import path
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+    from commonsetup import TESTOUTPUT  # noqa:  F401 pylint: disable=import-error,unused-import
+else:
+    from .commonsetup import TESTOUTPUT  # noqa: F401
+
 # Import the class to test
-from MessagingIo import MessagingIo
+from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 
 class TestMessagingIo(unittest.TestCase):
 
@@ -23,8 +30,8 @@ class TestMessagingIo(unittest.TestCase):
         # Initialize MessagingIo instance
         self.messaging_io = MessagingIo(self.req_obj, verbose=False, log=StringIO())
 
-    @patch('MessagingIo.ConfigInfo')
-    @patch('MessagingIo.ConfigInfoAppEm')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfo')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppEm')
     def test_initialization(self, mock_config_em, mock_config):
         # Test initialization sets up correctly
         mock_config_instance = Mock()
@@ -40,7 +47,7 @@ class TestMessagingIo(unittest.TestCase):
         self.assertIsNotNone(messaging_io)
         mock_config.assert_called_once_with('test_value')
 
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_initializeDataStore(self, mock_data_import):
         # Test data store initialization
         mock_instance = Mock()
@@ -59,8 +66,8 @@ class TestMessagingIo(unittest.TestCase):
         self.assertIsInstance(col_list, list)
         self.assertIn('ordinal_id', col_list)
 
-    @patch('MessagingIo.PdbxMessageIo')
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_getMsg(self, mock_data_import, mock_pdbx_io):
         # Test getting a single message
         mock_pdbx_instance = Mock()
@@ -79,8 +86,8 @@ class TestMessagingIo(unittest.TestCase):
         msg_dict = self.messaging_io.getMsg('test_id', 'D_000000')
         self.assertEqual(msg_dict['message_id'], 'test_id')
 
-    @patch('MessagingIo.PdbxMessageIo')
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_getMsgRowList(self, mock_data_import, mock_pdbx_io):
         # Test getting message row list
         mock_pdbx_instance = Mock()
@@ -98,7 +105,7 @@ class TestMessagingIo(unittest.TestCase):
         result = self.messaging_io.getMsgRowList('D_000000', p_sSendStatus='Y')
         self.assertIn('RECORD_LIST', result)
 
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_checkAvailFiles(self, mock_data_import):
         # Test checking available files
         mock_instance = Mock()
@@ -108,8 +115,8 @@ class TestMessagingIo(unittest.TestCase):
         files = self.messaging_io.checkAvailFiles('D_000000')
         self.assertIsInstance(files, list)
 
-    @patch('MessagingIo.PdbxMessageIo')
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_getFilesRfrncd(self, mock_data_import, mock_pdbx_io):
         # Test getting file references
         mock_pdbx_instance = Mock()
@@ -129,9 +136,9 @@ class TestMessagingIo(unittest.TestCase):
 
     # Additional tests for other methods can be added similarly
 
-    @patch('MessagingIo.AutoMessage')
-    @patch('MessagingIo.MessagingDataExport')
-    @patch('MessagingIo.MessagingDataImport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.AutoMessage')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataExport')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
     def test_processMsg(self, mock_data_import, mock_data_export, mock_auto_msg):
         # Test processing a message
         mock_msg_obj = Mock()
@@ -159,7 +166,7 @@ class TestMessagingIo(unittest.TestCase):
         self.assertIsInstance(model_updated, bool)
         self.assertIsInstance(failed_files, list)
 
-    @patch('MessagingIo.MsgTmpltHlpr')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MsgTmpltHlpr')
     def test_getMsgTmpltDataItems(self, mock_tmplt_hlpr):
         # Test getting message template data items
         mock_instance = Mock()
