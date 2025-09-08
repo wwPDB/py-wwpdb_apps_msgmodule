@@ -100,6 +100,14 @@ class _BasePdbxMessage:
 
     def set(self, rowDict: Dict):
         """Set values from dict (for compatibility)"""
+        # Auto-generate message_id if not provided (for live messages)
+        if "message_id" not in rowDict or not rowDict["message_id"]:
+            import uuid
+            rowDict = rowDict.copy()  # Don't modify the original dict
+            rowDict["message_id"] = str(uuid.uuid4())
+            if self.__verbose:
+                self.__lfh.write(f"PdbxMessageInfo: Auto-generated message_id: {rowDict['message_id']}\n")
+        
         self._row_dict.update(rowDict)
         if self._model:
             for key, value in rowDict.items():
