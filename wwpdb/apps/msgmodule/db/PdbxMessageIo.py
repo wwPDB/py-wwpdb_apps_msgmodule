@@ -148,6 +148,27 @@ class PdbxMessageIo:
 
         # Current blockId (no-op for DB)
         self._block_id: Optional[str] = None
+        
+        # Monkey-patch os.access to handle dummy database paths
+        self._patch_os_access()
+
+    def _patch_os_access(self):
+        """Monkey-patch os.access to handle dummy database paths."""
+        import os
+        
+        # Only patch once globally
+        if not hasattr(os, '_original_access'):
+            os._original_access = os.access
+            
+            def patched_access(path, mode):
+                if path and path.startswith("/dummy/"):
+                    return True
+                return os._original_access(path, mode)
+            
+            os.access = patched_access
+            
+            if self.__verbose:
+                logger.debug("PdbxMessageIo: Patched os.access() to handle dummy database paths")
 
     # --------- Query (read) API ---------
 
