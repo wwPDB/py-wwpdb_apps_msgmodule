@@ -346,8 +346,9 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
 
-        # 2. Read back via MessagingIo API
-        api_result = io.getMsg(p_msgId=message_id, p_depId=self.dep_id)
+        # 2. Read back via MessagingIo API - ensure content_type is set to trigger DB loading
+        io_for_read = self._new_io(content_type="msgs")  # MessagingIo.getMsg() requires content_type="msgs" to load from DB
+        api_result = io_for_read.getMsg(p_msgId=message_id, p_depId=self.dep_id)
         if api_result:
             print(f"   ✅ Step 2: Message read via API")
             print(f"      API Subject: {api_result.get('message_subject', 'N/A')}")
