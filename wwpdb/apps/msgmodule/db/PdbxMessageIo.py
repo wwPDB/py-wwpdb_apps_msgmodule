@@ -241,6 +241,9 @@ class PdbxMessageIo:
         
         # Messages
         for m in self._pending_messages:
+            if self.__verbose:
+                logger.info(f"Processing message data: {m}")
+            
             msg = ORMMessageInfo(
                 message_id=m["message_id"],
                 deposition_data_set_id=m.get("deposition_data_set_id", self._deposition_id),
@@ -255,9 +258,16 @@ class PdbxMessageIo:
                 send_status=m.get("send_status", "Y"),
                 content_type=m.get("content_type", self._content_type),
             )
+            
+            if self.__verbose:
+                logger.info(f"Created ORM object: message_id={msg.message_id}, deposition_data_set_id={msg.deposition_data_set_id}, timestamp={msg.timestamp}")
+            
             if not self._dal.create_message(msg):
                 logger.error(f"Failed to create message with ID: {m['message_id']}")
                 success = False
+            else:
+                if self.__verbose:
+                    logger.info(f"Successfully created message with ID: {m['message_id']}")
 
         # File references
         for fr in self._pending_file_refs:
