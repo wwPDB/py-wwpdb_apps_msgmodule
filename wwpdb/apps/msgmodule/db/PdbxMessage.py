@@ -11,6 +11,7 @@ PdbxMessage classes but work with the existing SQLAlchemy models from Models.py.
 """
 
 import sys
+import time
 import uuid
 from datetime import datetime
 from typing import Dict, Optional
@@ -120,6 +121,73 @@ class PdbxMessageInfo(_BasePdbxMessage):
     def __init__(self, verbose: bool = False, log=sys.stderr):
         model = MessageInfo()
         super().__init__(model, verbose, log)
+        # Initialize defaults like the original CIF implementation
+        self._init_defaults()
+
+    def _init_defaults(self):
+        """Initialize required defaults matching original CIF behavior"""
+        # Generate message_id if not present
+        msg_id = self._row_dict.get("message_id") or getattr(self._model, "message_id", None)
+        if not msg_id:
+            msg_id = str(uuid.uuid4())
+            self._row_dict["message_id"] = msg_id
+            if self._model:
+                self._model.message_id = msg_id
+        
+        # Set parent_message_id to same as message_id if not present
+        pmid = self._row_dict.get("parent_message_id") or getattr(self._model, "parent_message_id", None)
+        if not pmid:
+            self._row_dict["parent_message_id"] = msg_id
+            if self._model:
+                self._model.parent_message_id = msg_id
+        
+        # Set timestamp to current GMT time if not present
+        ts = self._row_dict.get("timestamp") or getattr(self._model, "timestamp", None)
+        if not ts:
+            gmt_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            self._row_dict["timestamp"] = gmt_timestamp
+            if self._model:
+                self._model.timestamp = _parse_timestamp(gmt_timestamp)
+        
+        # Set message_type default
+        mt = self._row_dict.get("message_type") or getattr(self._model, "message_type", None)
+        if not mt:
+            self._row_dict["message_type"] = "text"
+            if self._model:
+                self._model.message_type = "text"
+        
+        # Set send_status default to "N" (not "Y")
+        ss = self._row_dict.get("send_status") or getattr(self._model, "send_status", None)
+        if not ss:
+            self._row_dict["send_status"] = "N"
+            if self._model:
+                self._model.send_status = "N"
+
+    def set(self, rowDict: Dict):
+        """Set values from dict with alias normalization"""
+        rd = dict(rowDict or {})
+        
+        # Normalize common aliases used by upstream code
+        if "msg_id" in rd and "message_id" not in rd:
+            rd["message_id"] = rd["msg_id"]
+        if "identifier" in rd and "deposition_data_set_id" not in rd:
+            rd["deposition_data_set_id"] = rd["identifier"]
+        
+        # Update in-memory dict
+        self._row_dict.update(rd)
+        
+        # Update model where attributes exist
+        if self._model:
+            for key, value in rd.items():
+                if hasattr(self._model, key):
+                    if key == 'timestamp' and isinstance(value, str):
+                        setattr(self._model, key, _parse_timestamp(value))
+                    else:
+                        setattr(self._model, key, value)
+        
+        # Ensure required defaults are still present
+        self._init_defaults()
+        return self.get()
 
     def setTimestamp(self, v):
         if isinstance(v, datetime):
@@ -127,7 +195,7 @@ class PdbxMessageInfo(_BasePdbxMessage):
             self._row_dict["timestamp"] = _fmt_timestamp(v)
         else:
             timestamp = _parse_timestamp(v)
-            self._row_dict["timestamp"] = v
+            self._row_dict["timestamp"] = _fmt_timestamp(timestamp)
         
         if self._model:
             self._model.timestamp = timestamp
@@ -214,8 +282,8 @@ class PdbxMessageInfo(_BasePdbxMessage):
 
     def getSendStatus(self) -> str:
         if self._model:
-            return self._model.send_status or "Y"
-        return self._row_dict.get("send_status", "Y")
+            return self._model.send_status or "N"
+        return self._row_dict.get("send_status", "N")
 
     def setContentType(self, v: str):
         if self._model:
@@ -266,14 +334,24 @@ class PdbxMessageFileReference(_BasePdbxMessage):
         return self._row_dict.get("partition_number", 1)
 
     def setVersionId(self, v: int):
+        # API uses 'version_id' but DB schema may use 'version_number'
         if self._model:
-            self._model.version_id = v
+            if hasattr(self._model, "version_number"):
+                self._model.version_number = v
+            else:
+                self._model.version_id = v
+        # Store in both possible keys for compatibility
         self._row_dict["version_id"] = v
+        self._row_dict["version_number"] = v
 
     def getVersionId(self) -> int:
         if self._model:
-            return self._model.version_id or 1
-        return self._row_dict.get("version_id", 1)
+            # Check DB attribute first
+            if hasattr(self._model, "version_number") and self._model.version_number:
+                return self._model.version_number
+            return getattr(self._model, "version_id", None) or 1
+        # Check both possible keys in row_dict
+        return self._row_dict.get("version_number") or self._row_dict.get("version_id", 1)
 
     def setStorageType(self, v: str):
         if self._model:
