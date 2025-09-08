@@ -170,6 +170,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         msg_id = self._new_msg_id("WRITE_READ")
         subject = f"IT write/read {msg_id}"
         body = f"Created at {datetime.utcnow().isoformat()}Z"
+        
+        print(f"\n🔍 PERSISTENCE TEST - Creating message:")
+        print(f"   Message ID: {msg_id}")
+        print(f"   Dataset ID: {self.dep_id}")
+        print(f"   Subject: {subject}")
+        print(f"   Timestamp: {datetime.utcnow().isoformat()}Z")
 
         # Build a real Message from request-like object
         req_for_msg = self._Req(
@@ -196,7 +202,13 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             found = any(r.get("message_id") == msg_id for r in records)
             if not found:
                 print(f"⚠ wrote {msg_id} but didn’t see it immediately (records={len(records)})")
+            print(f"✅ SUCCESS: Message {msg_id} written to database successfully!")
+        else:
+            print(f"❌ FAILED: Message {msg_id} write failed!")
 
+        print(f"\n📊 SQL QUERY TO FIND THIS MESSAGE:")
+        print(f"   SELECT * FROM wwpdb_messaging.pdbx_deposition_message_info WHERE message_id = '{msg_id}';")
+        print(f"   SELECT * FROM wwpdb_messaging.pdbx_deposition_message_info WHERE deposition_data_set_id = '{self.dep_id}' ORDER BY timestamp DESC;")
         # self._cleanup_message_best_effort(msg_id)
 
     # ---- File helpers ----
