@@ -100,6 +100,14 @@ class _BasePdbxMessage:
 
     def set(self, rowDict: Dict):
         """Set values from dict (for compatibility)"""
+        # Ensure message_id is always present (mimicking original CIF behavior)
+        if 'message_id' not in rowDict or not rowDict['message_id']:
+            import uuid
+            rowDict = rowDict.copy()  # Don't modify the original dict
+            rowDict['message_id'] = str(uuid.uuid4())
+            if self._verbose:
+                print(f"PdbxMessageInfo: Auto-generated message_id: {rowDict['message_id']}")
+        
         self._row_dict.update(rowDict)
         if self._model:
             for key, value in rowDict.items():
