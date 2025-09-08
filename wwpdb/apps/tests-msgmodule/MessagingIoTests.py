@@ -54,9 +54,10 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_instance
         mock_instance.getFilePath.return_value = '/tmp/model_file.cif'
         
-        # Mock os.access to return False so initdb logic doesn't run
-        with patch('os.access', return_value=False):
-            self.messaging_io.initializeDataStore()
+        # Mock __isWorkflow to return True and os.access to return False so initdb logic doesn't run
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            with patch('os.access', return_value=False):
+                self.messaging_io.initializeDataStore()
         
         # Assert that getFilePath was called with correct parameters
         mock_instance.getFilePath.assert_called_with(contentType="model", format="pdbx")
@@ -95,7 +96,9 @@ class TestMessagingIo(unittest.TestCase):
         # Mock the request object to return 'msgs' for content_type
         self.req_obj.getValue.return_value = 'msgs'
         
-        msg_dict = self.messaging_io.getMsg('test_id', 'D_000000')
+        # Mock __isWorkflow to return True
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            msg_dict = self.messaging_io.getMsg('test_id', 'D_000000')
         self.assertEqual(msg_dict['message_id'], 'test_id')
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
@@ -114,7 +117,12 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_data_instance
         mock_data_instance.getFilePath.return_value = '/tmp/message_file.cif'
         
-        result = self.messaging_io.getMsgRowList('D_000000', p_sSendStatus='Y')
+        # Mock the request object and workflow state
+        self.req_obj.getValue.return_value = 'msgs'
+        
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            with patch('os.access', return_value=True):
+                result = self.messaging_io.getMsgRowList('D_000000', p_sSendStatus='Y')
         self.assertIn('RECORD_LIST', result)
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
@@ -124,9 +132,10 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_instance
         mock_instance.getFilePath.return_value = '/tmp/file.txt'
         
-        # Mock os.access to return True
-        with patch('os.access', return_value=True):
-            files = self.messaging_io.checkAvailFiles('D_000000')
+        # Mock __isWorkflow to return True so we go through the workflow branch
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            with patch('os.access', return_value=True):
+                files = self.messaging_io.checkAvailFiles('D_000000')
         self.assertIsInstance(files, list)
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
@@ -145,7 +154,12 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_data_instance
         mock_data_instance.getFilePath.return_value = '/tmp/message_file.cif'
         
-        files = self.messaging_io.getFilesRfrncd('D_000000')
+        # Mock the request object and workflow state
+        self.req_obj.getValue.return_value = 'msgs'
+        
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            with patch('os.access', return_value=True):
+                files = self.messaging_io.getFilesRfrncd('D_000000')
         self.assertIsInstance(files, dict)
 
     # Additional tests for other methods can be added similarly
