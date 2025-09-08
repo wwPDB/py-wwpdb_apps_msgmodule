@@ -257,13 +257,18 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     def test_14_autoMsg(self):
         io = self._new_io()
-        ok = io.autoMsg(
+        result = io.autoMsg(
             p_depIdList=[self.dep_id],
             p_tmpltType="release-publ",
             p_isEmdbEntry=False,
             p_sender="it@auto",
         )
-        self.assertIsInstance(ok, bool)
+        # autoMsg returns a dictionary with results for each dep ID
+        self.assertIsInstance(result, dict)
+        self.assertIn(self.dep_id, result)
+        self.assertIsInstance(result[self.dep_id], dict)
+        self.assertIn('success', result[self.dep_id])
+        self.assertIn('pdbx_model_updated', result[self.dep_id])
 
     def test_15_sendSingle(self):
         io = self._new_io()
