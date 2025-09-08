@@ -122,43 +122,39 @@ class PdbxMessageInfo(_BasePdbxMessage):
         model = MessageInfo()
         super().__init__(model, verbose, log)
         # Initialize defaults like the original CIF implementation
-        self._init_defaults()
+        self._backfill_missing_defaults()
 
-    def _init_defaults(self):
-        """Initialize required defaults matching original CIF behavior"""
-        # Generate message_id if not present
-        msg_id = self._row_dict.get("message_id") or getattr(self._model, "message_id", None)
-        if not msg_id:
+    def _backfill_missing_defaults(self):
+        """Backfill only missing required defaults without overwriting existing values"""
+        # Only generate message_id if truly missing
+        if not self._row_dict.get("message_id") and not (self._model and getattr(self._model, "message_id", None)):
             msg_id = str(uuid.uuid4())
             self._row_dict["message_id"] = msg_id
             if self._model:
                 self._model.message_id = msg_id
-        
+
         # Set parent_message_id to same as message_id if not present
-        pmid = self._row_dict.get("parent_message_id") or getattr(self._model, "parent_message_id", None)
-        if not pmid:
-            self._row_dict["parent_message_id"] = msg_id
+        current_msg_id = self._row_dict.get("message_id") or (self._model and getattr(self._model, "message_id", None))
+        if current_msg_id and not self._row_dict.get("parent_message_id") and not (self._model and getattr(self._model, "parent_message_id", None)):
+            self._row_dict["parent_message_id"] = current_msg_id
             if self._model:
-                self._model.parent_message_id = msg_id
+                self._model.parent_message_id = current_msg_id
         
         # Set timestamp to current GMT time if not present
-        ts = self._row_dict.get("timestamp") or getattr(self._model, "timestamp", None)
-        if not ts:
+        if not self._row_dict.get("timestamp") and not (self._model and getattr(self._model, "timestamp", None)):
             gmt_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             self._row_dict["timestamp"] = gmt_timestamp
             if self._model:
                 self._model.timestamp = _parse_timestamp(gmt_timestamp)
         
         # Set message_type default
-        mt = self._row_dict.get("message_type") or getattr(self._model, "message_type", None)
-        if not mt:
+        if not self._row_dict.get("message_type") and not (self._model and getattr(self._model, "message_type", None)):
             self._row_dict["message_type"] = "text"
             if self._model:
                 self._model.message_type = "text"
         
         # Set send_status default to "N" (not "Y")
-        ss = self._row_dict.get("send_status") or getattr(self._model, "send_status", None)
-        if not ss:
+        if not self._row_dict.get("send_status") and not (self._model and getattr(self._model, "send_status", None)):
             self._row_dict["send_status"] = "N"
             if self._model:
                 self._model.send_status = "N"
@@ -185,9 +181,45 @@ class PdbxMessageInfo(_BasePdbxMessage):
                     else:
                         setattr(self._model, key, value)
         
-        # Ensure required defaults are still present
-        self._init_defaults()
+        # Only backfill defaults for fields that are still missing
+        # Don't overwrite explicitly provided values
+        self._backfill_missing_defaults()
         return self.get()
+
+    def _backfill_missing_defaults(self):
+        """Backfill only missing required defaults without overwriting existing values"""
+        # Only generate message_id if truly missing
+        if not self._row_dict.get("message_id") and not (self._model and getattr(self._model, "message_id", None)):
+            msg_id = str(uuid.uuid4())
+            self._row_dict["message_id"] = msg_id
+            if self._model:
+                self._model.message_id = msg_id
+
+        # Set parent_message_id to same as message_id if not present
+        current_msg_id = self._row_dict.get("message_id") or (self._model and getattr(self._model, "message_id", None))
+        if current_msg_id and not self._row_dict.get("parent_message_id") and not (self._model and getattr(self._model, "parent_message_id", None)):
+            self._row_dict["parent_message_id"] = current_msg_id
+            if self._model:
+                self._model.parent_message_id = current_msg_id
+        
+        # Set timestamp to current GMT time if not present
+        if not self._row_dict.get("timestamp") and not (self._model and getattr(self._model, "timestamp", None)):
+            gmt_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            self._row_dict["timestamp"] = gmt_timestamp
+            if self._model:
+                self._model.timestamp = _parse_timestamp(gmt_timestamp)
+        
+        # Set message_type default
+        if not self._row_dict.get("message_type") and not (self._model and getattr(self._model, "message_type", None)):
+            self._row_dict["message_type"] = "text"
+            if self._model:
+                self._model.message_type = "text"
+        
+        # Set send_status default to "N" (not "Y")
+        if not self._row_dict.get("send_status") and not (self._model and getattr(self._model, "send_status", None)):
+            self._row_dict["send_status"] = "N"
+            if self._model:
+                self._model.send_status = "N"
 
     def setTimestamp(self, v):
         if isinstance(v, datetime):
