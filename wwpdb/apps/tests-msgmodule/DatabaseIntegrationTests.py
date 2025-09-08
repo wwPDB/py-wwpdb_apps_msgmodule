@@ -619,6 +619,74 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✗ Database diagnostics failed: {e}")
             import traceback
             traceback.print_exc()
+    
+    def test_direct_database_write_operation(self):
+        """Test direct database write operation to see detailed error messages"""
+        try:
+            from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+            import logging
+            
+            # Enable detailed logging
+            logging.basicConfig(level=logging.DEBUG)
+            logger = logging.getLogger()
+            
+            site_id = os.getenv("WWPDB_SITE_ID")
+            print(f"✓ Testing direct database write with site_id: {site_id}")
+            
+            # Create PdbxMessageIo instance
+            db_io = PdbxMessageIo(site_id, verbose=True)
+            print("✓ PdbxMessageIo instance created")
+            
+            # Set up a test context
+            db_io.read("/tmp/test_messages-to-depositor_P1.cif.V1")
+            db_io.newBlock("messages")
+            
+            # Try to append a simple test message
+            test_msg_data = {
+                "message_id": "DIRECT_TEST_123",
+                "deposition_data_set_id": "D_1234567890",
+                "timestamp": "2025-09-08 12:00:00",
+                "sender": "test@direct.test",
+                "message_subject": "Direct Database Test",
+                "message_text": "Testing direct database write",
+                "message_type": "text",
+                "send_status": "Y",
+                "content_type": "messages-to-depositor"
+            }
+            
+            print("✓ Appending test message...")
+            db_io.appendMessage(test_msg_data)
+            
+            print("✓ Attempting database write...")
+            write_success = db_io.write("/tmp/test_output.cif")
+            print(f"✓ Direct write result: {write_success}")
+            
+            if write_success:
+                print("✓ SUCCESS: Direct database write worked!")
+                
+                # Try to read it back
+                db_io.read("/tmp/test_messages-to-depositor_P1.cif.V1") 
+                messages = db_io.getMessageInfo()
+                print(f"✓ After write, found {len(messages)} messages")
+                
+                found_test_msg = None
+                for msg in messages:
+                    if msg.get("message_id") == "DIRECT_TEST_123":
+                        found_test_msg = msg
+                        break
+                
+                if found_test_msg:
+                    print("✓ SUCCESS: Test message found in database after write!")
+                    print(f"  Message data: {found_test_msg}")
+                else:
+                    print("⚠ Test message not found after write")
+            else:
+                print("✗ Direct database write failed")
+                
+        except Exception as e:
+            print(f"✗ Direct database write test failed: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
