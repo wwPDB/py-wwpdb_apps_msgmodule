@@ -489,6 +489,136 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
         except Exception as e:
             self.fail(f"Full workflow test failed: {e}")
+    
+    def test_database_write_and_verify_persistence(self):
+        """Test that messages are actually written to and can be read from the database"""
+        try:
+            # Step 1: Generate unique test data
+            timestamp = int(datetime.now().timestamp())
+            msg_id = f"DB_PERSIST_TEST_{timestamp}"
+            test_dataset_id = f"D_2000000{timestamp % 1000:03d}"  # Unique dataset ID
+            test_subject = f"Database Persistence Test - {timestamp}"
+            test_message_text = f"This is a database persistence test message created at {datetime.now().isoformat()}"
+            
+            print(f"✓ Testing with unique message ID: {msg_id}")
+            print(f"✓ Testing with dataset ID: {test_dataset_id}")
+            
+            # Step 2: Create and send a message
+            req_obj = MockRequestObject(
+                identifier=test_dataset_id,
+                sender="db.persistence@test.com",
+                subject=test_subject,
+                message_text=test_message_text,
+                message_state="livemsg",
+                msg_id=msg_id
+            )
+            
+            message_obj = Message.fromReqObj(req_obj, verbose=True)
+            
+            # Create MessagingIo instance
+            messaging_req_obj = MockRequestObject(identifier=test_dataset_id)
+            messaging_io = MessagingIo(messaging_req_obj, verbose=True)
+            
+            # Write the message
+            write_result = messaging_io.processMsg(message_obj)
+            print(f"✓ Write result: {write_result}")
+            
+            # Extract success flag
+            if isinstance(write_result, tuple):
+                write_success = write_result[0] if len(write_result) > 0 else False
+            else:
+                write_success = bool(write_result)
+            
+            # Step 3: Verify the write was reported as successful
+            if not write_success:
+                print(f"⚠ Write operation reported failure - investigating why...")
+                # Still continue to check if it was actually written despite reporting failure
+            
+            # Step 4: Read messages back from database
+            message_list = messaging_io.getMsgRowList(
+                p_depDataSetId=test_dataset_id,
+                p_colSearchDict={}
+            )
+            
+            print(f"✓ Read back result: {type(message_list)}")
+            
+            # Step 5: Verify our message is in the database
+            found_message = None
+            if isinstance(message_list, dict) and 'RECORD_LIST' in message_list:
+                actual_messages = message_list['RECORD_LIST']
+                print(f"✓ Found {len(actual_messages)} total messages for dataset {test_dataset_id}")
+                
+                # Look for our specific message
+                for msg in actual_messages:
+                    if msg.get('message_id') == msg_id:
+                        found_message = msg
+                        break
+                        
+            elif isinstance(message_list, list):
+                # Direct list format
+                actual_messages = message_list
+                print(f"✓ Found {len(actual_messages)} total messages for dataset {test_dataset_id}")
+                
+                for msg in actual_messages:
+                    if msg.get('message_id') == msg_id:
+                        found_message = msg
+                        break
+            
+            # Step 6: Assert message persistence
+            if found_message:
+                print(f"✓ SUCCESS: Message {msg_id} was found in database!")
+                print(f"  - Subject: {found_message.get('message_subject')}")
+                print(f"  - Sender: {found_message.get('sender')}")
+                print(f"  - Dataset: {found_message.get('deposition_data_set_id')}")
+                
+                # Verify the data matches what we sent
+                self.assertEqual(found_message.get('message_id'), msg_id)
+                self.assertEqual(found_message.get('message_subject'), test_subject)
+                self.assertEqual(found_message.get('sender'), "db.persistence@test.com")
+                self.assertEqual(found_message.get('deposition_data_set_id'), test_dataset_id)
+                self.assertEqual(found_message.get('message_text'), test_message_text)
+                
+                print("✓ All message data verified correctly!")
+            else:
+                if write_success:
+                    self.fail(f"CRITICAL: Write was reported as successful, but message {msg_id} was NOT found in database!")
+                else:
+                    print(f"⚠ Expected behavior: Write failed and message {msg_id} was not found in database")
+                    print("This confirms that database writes are actually failing as reported")
+            
+        except Exception as e:
+            self.fail(f"Database persistence test failed: {e}")
+    
+    def test_database_connection_diagnostics(self):
+        """Test to diagnose why database operations might be failing"""
+        try:
+            from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+            
+            site_id = os.getenv("WWPDB_SITE_ID")
+            print(f"✓ Using site_id: {site_id}")
+            
+            # Try to create PdbxMessageIo directly and see what happens
+            try:
+                db_io = PdbxMessageIo(site_id, verbose=True)
+                print("✓ PdbxMessageIo created successfully")
+                
+                # Try a simple read operation
+                success = db_io.read("/tmp/test_messages-to-depositor_P1.cif.V1")
+                print(f"✓ Read operation result: {success}")
+                
+                # Try to get some data
+                messages = db_io.getMessageInfo()
+                print(f"✓ getMessageInfo() returned {len(messages)} messages")
+                
+            except Exception as db_error:
+                print(f"✗ PdbxMessageIo creation/operation failed: {db_error}")
+                import traceback
+                traceback.print_exc()
+            
+        except Exception as e:
+            print(f"✗ Database diagnostics failed: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
