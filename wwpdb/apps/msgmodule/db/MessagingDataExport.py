@@ -38,12 +38,17 @@ class MessagingDataExport(object):
         The database-backed PdbxMessageIo will parse this path to extract context
         information without actually accessing the file.
         """
+        if not self.__reqObj:
+            raise ValueError("Request object is required for MessagingDataExport in production")
+            
         try:
             # Get deposition ID from request object
-            depId = self.__reqObj.getValue("identifier") if self.__reqObj else "D_000000"
+            depId = self.__reqObj.getValue("identifier")
+            if not depId:
+                raise ValueError("Deposition identifier is required")
             
             # Get group ID if available
-            groupId = self.__reqObj.getValue("groupid") if self.__reqObj else ""
+            groupId = self.__reqObj.getValue("groupid") or ""
             if groupId and groupId.startswith("G_"):
                 depId = groupId
             
@@ -64,7 +69,7 @@ class MessagingDataExport(object):
             
         except Exception as e:
             logger.error("Error in MessagingDataExport.getFilePath: %s", e)
-            return None
+            raise
 
     def getFilePathExt(self, **kwargs):
         """
@@ -78,3 +83,44 @@ class MessagingDataExport(object):
         Stub method for compatibility.
         """
         return True
+
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+        """
+        Return dummy milestone file paths for database backend compatibility.
+        
+        Returns a dictionary with 'dpstPth' and 'annotPth' keys containing dummy paths
+        that the database backend can parse for context information.
+        """
+        if not self.__reqObj:
+            raise ValueError("Request object is required for MessagingDataExport milestone operations")
+            
+        try:
+            # Get deposition ID from request object
+            depId = self.__reqObj.getValue("identifier")
+            if not depId:
+                raise ValueError("Deposition identifier is required")
+            
+            # Get group ID if available
+            groupId = self.__reqObj.getValue("groupid") or ""
+            if groupId and groupId.startswith("G_") and contentType in ["messages-to-depositor", "messages-from-depositor", "notes-from-annotator"]:
+                depId = groupId
+            
+            # Construct dummy paths for both deposit and annotation versions
+            if contentType in ["messages-to-depositor", "messages-from-depositor", "notes-from-annotator"]:
+                filename = f"{depId}_{contentType}_P1.cif.V1"
+            else:
+                filename = f"{depId}_{contentType}_P1.{format}.V1"
+            
+            # Return dictionary matching original interface
+            pathDict = {}
+            pathDict["dpstPth"] = os.path.join("/dummy", "messaging", "deposit", depId, filename)
+            pathDict["annotPth"] = os.path.join("/dummy", "messaging", "archive", depId, filename)
+            
+            if self.__verbose:
+                logger.debug("MessagingDataExport stub returning milestone paths: %s", pathDict)
+                
+            return pathDict
+            
+        except Exception as e:
+            logger.error("Error in getMileStoneFilePaths: %s", e)
+            raise

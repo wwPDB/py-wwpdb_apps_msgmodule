@@ -31,6 +31,9 @@ class MessagingDataImport(object):
         self.__lfh = log
         self.__reqObj = reqObj
         self.__debug = False
+        
+        # Set up instance variables to match original interface
+        self.__setup()
 
     def getFilePath(self, contentType="model", format="pdbx", **kwargs):
         """
@@ -39,12 +42,17 @@ class MessagingDataImport(object):
         The database-backed PdbxMessageIo will parse this path to extract context
         information without actually accessing the file.
         """
+        if not self.__reqObj:
+            raise ValueError("Request object is required for MessagingDataImport in production")
+            
         try:
             # Get deposition ID from request object
-            depId = self.__reqObj.getValue("identifier") if self.__reqObj else "D_000000"
+            depId = self.__reqObj.getValue("identifier")
+            if not depId:
+                raise ValueError("Deposition identifier is required")
             
             # Get group ID if available
-            groupId = self.__reqObj.getValue("groupid") if self.__reqObj else ""
+            groupId = self.__reqObj.getValue("groupid") or ""
             if groupId and groupId.startswith("G_"):
                 depId = groupId
             
@@ -65,7 +73,7 @@ class MessagingDataImport(object):
             
         except Exception as e:
             logger.error("Error in MessagingDataImport.getFilePath: %s", e)
-            return None
+            raise
 
     def checkFilePathExists(self, filePath):
         """
@@ -78,3 +86,81 @@ class MessagingDataImport(object):
         Stub method for compatibility.
         """
         return None
+
+    def __setup(self):
+        """
+        Initialize instance variables to match original interface.
+        """
+        if not self.__reqObj:
+            raise ValueError("Request object is required for MessagingDataImport initialization")
+            
+        try:
+            identifier = self.__reqObj.getValue("identifier")
+            if not identifier:
+                raise ValueError("Deposition identifier is required")
+                
+            self.__identifier = str(identifier).upper()
+            self.__instance = str(self.__reqObj.getValue("instance") or "").upper()
+            
+            siteId = self.__reqObj.getValue("WWPDB_SITE_ID")
+            if not siteId:
+                raise ValueError("WWPDB_SITE_ID is required")
+            self.__siteId = str(siteId)
+            
+            self.__groupId = str(self.__reqObj.getValue("groupid") or "").upper()
+            self.__fileSource = "archive"  # Default file source
+                
+            if self.__verbose:
+                logger.debug("Database stub initialized - identifier: %s, instance: %s", 
+                           self.__identifier, self.__instance)
+                           
+        except Exception as e:
+            logger.exception("Error in __setup: %s", e)
+            raise ValueError(f"Failed to initialize MessagingDataImport: {e}") from e
+
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+        """
+        Return dummy milestone file paths for database backend compatibility.
+        
+        Returns a dictionary with 'dpstPth' and 'annotPth' keys containing dummy paths
+        that the database backend can parse for context information.
+        """
+        if not hasattr(self, '_MessagingDataImport__identifier'):
+            raise ValueError("MessagingDataImport not properly initialized - missing identifier")
+            
+        try:
+            # Get base identifier
+            depId = self.__identifier
+            
+            # Use group ID if available for messaging files
+            if (hasattr(self, '_MessagingDataImport__groupId') and 
+                self.__groupId and 
+                contentType in ["messages-to-depositor", "messages-from-depositor", "notes-from-annotator"]):
+                depId = self.__groupId
+            
+            # Construct dummy paths for both deposit and annotation versions
+            if contentType in ["messages-to-depositor", "messages-from-depositor", "notes-from-annotator"]:
+                filename = f"{depId}_{contentType}_P1.cif.V1"
+            else:
+                filename = f"{depId}_{contentType}_P1.{format}.V1"
+            
+            # Return dictionary matching original interface
+            pathDict = {}
+            pathDict["dpstPth"] = os.path.join("/dummy", "messaging", "deposit", depId, filename)
+            pathDict["annotPth"] = os.path.join("/dummy", "messaging", "archive", depId, filename)
+            
+            if self.__verbose:
+                logger.debug("MessagingDataImport stub returning milestone paths: %s", pathDict)
+                
+            return pathDict
+            
+        except Exception as e:
+            logger.error("Error in getMileStoneFilePaths: %s", e)
+            raise
+
+    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):
+        """
+        Internal method to match original interface.
+        Returns a dummy file path for database backend compatibility.
+        """
+        return self.getFilePath(contentType=contentType, format=fmt)
