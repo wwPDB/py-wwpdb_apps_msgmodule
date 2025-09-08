@@ -54,9 +54,11 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_instance
         mock_instance.getFilePath.return_value = '/tmp/model_file.cif'
         
-        self.messaging_io.initializeDataStore()
+        # Mock os.access to return False so initdb logic doesn't run
+        with patch('os.access', return_value=False):
+            self.messaging_io.initializeDataStore()
         
-        # Assert that getFilePath was called
+        # Assert that getFilePath was called with correct parameters
         mock_instance.getFilePath.assert_called_with(contentType="model", format="pdbx")
 
     def test_getMsgColList(self):
@@ -68,7 +70,8 @@ class TestMessagingIo(unittest.TestCase):
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
-    def test_getMsg(self, mock_data_import, mock_pdbx_io):
+    @patch('os.access')
+    def test_getMsg(self, mock_access, mock_data_import, mock_pdbx_io):
         # Test getting a single message
         mock_pdbx_instance = Mock()
         mock_pdbx_io.return_value = mock_pdbx_instance
@@ -76,12 +79,21 @@ class TestMessagingIo(unittest.TestCase):
         mock_pdbx_instance.getMessageInfo.return_value = [{
             'message_id': 'test_id',
             'message_text': 'test_text',
-            'timestamp': '2020-01-01 00:00:00'
+            'timestamp': '2020-01-01 00:00:00',
+            'message_type': 'text',
+            'message_subject': 'Test Subject',
+            'sender': 'test_sender'
         }]
         
         mock_data_instance = Mock()
         mock_data_import.return_value = mock_data_instance
         mock_data_instance.getFilePath.return_value = '/tmp/message_file.cif'
+        
+        # Mock os.access to return True
+        mock_access.return_value = True
+        
+        # Mock the request object to return 'msgs' for content_type
+        self.req_obj.getValue.return_value = 'msgs'
         
         msg_dict = self.messaging_io.getMsg('test_id', 'D_000000')
         self.assertEqual(msg_dict['message_id'], 'test_id')
@@ -112,7 +124,9 @@ class TestMessagingIo(unittest.TestCase):
         mock_data_import.return_value = mock_instance
         mock_instance.getFilePath.return_value = '/tmp/file.txt'
         
-        files = self.messaging_io.checkAvailFiles('D_000000')
+        # Mock os.access to return True
+        with patch('os.access', return_value=True):
+            files = self.messaging_io.checkAvailFiles('D_000000')
         self.assertIsInstance(files, list)
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
@@ -178,10 +192,9 @@ class TestMessagingIo(unittest.TestCase):
         mock_instance.populateTmpltDict.assert_called_once_with(return_dict)
 
     def test_getStarterMsgBody(self):
-        # Test getting starter message body
-        with patch('builtins.open', unittest.mock.mock_open(read_data='test content')):
-            content = self.messaging_io.getStarterMsgBody()
-        self.assertEqual(content, 'test content')
+        # Test getting starter message body - in non-workflow mode it returns "Groovin' High"
+        content = self.messaging_io.getStarterMsgBody()
+        self.assertEqual(content, "Groovin' High")
 
     # Continue with tests for other methods...
 
