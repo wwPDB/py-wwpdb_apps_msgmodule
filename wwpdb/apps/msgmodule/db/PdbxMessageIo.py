@@ -160,7 +160,7 @@ class PdbxMessageIo:
             self._content_type = content_type
 
         if self.__verbose:
-            logger.info("DB MessageIo read() dep_id=%s content_type=%s logtag=%s", self._deposition_id, self._content_type, logtag)
+            logger.info("DB MessageIo read() filePath=%s dep_id=%s content_type=%s logtag=%s", filePath, self._deposition_id, self._content_type, logtag)
 
         if not self._deposition_id:
             return False
