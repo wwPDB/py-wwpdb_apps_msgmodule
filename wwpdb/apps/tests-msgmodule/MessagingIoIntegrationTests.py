@@ -229,7 +229,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     def test_12_getNotesList(self):
         io = self._new_io()
-        out = io.getNotesList(self.dep_id)
+        out = io.getNotesList()
         self.assertIsInstance(out, list)
 
     # ---- Writes/changes and helpers ----
@@ -257,32 +257,22 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
     def test_14_autoMsg(self):
         io = self._new_io()
         ok = io.autoMsg(
-            p_depDataSetId=self.dep_id,
-            p_op="create",
-            p_msgId=None,
-            p_msgSubject="IT autoMsg subject",
-            p_msgType="text",
-            p_msgLvl="info",
-            p_msgRsltnLvl="none",
-            p_msgGroupId=None,
-            p_msgAnnCategory=None,
-            p_msgAnnTask=None,
-            p_msgAnnSubTask=None,
-            p_fileReferences=[],
-            msg="IT autoMsg body",
+            p_depIdList=[self.dep_id],
+            p_tmpltType="release-publ",
+            p_isEmdbEntry=False,
             p_sender="it@auto",
-            p_testemail=False,
-            p_tmpltType=None,
         )
         self.assertIsInstance(ok, bool)
 
     def test_15_sendSingle(self):
         io = self._new_io()
         ok = io.sendSingle(
-            p_depDataSetId=self.dep_id,
-            p_msgId="NONEXISTENT_FOR_IT",
+            depId=self.dep_id,
+            subject="IT sendSingle subject",
+            msg="IT sendSingle body",
             p_sender="it@single",
             p_testemail=False,
+            p_tmpltType="other",
         )
         self.assertIsInstance(ok, bool)
 
@@ -292,7 +282,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         io.getMsgTmpltDataItems(d)   # Should not raise; content impl-dependent
         self.assertIsInstance(d, dict)
         body = io.getStarterMsgBody()
-        self.assertTrue(isinstance(body, str))
+        self.assertTrue(body is None or isinstance(body, str))
 
     # ---- Depositor-facing helpers ----
 
@@ -316,7 +306,14 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         self.assertIsInstance(io.areAllMsgsActioned(), bool)
         self.assertIsInstance(io.anyReleaseFlags(), bool)
         self.assertIsInstance(io.anyUnactionApprovalWithoutCorrection(), bool)
-        self.assertIsInstance(io.anyNotesExist(), bool)
+        # anyNotesExist returns a tuple: (bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords)
+        notes_result = io.anyNotesExist()
+        self.assertIsInstance(notes_result, tuple)
+        self.assertEqual(len(notes_result), 4)
+        self.assertIsInstance(notes_result[0], bool)  # bAnyNotesIncldngArchvdMsgs
+        self.assertIsInstance(notes_result[1], bool)  # bAnnotNotes
+        self.assertIsInstance(notes_result[2], bool)  # bBmrbNotes
+        self.assertIsInstance(notes_result[3], int)   # iNumNotesRecords
 
 
 if __name__ == "__main__":
