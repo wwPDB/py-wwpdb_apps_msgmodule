@@ -687,6 +687,61 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✗ Direct database write test failed: {e}")
             import traceback
             traceback.print_exc()
+    
+    def test_database_table_inspection(self):
+        """Test to check if database tables exist and have the expected structure"""
+        try:
+            from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
+            from wwpdb.utils.config.ConfigInfo import ConfigInfo
+            
+            site_id = os.getenv("WWPDB_SITE_ID")
+            cI = ConfigInfo(site_id)
+            
+            db_config = {
+                "host": cI.get("SITE_DB_HOST_NAME"),
+                "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
+                "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
+                "username": cI.get("SITE_DB_ADMIN_USER"),
+                "password": cI.get("SITE_DB_ADMIN_PASS", ""),
+                "charset": "utf8mb4",
+            }
+            
+            print(f"✓ Checking database tables in: {db_config['database']} on {db_config['host']}:{db_config['port']}")
+            
+            # Create DataAccessLayer to check tables
+            dal = DataAccessLayer(db_config)
+            
+            # Try to inspect what tables exist
+            with dal.db_connection.get_session() as session:
+                # Check if we can query the database schema
+                result = session.execute("SHOW TABLES")
+                tables = result.fetchall()
+                print(f"✓ Found {len(tables)} tables in database:")
+                for table in tables:
+                    print(f"  - {table[0]}")
+                
+                # Check specifically for messaging tables
+                messaging_tables = [t[0] for t in tables if 'message' in t[0].lower()]
+                if messaging_tables:
+                    print(f"✓ Found messaging-related tables: {messaging_tables}")
+                    
+                    # Check the structure of the main message table
+                    for table_name in messaging_tables:
+                        if 'info' in table_name.lower():
+                            print(f"✓ Describing table structure for {table_name}:")
+                            desc_result = session.execute(f"DESCRIBE {table_name}")
+                            columns = desc_result.fetchall()
+                            for col in columns:
+                                print(f"    {col[0]} - {col[1]} - {col[2]} - {col[3]}")
+                            break
+                else:
+                    print("⚠ No messaging-related tables found")
+                    print("This could explain why writes appear successful but no data is persisted")
+                
+        except Exception as e:
+            print(f"✗ Database table inspection failed: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
