@@ -105,8 +105,8 @@ class _BasePdbxMessage:
             import uuid
             rowDict = rowDict.copy()  # Don't modify the original dict
             rowDict["message_id"] = str(uuid.uuid4())
-            if self.__verbose:
-                self.__lfh.write(f"PdbxMessageInfo: Auto-generated message_id: {rowDict['message_id']}\n")
+            if self._verbose:
+                self._log.write(f"PdbxMessageInfo: Auto-generated message_id: {rowDict['message_id']}\n")
         
         self._row_dict.update(rowDict)
         if self._model:
