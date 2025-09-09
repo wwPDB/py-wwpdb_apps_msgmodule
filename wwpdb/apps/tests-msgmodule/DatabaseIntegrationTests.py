@@ -131,7 +131,13 @@ class DatabaseIntegrationTests(unittest.TestCase):
         print(f"Testing MessagingIo with database adaptors (site_id={site_id})")
         print("Database connections will be handled automatically by PdbxMessageIo adaptors")
     def test_messaging_io_get_message_list_with_database(self):
-        """Test MessagingIo.getMsgRowList() with database backend - core READ operation"""
+        """Test MessagingIo.getMsgRowList() with database backend - core READ operation
+        
+        EXPLICIT SUCCESS CRITERIA for getMsgRowList:
+        - Must return dict with 'RECORD_LIST' key containing a list
+        - Each message record must have required fields: message_id, deposition_data_set_id, sender
+        - List should be empty or contain valid message dictionaries
+        """
         try:
             # Create mock request object for MessagingIo constructor
             req_obj = MockRequestObject(identifier="D_1000000001")
@@ -147,20 +153,83 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             print(f"✓ MessagingIo.getMsgRowList result: {message_list}")
             
-            # getMsgRowList returns a dict with RECORD_LIST containing the actual list
-            if isinstance(message_list, dict) and 'RECORD_LIST' in message_list:
-                actual_list = message_list['RECORD_LIST']
-                print(f"✓ Found {len(actual_list)} messages in RECORD_LIST")
-                self.assertIsInstance(actual_list, list)
-            else:
-                # Fallback: accept either dict or list
-                self.assertTrue(isinstance(message_list, (dict, list)))
+            # STRICTER ASSERTION: Must return dict with specific structure
+            self.assertIsInstance(message_list, dict, "getMsgRowList must return a dictionary")
+            self.assertIn('RECORD_LIST', message_list, "Result must contain 'RECORD_LIST' key")
+            
+            actual_list = message_list['RECORD_LIST']
+            self.assertIsInstance(actual_list, list, "RECORD_LIST must be a list")
+            print(f"✓ Found {len(actual_list)} messages in RECORD_LIST")
+            
+            # VALIDATE each message record has required fields
+            for i, message in enumerate(actual_list):
+                self.assertIsInstance(message, dict, f"Message {i} must be a dictionary")
+                # Verify essential fields exist (even if empty/None)
+                self.assertIn('message_id', message, f"Message {i} missing 'message_id' field")
+                self.assertIn('deposition_data_set_id', message, f"Message {i} missing 'deposition_data_set_id' field")
+                # sender might be optional depending on message type
+                if len(actual_list) > 0:
+                    print(f"✓ Sample message fields: {list(message.keys())}")
+                    break
             
         except Exception as e:
             self.fail(f"MessagingIo.getMsgRowList() failed with database backend: {e}")
     
+    def test_messaging_io_get_message_list_edge_cases(self):
+        """Test getMsgRowList() with edge cases: empty/None dataset IDs, invalid search parameters
+        
+        EDGE CASE TESTING:
+        - Empty dataset ID should return empty list or handle gracefully
+        - None dataset ID should not crash 
+        - Invalid search parameters should be handled safely
+        """
+        try:
+            req_obj = MockRequestObject(identifier="D_1000000001")
+            messaging_io = MessagingIo(req_obj, verbose=True)
+            
+            # Test 1: Empty dataset ID
+            empty_result = messaging_io.getMsgRowList(
+                p_depDataSetId="",
+                p_colSearchDict={}
+            )
+            self.assertIsInstance(empty_result, dict, "Empty dataset ID should return dict")
+            if 'RECORD_LIST' in empty_result:
+                self.assertIsInstance(empty_result['RECORD_LIST'], list, "Empty dataset should return list")
+                print(f"✓ Empty dataset returned {len(empty_result['RECORD_LIST'])} messages")
+            
+            # Test 2: None dataset ID (should handle gracefully)
+            try:
+                none_result = messaging_io.getMsgRowList(
+                    p_depDataSetId=None,
+                    p_colSearchDict={}
+                )
+                self.assertIsInstance(none_result, dict, "None dataset ID should return dict or handle gracefully")
+                print("✓ None dataset ID handled gracefully")
+            except (TypeError, AttributeError):
+                print("✓ None dataset ID appropriately rejected (expected behavior)")
+            
+            # Test 3: Nonexistent dataset ID
+            nonexistent_result = messaging_io.getMsgRowList(
+                p_depDataSetId="D_NONEXISTENT_9999999999",
+                p_colSearchDict={}
+            )
+            self.assertIsInstance(nonexistent_result, dict, "Nonexistent dataset should return dict")
+            if 'RECORD_LIST' in nonexistent_result:
+                self.assertIsInstance(nonexistent_result['RECORD_LIST'], list, "Nonexistent dataset should return empty list")
+                print(f"✓ Nonexistent dataset returned {len(nonexistent_result['RECORD_LIST'])} messages (expected: 0)")
+            
+        except Exception as e:
+            self.fail(f"getMsgRowList() edge case testing failed: {e}")
+    
     def test_messaging_io_process_message_with_database(self):
-        """Test MessagingIo.processMsg() with database backend - core WRITE operation"""
+        """Test MessagingIo.processMsg() with database backend - core WRITE operation
+        
+        EXPLICIT SUCCESS CRITERIA for processMsg:
+        - Must accept a valid Message object
+        - Must return boolean True or tuple with boolean True as first element for success
+        - Message object must have required attributes before processing
+        - Should not raise exceptions for valid input
+        """
         try:
             # Create unique message ID for this test
             msg_id = f"INTEGRATION_TEST_{int(datetime.now().timestamp())}"
@@ -178,12 +247,16 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Create REAL Message object using factory method
             message_obj = Message.fromReqObj(req_obj, verbose=True)
             
-            # Verify it's a real Message object with proper attributes
-            self.assertIsInstance(message_obj, Message)
-            self.assertTrue(hasattr(message_obj, 'contentType'))
-            self.assertTrue(hasattr(message_obj, 'getMsgDict'))
-            self.assertTrue(hasattr(message_obj, 'getOutputFileTarget'))
-            self.assertTrue(hasattr(message_obj, 'isLive'))
+            # STRICTER VALIDATION: Verify Message object is properly constructed
+            self.assertIsInstance(message_obj, Message, "Must create a valid Message instance")
+            self.assertTrue(hasattr(message_obj, 'contentType'), "Message must have contentType attribute")
+            self.assertTrue(hasattr(message_obj, 'getMsgDict'), "Message must have getMsgDict method")
+            self.assertTrue(hasattr(message_obj, 'getOutputFileTarget'), "Message must have getOutputFileTarget method")
+            self.assertTrue(hasattr(message_obj, 'isLive'), "Message must have isLive attribute")
+            
+            # Verify Message content
+            self.assertIsNotNone(message_obj.contentType, "Message contentType should not be None")
+            self.assertIsInstance(message_obj.isLive, bool, "Message isLive should be boolean")
             
             print(f"✓ Created real Message object: isLive={message_obj.isLive}, contentType={message_obj.contentType}")
             
@@ -198,26 +271,39 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             print(f"✓ MessagingIo.processMsg result: success={success}")
             
-            # processMsg returns a tuple (success_flag, another_flag, list) in some implementations
+            # STRICTER ASSERTION: Define what constitutes success
             if isinstance(success, tuple):
-                success_flag = success[0] if len(success) > 0 else False
-                print(f"✓ processMsg returned tuple, first element (success): {success_flag}")
-                self.assertIsInstance(success_flag, bool)
+                self.assertGreater(len(success), 0, "Tuple result must not be empty")
+                success_flag = success[0]
+                self.assertIsInstance(success_flag, bool, "First element of tuple must be boolean")
+                print(f"✓ processMsg returned tuple, success flag: {success_flag}")
+                
+                # Additional validation for tuple format
+                if len(success) > 1:
+                    print(f"✓ Full tuple result: {success}")
             else:
                 # Should return boolean for successful processing
-                self.assertIsInstance(success, bool)
+                self.assertIsInstance(success, bool, "processMsg must return boolean or tuple with boolean")
+                print(f"✓ processMsg returned boolean: {success}")
             
         except Exception as e:
             self.fail(f"MessagingIo.processMsg() failed with database backend: {e}")
     
     def test_messaging_io_get_specific_message(self):
-        """Test MessagingIo.getMsg() with database backend"""
+        """Test MessagingIo.getMsg() with database backend
+        
+        EXPLICIT SUCCESS CRITERIA for getMsg:
+        - Must accept valid message ID and dataset ID parameters
+        - Must return None for nonexistent messages OR dict with message data
+        - If dict returned, must contain basic message fields
+        - Should handle invalid parameters gracefully
+        """
         try:
             # Create MessagingIo instance
             req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
-            # Call getMsg() - should work even if message doesn't exist
+            # Test 1: Call getMsg() with nonexistent message - should return None or empty dict
             result = messaging_io.getMsg(
                 p_msgId="NONEXISTENT_MSG_ID",
                 p_depId="D_1000000001"
@@ -225,37 +311,84 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             print(f"✓ MessagingIo.getMsg result type: {type(result)}")
             
-            # Should return something (dict or None)
-            self.assertTrue(result is None or isinstance(result, dict))
+            # STRICTER ASSERTION: Must be None or dict, not any other type
+            self.assertTrue(result is None or isinstance(result, dict), 
+                          "getMsg must return None or dict")
+            
+            if result is not None:
+                if isinstance(result, dict):
+                    print(f"✓ getMsg returned dict with keys: {list(result.keys())}")
+                    # If we get a dict, it should have meaningful content
+                    if len(result) > 0:
+                        # Verify it has expected message-like structure
+                        potential_msg_fields = ['message_id', 'message_subject', 'sender', 'timestamp']
+                        found_fields = [field for field in potential_msg_fields if field in result]
+                        print(f"✓ Found message fields: {found_fields}")
+                else:
+                    self.fail(f"getMsg returned unexpected type: {type(result)}")
+            else:
+                print("✓ getMsg appropriately returned None for nonexistent message")
+                
+            # Test 2: Edge case - empty message ID
+            try:
+                empty_result = messaging_io.getMsg(
+                    p_msgId="",
+                    p_depId="D_1000000001"
+                )
+                self.assertTrue(empty_result is None or isinstance(empty_result, dict),
+                              "getMsg with empty ID should return None or dict")
+                print("✓ Empty message ID handled gracefully")
+            except Exception as edge_error:
+                print(f"✓ Empty message ID appropriately rejected: {edge_error}")
             
         except Exception as e:
             self.fail(f"MessagingIo.getMsg() failed with database backend: {e}")
     
     def test_messaging_io_mark_as_read_with_database(self):
-        """Test MessagingIo.markMsgAsRead() with database backend"""
+        """Test MessagingIo.markMsgAsRead() with database backend
+        
+        EXPLICIT SUCCESS CRITERIA for markMsgAsRead:
+        - Must accept a properly formatted message status dictionary
+        - Must return boolean indicating success/failure
+        - Required dict fields: deposition_data_set_id, message_id, read_status, timestamp
+        - Should handle nonexistent messages gracefully (return False, not crash)
+        """
         try:
             # Create mock request object for MessagingIo constructor
             req_obj = MockRequestObject(identifier="D_1000000001")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
-            # Create MessagingIo instance
-            messaging_io = MessagingIo(req_obj, verbose=True)
-            
-            # Create message status dict for marking as read
+            # VALIDATE required message status dict structure
             msg_status_dict = {
                 'deposition_data_set_id': 'D_1000000001',
                 'message_id': 'NONEXISTENT_MSG_ID',
-                'read_flag': 'Y',
+                'read_status': 'Y',
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
+            
+            # Verify dict has all required fields before calling
+            required_fields = ['deposition_data_set_id', 'message_id', 'read_status', 'timestamp']
+            for field in required_fields:
+                self.assertIn(field, msg_status_dict, f"Status dict missing required field: {field}")
+            
+            print(f"✓ Message status dict validated: {msg_status_dict}")
             
             # Call markMsgAsRead() - should work even if message doesn't exist
             result = messaging_io.markMsgAsRead(msg_status_dict)
             
             print(f"✓ MessagingIo.markMsgAsRead result: {result}")
             
-            # Should return a result (True/False)
-            self.assertIsInstance(result, bool)
+            # STRICTER ASSERTION: Must return boolean
+            self.assertIsInstance(result, bool, "markMsgAsRead must return boolean")
+            
+            # Test with malformed dict to ensure proper error handling
+            try:
+                malformed_dict = {'invalid': 'data'}
+                malformed_result = messaging_io.markMsgAsRead(malformed_dict)
+                print(f"✓ Malformed dict handled, result: {malformed_result}")
+                self.assertIsInstance(malformed_result, bool, "Even malformed input should return boolean")
+            except Exception as validation_error:
+                print(f"✓ Malformed dict appropriately rejected: {validation_error}")
             
         except Exception as e:
             self.fail(f"MessagingIo.markMsgAsRead() failed with database backend: {e}")

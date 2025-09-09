@@ -45,6 +45,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
         # Default dataset id (override with WWPDB_TEST_DEP_ID)
         cls.dep_id = os.getenv("WWPDB_TEST_DEP_ID", "D_1000000001")
+        cls._cleanup_queue = []  # Track messages to clean up
 
         # Basic connection info (non-fatal if None)
         try:
@@ -54,6 +55,39 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             print(f"DB target: host={cls._db_host} db={cls._db_name} site_id={cls.site_id}")
         except Exception:
             pass
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up test messages."""
+        for msg_id in cls._cleanup_queue:
+            try:
+                cls._cleanup_message(msg_id)
+            except Exception as e:
+                print(f"Warning: Failed to cleanup {msg_id}: {e}")
+
+    @classmethod
+    def _cleanup_message(cls, message_id: str):
+        """Actually remove test message from database."""
+        try:
+            from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
+            cI = cls.ConfigInfo(cls.site_id)
+            db_cfg = {
+                "host": cI.get("SITE_DB_HOST_NAME"),
+                "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
+                "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
+                "username": cI.get("SITE_DB_ADMIN_USER"),
+                "password": cI.get("SITE_DB_ADMIN_PASS", ""),
+                "charset": "utf8mb4",
+            }
+            dal = DataAccessLayer(db_cfg)
+            with dal.db_connection.get_session() as sess:
+                sess.execute(
+                    "DELETE FROM pdbx_deposition_message_info WHERE message_id = :mid",
+                    {"mid": message_id},
+                )
+                sess.commit()
+        except Exception:
+            pass  # Best effort cleanup
 
     # ---- Minimal session/request shims ----
 
@@ -109,67 +143,119 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
     def _new_io(self, dep_id=None, **req_extra):
         req = self._Req(self.site_id, dep_id or self.dep_id, extra=req_extra or {})
         return self.MessagingIo(req, verbose=True)
-
-    # def _cleanup_message_best_effort(self, message_id):
-    #     """Try to delete the test message directly from DB (best-effort; ignore failures)."""
-    #     try:
-    #         from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
-    #         cI = self.ConfigInfo(self.site_id)
-    #         db_cfg = {
-    #             "host": cI.get("SITE_DB_HOST_NAME"),
-    #             "port": int(cI.get("SITE_DB_PORT_NUMBER", "3306")),
-    #             "database": cI.get("WWPDB_MESSAGING_DB_NAME"),
-    #             "username": cI.get("SITE_DB_ADMIN_USER"),
-    #             "password": cI.get("SITE_DB_ADMIN_PASS", ""),
-    #             "charset": "utf8mb4",
-    #         }
-    #         dal = DataAccessLayer(db_cfg)
-    #         with dal.db_connection.get_session() as sess:
-    #             sess.execute(
-    #                 "DELETE FROM pdbx_deposition_message_info WHERE message_id = :mid",
-    #                 {"mid": message_id},
-    #             )
-    #             sess.commit()
-    #     except Exception as e:
-    #         print(f"(cleanup skipped/failed) {e}")
+    
+    def _find_message_by_id(self, msg_id: str, dep_id: str = None):
+        """Find a specific message in the database."""
+        io = self._new_io(dep_id or self.dep_id)
+        result = io.getMsgRowList(p_depDataSetId=dep_id or self.dep_id, p_colSearchDict={})
+        
+        if isinstance(result, dict):
+            records = result.get("RECORD_LIST", [])
+        else:
+            records = result if isinstance(result, list) else []
+        
+        for record in records:
+            if record.get("message_id") == msg_id:
+                return record
+        return None
 
     # ---- Core smoke tests (reads, writes) ----
 
     def test_initializeDataStore(self):
+        """Test that initializeDataStore doesn't crash and sets up properly."""
         io = self._new_io()
         # Must not raise
         io.initializeDataStore()
+        # TODO: Add assertion to verify data store was actually initialized
+        # This could check if required database connections are established
 
     def test_getMsgColList(self):
+        """Test column list retrieval with meaningful validation."""
         io = self._new_io()
         # Most impls accept a history flag; False is a safe default
         ok, cols = io.getMsgColList(False)
-        self.assertTrue(ok)
-        self.assertIsInstance(cols, list)
-        self.assertTrue(any(cols))
+        
+        # Enhanced assertions
+        self.assertTrue(ok, "getMsgColList should return success")
+        self.assertIsInstance(cols, list, "Columns should be returned as a list")
+        self.assertGreater(len(cols), 0, "Column list should not be empty")
+        
+        # Verify essential columns exist
+        expected_columns = ["message_id", "subject", "sender", "timestamp", "deposition_data_set_id"]
+        col_names = [col if isinstance(col, str) else col.get("name", "") for col in cols]
+        
+        for expected_col in expected_columns:
+            self.assertIn(expected_col, col_names, f"Essential column '{expected_col}' should be present")
+        
+        # Test with history flag
+        ok_hist, cols_hist = io.getMsgColList(True)
+        self.assertTrue(ok_hist, "getMsgColList with history=True should succeed")
+        self.assertIsInstance(cols_hist, list, "History columns should be returned as a list")
+        self.assertGreaterEqual(len(cols_hist), len(cols), "History view should have at least as many columns")
 
     def test_setGroupId(self):
+        """Test group ID setting with validation."""
         io = self._new_io()
-        # Should not raise
-        io.setGroupId("grp-it")
+        
+        # Test valid group ID
+        test_group_id = "grp-test-123"
+        io.setGroupId(test_group_id)
+        # TODO: Add assertion to verify group ID was actually set
+        # This would require access to the internal state or a getter method
+        
+        # Test edge cases
+        io.setGroupId("")  # Empty string should not crash
+        io.setGroupId(None)  # None should not crash
 
     def test_getMsgRowList_read_path(self):
+        """Test message list retrieval with structure validation."""
         io = self._new_io()
         res = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
-        self.assertTrue(isinstance(res, (dict, list)))
+        
+        # Enhanced assertions
+        self.assertIsInstance(res, (dict, list), "Result should be dict or list")
+        
         if isinstance(res, dict):
-            self.assertIn("RECORD_LIST", res)
-            self.assertIsInstance(res["RECORD_LIST"], list)
+            self.assertIn("RECORD_LIST", res, "Dict result should contain RECORD_LIST")
+            self.assertIsInstance(res["RECORD_LIST"], list, "RECORD_LIST should be a list")
+            
+            # Validate optional fields
+            if "TOTAL_RECORDS" in res:
+                self.assertIsInstance(res["TOTAL_RECORDS"], int, "TOTAL_RECORDS should be integer")
+                self.assertGreaterEqual(res["TOTAL_RECORDS"], 0, "TOTAL_RECORDS should be non-negative")
+        
+        # Test with different parameters
+        res_filtered = io.getMsgRowList(
+            p_depDataSetId=self.dep_id, 
+            p_colSearchDict={"sender": "test"}, 
+            p_bServerSide=True,
+            p_iDisplayStart=0,
+            p_iDisplayLength=10
+        )
+        self.assertIsInstance(res_filtered, (dict, list), "Filtered result should also be valid")
 
     def test_getMsg_specific(self):
+        """Test specific message retrieval with proper null handling."""
         io = self._new_io()
-        res = io.getMsg(p_msgId="NONEXISTENT_MSG", p_depId=self.dep_id)
-        self.assertTrue(res is None or isinstance(res, dict))
+        
+        # Test with non-existent message
+        res = io.getMsg(p_msgId="DEFINITELY_NONEXISTENT_MSG", p_depId=self.dep_id)
+        self.assertIsNone(res, "Non-existent message should return None")
+        
+        # Test with invalid parameters
+        res_invalid = io.getMsg(p_msgId="", p_depId=self.dep_id)
+        self.assertIsNone(res_invalid, "Empty message ID should return None")
+        
+        res_invalid_dep = io.getMsg(p_msgId="test", p_depId="INVALID_DEP_ID")
+        self.assertTrue(res_invalid_dep is None or isinstance(res_invalid_dep, dict), 
+                       "Invalid dep ID should return None or dict")
 
     def test_processMsg_write_then_read(self):
+        """Test complete message lifecycle with content verification."""
         msg_id = self._new_msg_id("WRITE_READ")
         subject = f"IT write/read {msg_id}"
         body = f"Created at {datetime.utcnow().isoformat()}Z"
+        sender = "it@write.test"
         
         print(f"\n🔍 PERSISTENCE TEST - Creating message:")
         print(f"   Message ID: {msg_id}")
@@ -180,7 +266,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         # Build a real Message from request-like object
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
-            sender="it@write",
+            sender=sender,
             subject=subject,
             message_text=body,
             msg_id=msg_id,
@@ -190,65 +276,136 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         io = self._new_io()
         write_res = io.processMsg(msg_obj)
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
-        self.assertIsInstance(write_ok, bool)
+        
+        # Enhanced assertions for write operation
+        self.assertIsInstance(write_ok, bool, "processMsg should return boolean success status")
+        
+        if isinstance(write_res, tuple) and len(write_res) >= 3:
+            _, pdbx_updated, failed_refs = write_res
+            self.assertIsInstance(pdbx_updated, bool, "pdbx_updated should be boolean")
+            self.assertIsInstance(failed_refs, list, "failed_refs should be list")
 
-        # Read back
+        # Read back and verify content
         res = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
-        self.assertTrue(isinstance(res, (dict, list)))
+        self.assertIsInstance(res, (dict, list), "Read result should be dict or list")
+        
         records = res.get("RECORD_LIST", res) if isinstance(res, dict) else res
-        self.assertIsInstance(records, list)
+        self.assertIsInstance(records, list, "Records should be a list")
 
+        # Verify message was actually written
         if write_ok:
-            found = any(r.get("message_id") == msg_id for r in records)
-            if not found:
-                print(f"⚠ wrote {msg_id} but didn’t see it immediately (records={len(records)})")
-            print(f"✅ SUCCESS: Message {msg_id} written to database successfully!")
+            found_message = None
+            for r in records:
+                if r.get("message_id") == msg_id:
+                    found_message = r
+                    break
+            
+            self.assertIsNotNone(found_message, f"Written message {msg_id} should be found in database")
+            
+            # Verify content integrity
+            if found_message:
+                self.assertEqual(found_message.get("message_id"), msg_id, "Message ID should match")
+                self.assertEqual(found_message.get("subject"), subject, "Subject should match")
+                self.assertEqual(found_message.get("sender"), sender, "Sender should match")
+                self.assertEqual(found_message.get("deposition_data_set_id"), self.dep_id, "Deposition ID should match")
+                # Note: message_text might be encoded/escaped, so we check if it contains our content
+                msg_text = found_message.get("message_text", "")
+                self.assertIn(msg_id, msg_text, "Message text should contain our test content")
+            
+            print(f"✅ SUCCESS: Message {msg_id} written and verified in database!")
         else:
-            print(f"❌ FAILED: Message {msg_id} write failed!")
+            print(f"❌ WRITE FAILED: Message {msg_id} write operation failed")
+
+        # Test specific message retrieval
+        specific_msg = io.getMsg(p_msgId=msg_id, p_depId=self.dep_id)
+        if write_ok:
+            self.assertIsNotNone(specific_msg, f"getMsg should retrieve written message {msg_id}")
+            if specific_msg:
+                self.assertEqual(specific_msg.get("message_id"), msg_id, "Retrieved message ID should match")
 
         print(f"\n📊 SQL QUERY TO FIND THIS MESSAGE:")
-        print(f"   SELECT * FROM wwpdb_messaging.pdbx_deposition_message_info WHERE message_id = '{msg_id}';")
-        print(f"   SELECT * FROM wwpdb_messaging.pdbx_deposition_message_info WHERE deposition_data_set_id = '{self.dep_id}' ORDER BY timestamp DESC;")
-        # self._cleanup_message_best_effort(msg_id)
+        print(f"   SELECT * FROM {self._db_name}.pdbx_deposition_message_info WHERE message_id = '{msg_id}';")
+        print(f"   SELECT * FROM {self._db_name}.pdbx_deposition_message_info WHERE deposition_data_set_id = '{self.dep_id}' ORDER BY timestamp DESC;")
+        
+        # Add to cleanup queue
+        if write_ok:
+            self._cleanup_queue.append(msg_id)
 
     # ---- File helpers ----
 
     def test_checkAvailFiles(self):
+        """Test file availability check with type validation."""
         io = self._new_io()
         avail = io.checkAvailFiles(self.dep_id)
-        self.assertTrue(isinstance(avail, (list, dict)))
+        
+        # Enhanced assertions
+        self.assertIsInstance(avail, (list, dict), "Available files should be list or dict")
+        
+        if isinstance(avail, list):
+            # Validate known file types are in expected format
+            known_types = ["model", "sf", "val-report", "val-report-full", "val-data"]
+            for file_type in avail:
+                self.assertIsInstance(file_type, str, f"File type {file_type} should be string")
+                if file_type in known_types:
+                    self.assertGreater(len(file_type), 0, "File type should not be empty string")
 
     def test_getFilesRfrncd(self):
+        """Test file reference retrieval with structure validation."""
         io = self._new_io()
         refs = io.getFilesRfrncd(self.dep_id)
-        self.assertTrue(isinstance(refs, (list, dict)))
+        
+        # Enhanced assertions  
+        self.assertIsInstance(refs, (list, dict), "File references should be list or dict")
+        
+        # Test with message ID filter
+        refs_filtered = io.getFilesRfrncd(self.dep_id, p_msgIdFilter="nonexistent")
+        self.assertIsInstance(refs_filtered, (list, dict), "Filtered references should be valid type")
 
     # ---- Lists/filters ----
 
     def test_getMsgReadList(self):
+        """Test read message list with validation."""
         io = self._new_io()
         out = io.getMsgReadList(self.dep_id)
-        self.assertIsInstance(out, list)
+        
+        # Enhanced assertions
+        self.assertIsInstance(out, list, "Read message list should be a list")
+        
+        # Validate list contents if not empty
+        for item in out:
+            self.assertIsInstance(item, (str, dict), "List items should be strings or dicts")
 
     def test_getMsgNoActionReqdList(self):
+        """Test no-action-required message list."""
         io = self._new_io()
         out = io.getMsgNoActionReqdList(self.dep_id)
-        self.assertIsInstance(out, list)
+        
+        # Enhanced assertions
+        self.assertIsInstance(out, list, "No-action-required list should be a list")
 
     def test_getMsgForReleaseList(self):
+        """Test release-flagged message list."""
         io = self._new_io()
         out = io.getMsgForReleaseList(self.dep_id)
-        self.assertIsInstance(out, list)
+        
+        # Enhanced assertions
+        self.assertIsInstance(out, list, "Release list should be a list")
 
     def test_getNotesList(self):
+        """Test notes list retrieval."""
         io = self._new_io()
         out = io.getNotesList()
-        self.assertIsInstance(out, list)
+        
+        # Enhanced assertions
+        self.assertIsInstance(out, list, "Notes list should be a list")
 
     # ---- Writes/changes and helpers ----
 
     def test_markMsgAsRead_and_tagMsg(self):
+        """Test message status updates with proper validation."""
         io = self._new_io()
+        
+        # Test marking as read
         status_dict = {
             "deposition_data_set_id": self.dep_id,
             "message_id": "NONEXISTENT_MSG",
@@ -256,18 +413,29 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         ok_read = io.markMsgAsRead(status_dict)
-        self.assertIsInstance(ok_read, bool)
-
+        
+        # Enhanced assertions
+        self.assertIsInstance(ok_read, bool, "markMsgAsRead should return boolean")
+        
+        # Test tagging message
         tag_dict = {
             "deposition_data_set_id": self.dep_id,
-            "message_id": "NONEXISTENT_MSG",
-            "action_reqd_flag": "Y",
+            "message_id": "NONEXISTENT_MSG", 
+            "action_reqd": "Y",
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         ok_tag = io.tagMsg(tag_dict)
-        self.assertIsInstance(ok_tag, bool)
+        
+        # Enhanced assertions
+        self.assertIsInstance(ok_tag, bool, "tagMsg should return boolean")
+        
+        # Test with invalid data
+        invalid_dict = {"invalid": "data"}
+        ok_invalid = io.markMsgAsRead(invalid_dict)
+        self.assertIsInstance(ok_invalid, bool, "Invalid data should still return boolean")
 
     def test_autoMsg(self):
+        """Test automated message generation with result validation."""
         io = self._new_io()
         result = io.autoMsg(
             p_depIdList=[self.dep_id],
@@ -275,63 +443,163 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             p_isEmdbEntry=False,
             p_sender="it@auto",
         )
-        # autoMsg returns a dictionary with results for each dep ID
-        self.assertIsInstance(result, dict)
-        self.assertIn(self.dep_id, result)
-        self.assertIsInstance(result[self.dep_id], dict)
-        self.assertIn('success', result[self.dep_id])
-        self.assertIn('pdbx_model_updated', result[self.dep_id])
+        
+        # Enhanced assertions
+        self.assertIsInstance(result, dict, "autoMsg should return a dictionary")
+        self.assertIn(self.dep_id, result, f"Result should contain entry for {self.dep_id}")
+        
+        dep_result = result[self.dep_id]
+        self.assertIsInstance(dep_result, dict, "Deposition result should be a dictionary")
+        
+        # Validate required keys
+        required_keys = ['success', 'pdbx_model_updated']
+        for key in required_keys:
+            self.assertIn(key, dep_result, f"Result should contain '{key}' key")
+            self.assertIn(dep_result[key], ['true', 'false'], f"'{key}' should be 'true' or 'false'")
+        
+        # Test with different template types
+        template_types = ["release-nopubl", "reminder", "obsolete"]
+        for tmpl_type in template_types:
+            try:
+                result_tmpl = io.autoMsg(
+                    p_depIdList=[self.dep_id],
+                    p_tmpltType=tmpl_type,
+                    p_isEmdbEntry=False,
+                    p_sender="it@auto",
+                )
+                self.assertIsInstance(result_tmpl, dict, f"Template {tmpl_type} should return dict")
+            except Exception as e:
+                # Some templates may not be available in test environment
+                print(f"Template {tmpl_type} failed (may be expected): {e}")
 
     def test_sendSingle(self):
+        """Test single message sending with validation."""
         io = self._new_io()
+        
+        subject = "IT sendSingle subject"
+        message = "IT sendSingle body"
+        sender = "it@single.test"
+        
         ok = io.sendSingle(
             depId=self.dep_id,
-            subject="IT sendSingle subject",
-            msg="IT sendSingle body",
-            p_sender="it@single",
+            subject=subject,
+            msg=message,
+            p_sender=sender,
             p_testemail=False,
             p_tmpltType="other",
         )
-        self.assertIsInstance(ok, bool)
+        
+        # Enhanced assertions
+        self.assertIsInstance(ok, bool, "sendSingle should return boolean")
+        
+        # Test with test email
+        ok_test = io.sendSingle(
+            depId=self.dep_id,
+            subject=subject + " (test)",
+            msg=message,
+            p_sender=sender,
+            p_testemail="test@example.com",
+            p_tmpltType="other",
+        )
+        self.assertIsInstance(ok_test, bool, "sendSingle with test email should return boolean")
 
     def test_getMsgTmpltDataItems_and_getStarterMsgBody(self):
+        """Test template data and starter message body retrieval."""
         io = self._new_io()
-        d = {}
-        io.getMsgTmpltDataItems(d)   # Should not raise; content impl-dependent
-        self.assertIsInstance(d, dict)
+        
+        # Test template data population
+        template_dict = {}
+        io.getMsgTmpltDataItems(template_dict)
+        
+        # Enhanced assertions
+        self.assertIsInstance(template_dict, dict, "Template dict should remain a dictionary")
+        
+        # Verify some expected template keys are populated (if data is available)
+        expected_keys = ["identifier", "pdb_id", "title", "status_code"]
+        populated_keys = [k for k in expected_keys if k in template_dict and template_dict[k]]
+        if populated_keys:
+            print(f"Template populated with keys: {populated_keys}")
+        
+        # Test starter message body
         body = io.getStarterMsgBody()
-        self.assertTrue(body is None or isinstance(body, str))
+        self.assertTrue(body is None or isinstance(body, str), 
+                       "Starter message body should be None or string")
 
     # ---- Depositor-facing helpers ----
 
     def test_get_message_list_from_depositor(self):
+        """Test depositor message list retrieval."""
         io = self._new_io()
         out = io.get_message_list_from_depositor()
-        self.assertIsInstance(out, list)
+        
+        # Enhanced assertions
+        self.assertIsInstance(out, list, "Depositor message list should be a list")
 
     def test_get_message_subject_from_depositor_and_is_release_request(self):
+        """Test depositor message subject retrieval and release request detection."""
         io = self._new_io()
+        
+        # Test with non-existent message
         subj = io.get_message_subject_from_depositor("NONEXISTENT_MSG")
-        self.assertTrue(subj is None or isinstance(subj, str))
+        self.assertTrue(subj is None or isinstance(subj, str), 
+                       "Message subject should be None or string")
+        
+        # Test release request detection
         is_rel = io.is_release_request("NONEXISTENT_MSG")
-        self.assertIsInstance(is_rel, bool)
+        self.assertIsInstance(is_rel, bool, "Release request check should return boolean")
 
     # ---- Summary/boolean probes ----
 
     def test_summary_booleans(self):
+        """Test summary boolean methods with validation."""
         io = self._new_io()
-        self.assertIsInstance(io.areAllMsgsRead(), bool)
-        self.assertIsInstance(io.areAllMsgsActioned(), bool)
-        self.assertIsInstance(io.anyReleaseFlags(), bool)
-        self.assertIsInstance(io.anyUnactionApprovalWithoutCorrection(), bool)
-        # anyNotesExist returns a tuple: (bAnyNotesIncldngArchvdMsgs, bAnnotNotes, bBmrbNotes, iNumNotesRecords)
+        
+        # Test all summary methods
+        summary_methods = [
+            ("areAllMsgsRead", io.areAllMsgsRead),
+            ("areAllMsgsActioned", io.areAllMsgsActioned), 
+            ("anyReleaseFlags", io.anyReleaseFlags),
+            ("anyUnactionApprovalWithoutCorrection", io.anyUnactionApprovalWithoutCorrection),
+        ]
+        
+        for method_name, method in summary_methods:
+            result = method()
+            self.assertIsInstance(result, bool, f"{method_name} should return boolean")
+        
+        # Test notes existence (returns tuple)
         notes_result = io.anyNotesExist()
-        self.assertIsInstance(notes_result, tuple)
-        self.assertEqual(len(notes_result), 4)
-        self.assertIsInstance(notes_result[0], bool)  # bAnyNotesIncldngArchvdMsgs
-        self.assertIsInstance(notes_result[1], bool)  # bAnnotNotes
-        self.assertIsInstance(notes_result[2], bool)  # bBmrbNotes
-        self.assertIsInstance(notes_result[3], int)   # iNumNotesRecords
+        self.assertIsInstance(notes_result, tuple, "anyNotesExist should return tuple")
+        self.assertEqual(len(notes_result), 4, "anyNotesExist should return 4-element tuple")
+        
+        # Validate tuple contents
+        any_notes, annot_notes, bmrb_notes, num_notes = notes_result
+        self.assertIsInstance(any_notes, bool, "First element should be boolean")
+        self.assertIsInstance(annot_notes, bool, "Second element should be boolean") 
+        self.assertIsInstance(bmrb_notes, bool, "Third element should be boolean")
+        self.assertIsInstance(num_notes, int, "Fourth element should be integer")
+        self.assertGreaterEqual(num_notes, 0, "Number of notes should be non-negative")
+
+    def test_error_handling_edge_cases(self):
+        """Test error handling with various edge cases."""
+        io = self._new_io()
+        
+        # Test with empty/None parameters
+        try:
+            result = io.getMsgRowList(p_depDataSetId="", p_colSearchDict={})
+            self.assertIsInstance(result, (dict, list), "Empty dep ID should return valid structure")
+        except Exception:
+            pass  # Some methods may legitimately fail with invalid input
+        
+        # Test with very long strings
+        long_string = "x" * 10000
+        try:
+            result = io.getMsg(p_msgId=long_string, p_depId=self.dep_id)
+            self.assertTrue(result is None or isinstance(result, dict), 
+                           "Long message ID should return None or dict")
+        except Exception:
+            pass  # May legitimately fail
+        
+        print("✅ Error handling tests completed")
 
 
 if __name__ == "__main__":
