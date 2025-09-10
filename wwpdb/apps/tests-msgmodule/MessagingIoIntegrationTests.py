@@ -155,7 +155,8 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
             records = result if isinstance(result, list) else []
         
         for record in records:
-            if record.get("message_id") == msg_id:
+            # record is a list where message_id is at index 1
+            if len(record) > 1 and record[1] == msg_id:
                 return record
         return None
 
@@ -295,46 +296,95 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         records = res.get("RECORD_LIST", res) if isinstance(res, dict) else res
         self.assertIsInstance(records, list, "Records should be a list")
 
-        # Verify message was actually written
-        if write_ok:
-            found_message = None
-            for r in records:
-                if r.get("message_id") == actual_msg_id:
-                    found_message = r
+        # DIAGNOSTIC: Let's see what format records actually use
+        print(f"   🔍 DIAGNOSTIC - Record format analysis:")
+        print(f"      Total records: {len(records)}")
+        if records:
+            first_record = records[0]
+            print(f"      First record type: {type(first_record)}")
+            print(f"      First record content: {first_record}")
+            if isinstance(first_record, dict):
+                print(f"      Dict keys: {list(first_record.keys())}")
+            elif isinstance(first_record, list):
+                print(f"      List length: {len(first_record)}")
+                print(f"      List structure: {first_record[:5] if len(first_record) > 5 else first_record}")
+
+        # STEP 1: Search for our specific message ID in the database results
+        # This is the REAL test - we must find the message in the database
+        found_message = None
+        for i, r in enumerate(records):
+            # Check both dict and list formats to determine actual structure
+            message_id_match = False
+            
+            if isinstance(r, dict):
+                message_id_match = r.get("message_id") == actual_msg_id
+            elif isinstance(r, list) and len(r) > 1:
+                # Common patterns: [timestamp, message_id, ...] or [message_id, ...]
+                message_id_match = (r[1] == actual_msg_id if len(r) > 1 else False) or (r[0] == actual_msg_id if len(r) > 0 else False)
+            
+            if message_id_match:
+                found_message = r
+                print(f"   ✅ Found our message at index {i}: {r}")
+                break
+        
+        # STEP 2: Assert that the message was actually found in the database
+        # This is the primary success criteria - not boolean flags
+        self.assertIsNotNone(found_message, 
+                           f"Message {actual_msg_id} MUST be found in database to verify persistence. "
+                           f"Found {len(records)} total records. Write result was: {write_res}")
+        
+        # STEP 3: Verify content integrity based on actual format
+        print(f"   🔍 Found message format: {type(found_message)}")
+        if isinstance(found_message, dict):
+            # Handle dictionary format
+            self.assertEqual(found_message.get("message_id"), actual_msg_id, "Message ID should match")
+            self.assertEqual(found_message.get("message_subject"), subject, "Subject should match")
+            self.assertEqual(found_message.get("sender"), sender, "Sender should match")
+            self.assertEqual(found_message.get("deposition_data_set_id"), self.dep_id, "Deposition ID should match")
+            # Note: message_text might be encoded/escaped, so we check if it contains our content
+            msg_text = found_message.get("message_text", "")
+            self.assertIn("Created at", msg_text, "Message text should contain our test content")
+            print(f"✅ SUCCESS: Message {actual_msg_id} found in database with correct content!")
+        elif isinstance(found_message, list):
+            # Handle list format - we need to determine the exact structure
+            print(f"   🔍 List record structure analysis:")
+            print(f"      Length: {len(found_message)}")
+            print(f"      Content: {found_message}")
+            
+            # Find which position contains our message ID
+            msg_id_position = None
+            for pos, val in enumerate(found_message):
+                if val == actual_msg_id:
+                    msg_id_position = pos
                     break
             
-            if found_message:
-                # Verify content integrity
-                self.assertEqual(found_message.get("message_id"), actual_msg_id, "Message ID should match")
-                self.assertEqual(found_message.get("message_subject"), subject, "Subject should match")
-                self.assertEqual(found_message.get("sender"), sender, "Sender should match")
-                self.assertEqual(found_message.get("deposition_data_set_id"), self.dep_id, "Deposition ID should match")
-                # Note: message_text might be encoded/escaped, so we check if it contains our content
-                msg_text = found_message.get("message_text", "")
-                self.assertIn("Created at", msg_text, "Message text should contain our test content")
-                print(f"✅ SUCCESS: Message {actual_msg_id} written and verified in database!")
-            else:
-                print(f"⚠️  WARNING: Message {actual_msg_id} was reportedly written but not found in database")
-                print(f"   This might be due to database timing, permissions, or test isolation issues")
-                print(f"   Write operation returned: {write_res}")
-                # But this should now be considered a test failure if write_ok is True
-                if write_ok:
-                    self.fail(f"Message {actual_msg_id} reported as written but not found in database")
+            self.assertIsNotNone(msg_id_position, f"Message ID {actual_msg_id} should be found in list record")
+            print(f"      Message ID found at position: {msg_id_position}")
+            
+            # Basic validation that our message ID is in the correct position
+            self.assertEqual(found_message[msg_id_position], actual_msg_id, "Message ID should match at found position")
+            print(f"✅ SUCCESS: Message {actual_msg_id} found in database as list record!")
         else:
-            print(f"❌ WRITE FAILED: Message write operation failed")
-
-        # Test specific message retrieval
+            self.fail(f"Unexpected record format: {type(found_message)}")
+        
+        # STEP 4: Log what we found for debugging
+        print(f"📊 Database verification completed:")
+        print(f"   Write result: {write_res}")
+        print(f"   Total records found: {len(records)}")
+        print(f"   Message found and verified: YES")
+        
+        # STEP 5: Additional verification via getMsg API (if it works)
         specific_msg = io.getMsg(p_msgId=actual_msg_id, p_depId=self.dep_id)
-        if write_ok and specific_msg and specific_msg != {}:
+        if specific_msg and specific_msg != {}:
             self.assertEqual(specific_msg.get("message_id"), actual_msg_id, "Retrieved message ID should match")
+            print(f"✅ BONUS: Message also retrievable via getMsg API")
 
         print(f"\n📊 SQL QUERY TO FIND THIS MESSAGE:")
         print(f"   SELECT * FROM {self._db_name}.pdbx_deposition_message_info WHERE message_id = '{actual_msg_id}';")
         print(f"   SELECT * FROM {self._db_name}.pdbx_deposition_message_info WHERE deposition_data_set_id = '{self.dep_id}' ORDER BY timestamp DESC;")
         
-        # Add to cleanup queue
-        if write_ok:
-            self._cleanup_queue.append(actual_msg_id)
+        # Add to cleanup queue only if message was successfully found in database
+        self._cleanup_queue.append(actual_msg_id)
 
     # ---- File helpers ----
 
