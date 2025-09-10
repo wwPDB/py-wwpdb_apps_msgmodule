@@ -804,7 +804,7 @@ class MessagingIo(object):
                     if fPath is not None and os.access(fPath, os.R_OK):
                         rtrnList.append(token)
             else:
-                rtrnList = fileCheckCatalog.keys()
+                rtrnList = list(fileCheckCatalog.keys())
             #
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting available list")
