@@ -146,7 +146,8 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
     
     def _find_message_by_id(self, msg_id: str, dep_id: str = None):
         """Find a specific message in the database."""
-        io = self._new_io(dep_id or self.dep_id)
+        # Use content_type="msgs" for reading messages (even though they're written as "messages-to-depositor")
+        io = self._new_io(dep_id or self.dep_id, content_type="msgs")
         result = io.getMsgRowList(p_depDataSetId=dep_id or self.dep_id, p_colSearchDict={})
         
         if isinstance(result, dict):
@@ -303,11 +304,12 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         import time
         time.sleep(0.5)
         
-        # Read back and verify content - use same content_type as the message
-        read_io = self._new_io(content_type="messages-to-depositor")  # Explicitly set content type for reading
+        # Read back and verify content - use CORRECT content_type for reading
+        # NOTE: Messages are written with "messages-to-depositor" but read with "msgs"
+        read_io = self._new_io(content_type="msgs")  # This is the correct content type for reading!
         print(f"   🔍 QUERY DETAILS:")
         print(f"      Dataset ID for query: {self.dep_id}")
-        print(f"      Content type: messages-to-depositor")
+        print(f"      Content type for reading: msgs (not messages-to-depositor!)")
         
         res = read_io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         self.assertIsInstance(res, (dict, list), "Read result should be dict or list")
