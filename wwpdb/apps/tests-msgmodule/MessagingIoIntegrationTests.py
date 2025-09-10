@@ -319,6 +319,30 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
         print(f"      Query with p_sSendStatus='Y': {len(alt_res1.get('RECORD_LIST', [])) if isinstance(alt_res1, dict) else len(alt_res1) if isinstance(alt_res1, list) else 'unknown'} records")
         print(f"      Query with p_sSendStatus='N': {len(alt_res2.get('RECORD_LIST', [])) if isinstance(alt_res2, dict) else len(alt_res2) if isinstance(alt_res2, list) else 'unknown'} records")
         
+        # Try querying WITHOUT dataset ID filter to see all recent messages
+        all_res = read_io.getMsgRowList(p_depDataSetId="", p_colSearchDict={})  # Empty dataset ID to get all
+        alt_res3 = read_io.getMsgRowList(p_depDataSetId=None, p_colSearchDict={})  # None dataset ID
+        
+        print(f"      Query with empty dataset ID: {len(all_res.get('RECORD_LIST', [])) if isinstance(all_res, dict) else len(all_res) if isinstance(all_res, list) else 'unknown'} records")
+        print(f"      Query with None dataset ID: {len(alt_res3.get('RECORD_LIST', [])) if isinstance(alt_res3, dict) else len(alt_res3) if isinstance(alt_res3, list) else 'unknown'} records")
+        
+        # Try with different content types
+        try:
+            msg_io = self._new_io(content_type="msgs")  # Different content type
+            msg_res = msg_io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
+            print(f"      Query with content_type='msgs': {len(msg_res.get('RECORD_LIST', [])) if isinstance(msg_res, dict) else len(msg_res) if isinstance(msg_res, list) else 'unknown'} records")
+        except Exception as e:
+            print(f"      Query with content_type='msgs' failed: {e}")
+            
+        # Check if we can see any recent messages by timestamp
+        if isinstance(all_res, dict) and 'RECORD_LIST' in all_res and all_res['RECORD_LIST']:
+            print(f"      Found {len(all_res['RECORD_LIST'])} total messages in database")
+            # Show first few records to see format
+            for i, record in enumerate(all_res['RECORD_LIST'][:3]):
+                print(f"         Record {i}: {record}")
+        else:
+            print(f"      No messages found in entire database - this suggests database write may have failed")
+        
         records = res.get("RECORD_LIST", res) if isinstance(res, dict) else res
         self.assertIsInstance(records, list, "Records should be a list")
 
