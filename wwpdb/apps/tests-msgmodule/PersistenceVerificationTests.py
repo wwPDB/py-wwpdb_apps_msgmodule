@@ -109,9 +109,9 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
     def _find_message_in_list(self, message_id):
         """Find a specific message in the message list using MessagingIo API."""
-        io = self._new_io()
+        io = self._new_io(content_type="msgs")  # Use "msgs" content_type for reading
         # Get all messages for this dataset
-        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={}, contentType="msgs")  # Use "msgs" to read both message types
+        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])
@@ -152,10 +152,10 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
     def _get_recent_messages_via_api(self):
         """Get recent messages using MessagingIo API."""
-        io = self._new_io()
+        io = self._new_io(content_type="msgs")  # Use "msgs" content_type for reading
         
         # Get all messages for this dataset
-        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={}, contentType="msgs")  # Use "msgs" to read both message types
+        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])

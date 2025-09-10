@@ -139,8 +139,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
         - List should be empty or contain valid message dictionaries
         """
         try:
-            # Create mock request object for MessagingIo constructor
-            req_obj = MockRequestObject(identifier="D_1000000001")
+            # Create mock request object for MessagingIo constructor with content_type for reading
+            req_obj = MockRequestObject(identifier="D_1000000001", content_type="msgs")
             
             # Create MessagingIo instance - database adaptors will be used automatically
             messaging_io = MessagingIo(req_obj, verbose=True)
@@ -148,8 +148,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Call getMsgRowList() with search parameters - note correct parameter name
             message_list = messaging_io.getMsgRowList(
                 p_depDataSetId="D_1000000001",
-                p_colSearchDict={},
-                contentType="msgs"  # Use "msgs" to read both message types
+                p_colSearchDict={}
             )
             
             print(f"✓ MessagingIo.getMsgRowList result: {message_list}")
@@ -185,14 +184,13 @@ class DatabaseIntegrationTests(unittest.TestCase):
         - Invalid search parameters should be handled safely
         """
         try:
-            req_obj = MockRequestObject(identifier="D_1000000001")
+            req_obj = MockRequestObject(identifier="D_1000000001", content_type="msgs")
             messaging_io = MessagingIo(req_obj, verbose=True)
             
             # Test 1: Empty dataset ID
             empty_result = messaging_io.getMsgRowList(
                 p_depDataSetId="",
-                p_colSearchDict={},
-                contentType="msgs"  # Use "msgs" to read both message types
+                p_colSearchDict={}
             )
             self.assertIsInstance(empty_result, dict, "Empty dataset ID should return dict")
             if 'RECORD_LIST' in empty_result:
@@ -203,8 +201,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             try:
                 none_result = messaging_io.getMsgRowList(
                     p_depDataSetId=None,
-                    p_colSearchDict={},
-                    contentType="msgs"  # Use "msgs" to read both message types
+                    p_colSearchDict={}
                 )
                 self.assertIsInstance(none_result, dict, "None dataset ID should return dict or handle gracefully")
                 print("✓ None dataset ID handled gracefully")
@@ -214,8 +211,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Test 3: Nonexistent dataset ID
             nonexistent_result = messaging_io.getMsgRowList(
                 p_depDataSetId="D_NONEXISTENT_9999999999",
-                p_colSearchDict={},
-                contentType="msgs"  # Use "msgs" to read both message types
+                p_colSearchDict={}
             )
             self.assertIsInstance(nonexistent_result, dict, "Nonexistent dataset should return dict")
             if 'RECORD_LIST' in nonexistent_result:
@@ -595,11 +591,13 @@ class DatabaseIntegrationTests(unittest.TestCase):
             write_success = messaging_io.processMsg(message_obj)
             print(f"✓ Write operation result: {write_success}")
             
-            # Step 3: Read messages back using same MessagingIo instance
-            message_list = messaging_io.getMsgRowList(
+            # Step 3: Read messages back using a NEW MessagingIo instance with correct content_type
+            read_req_obj = MockRequestObject(identifier=test_dataset_id, content_type="msgs")
+            read_messaging_io = MessagingIo(read_req_obj, verbose=True)
+            
+            message_list = read_messaging_io.getMsgRowList(
                 p_depDataSetId=test_dataset_id,
-                p_colSearchDict={},
-                contentType="msgs"  # Use "msgs" to read both message types
+                p_colSearchDict={}
             )
             
             print(f"✓ Read operation result: {message_list}")
@@ -686,11 +684,13 @@ class DatabaseIntegrationTests(unittest.TestCase):
             else:
                 print(f"✓ Write operation reported SUCCESS!")
             
-            # Step 6: Read messages back using the SAME MessagingIo instance
-            message_list = messaging_io.getMsgRowList(
+            # Step 6: Read messages back using a NEW MessagingIo instance with correct content_type
+            read_req_obj = MockRequestObject(identifier=test_dataset_id, content_type="msgs")
+            read_messaging_io = MessagingIo(read_req_obj, verbose=True)
+            
+            message_list = read_messaging_io.getMsgRowList(
                 p_depDataSetId=test_dataset_id,
-                p_colSearchDict={},
-                contentType="msgs"  # Use "msgs" to read both message types
+                p_colSearchDict={}
             )
             
             print(f"✓ Read back result: {type(message_list)}")
