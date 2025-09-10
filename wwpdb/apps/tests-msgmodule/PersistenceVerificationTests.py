@@ -374,7 +374,11 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # Verify that the tagMsg operation succeeded this time
         self.assertTrue(tag_result, f"tagMsg operation should succeed when all required fields are provided")
         
-        print(f"   ✅ Status persistence verified: message correctly appears in read list and tagMsg succeeded")
+        # After tagging as action required, it should NOT appear in no-action list
+        self.assertFalse(status_info['in_no_action_list'], 
+                        f"Message {message_id} should NOT appear in no-action list after being tagged as action required")
+        
+        print(f"   ✅ Status persistence verified: message correctly appears in read list and not in no-action list")
 
     def test_list_recent_test_messages(self):
         """List all recent test messages to verify persistence via API."""
