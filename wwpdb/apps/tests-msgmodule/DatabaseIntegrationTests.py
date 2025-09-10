@@ -148,7 +148,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Call getMsgRowList() with search parameters - note correct parameter name
             message_list = messaging_io.getMsgRowList(
                 p_depDataSetId="D_1000000001",
-                p_colSearchDict={}
+                p_colSearchDict={},
+                contentType="msgs"  # Use "msgs" to read both message types
             )
             
             print(f"✓ MessagingIo.getMsgRowList result: {message_list}")
@@ -190,7 +191,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Test 1: Empty dataset ID
             empty_result = messaging_io.getMsgRowList(
                 p_depDataSetId="",
-                p_colSearchDict={}
+                p_colSearchDict={},
+                contentType="msgs"  # Use "msgs" to read both message types
             )
             self.assertIsInstance(empty_result, dict, "Empty dataset ID should return dict")
             if 'RECORD_LIST' in empty_result:
@@ -201,7 +203,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             try:
                 none_result = messaging_io.getMsgRowList(
                     p_depDataSetId=None,
-                    p_colSearchDict={}
+                    p_colSearchDict={},
+                    contentType="msgs"  # Use "msgs" to read both message types
                 )
                 self.assertIsInstance(none_result, dict, "None dataset ID should return dict or handle gracefully")
                 print("✓ None dataset ID handled gracefully")
@@ -211,7 +214,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Test 3: Nonexistent dataset ID
             nonexistent_result = messaging_io.getMsgRowList(
                 p_depDataSetId="D_NONEXISTENT_9999999999",
-                p_colSearchDict={}
+                p_colSearchDict={},
+                contentType="msgs"  # Use "msgs" to read both message types
             )
             self.assertIsInstance(nonexistent_result, dict, "Nonexistent dataset should return dict")
             if 'RECORD_LIST' in nonexistent_result:
@@ -594,7 +598,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Step 3: Read messages back using same MessagingIo instance
             message_list = messaging_io.getMsgRowList(
                 p_depDataSetId=test_dataset_id,
-                p_colSearchDict={}
+                p_colSearchDict={},
+                contentType="msgs"  # Use "msgs" to read both message types
             )
             
             print(f"✓ Read operation result: {message_list}")
@@ -684,7 +689,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             # Step 6: Read messages back using the SAME MessagingIo instance
             message_list = messaging_io.getMsgRowList(
                 p_depDataSetId=test_dataset_id,
-                p_colSearchDict={}
+                p_colSearchDict={},
+                contentType="msgs"  # Use "msgs" to read both message types
             )
             
             print(f"✓ Read back result: {type(message_list)}")

@@ -211,7 +211,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     def test_getMsgRowList_read_path(self):
         """Test message list retrieval with structure validation."""
-        io = self._new_io()
+        io = self._new_io(content_type="msgs")  # Use "msgs" for reading
         res = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
         
         # Enhanced assertions
@@ -688,7 +688,7 @@ class TestMessagingIoDBIntegration(unittest.TestCase):
 
     def test_error_handling_edge_cases(self):
         """Test error handling with various edge cases."""
-        io = self._new_io()
+        io = self._new_io(content_type="msgs")  # Use "msgs" for reading
         
         # Test with empty/None parameters
         try:

@@ -111,7 +111,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         """Find a specific message in the message list using MessagingIo API."""
         io = self._new_io()
         # Get all messages for this dataset
-        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
+        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={}, contentType="msgs")  # Use "msgs" to read both message types
         
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])
@@ -155,7 +155,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         io = self._new_io()
         
         # Get all messages for this dataset
-        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
+        result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={}, contentType="msgs")  # Use "msgs" to read both message types
         
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])
@@ -170,10 +170,10 @@ class TestMessagingIoPersistence(unittest.TestCase):
             if isinstance(record, dict):
                 sender = record.get("sender", "")
                 subject = record.get("message_subject", "")
-            elif isinstance(record, list) and len(record) >= 4:
-                # Assuming order: [timestamp, message_id, subject, sender, ...]
-                sender = record[3] if len(record) > 3 else ""
-                subject = record[2] if len(record) > 2 else ""
+            elif isinstance(record, list) and len(record) >= 9:
+                # Correct order: [ordinal_id, message_id, deposition_data_set_id, timestamp, sender, context_type, context_value, parent_message_id, message_subject, ...]
+                sender = record[4] if len(record) > 4 else ""
+                subject = record[8] if len(record) > 8 else ""
             else:
                 continue
                 
