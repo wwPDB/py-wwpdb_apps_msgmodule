@@ -189,19 +189,19 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
     # ---- Persistence verification tests ----
 
-    def test_01_write_message_and_verify_persistence(self):
-        """Write a message and verify it's properly persisted via MessagingIo API."""
-        print(f"\n📝 Creating message for persistence verification...")
+    def test_write_message_and_verify_via_getMsg(self):
+        """Write a message and verify it's retrievable via getMsg API."""
+        print(f"\n📝 Testing message persistence via getMsg API...")
         
-        subject = "PERSISTENCE VERIFICATION TEST"
-        body = f"Message created at {datetime.utcnow().isoformat()}Z for persistence testing"
+        subject = "GET_MSG VERIFICATION TEST"
+        body = f"Message created at {datetime.utcnow().isoformat()}Z for getMsg testing"
         
         print(f"   Subject: {subject}")
 
-        # Create and process message - let system generate ID
+        # Create and process message
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
-            sender="persistence@test.com",
+            sender="getmsg@test.com",
             subject=subject,
             message_text=body,
         )
@@ -214,43 +214,80 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertTrue(write_ok, "Message should be written successfully")
         print(f"   ✅ Message written successfully")
         
-        # Get the message ID
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
 
-        # Verify via MessagingIo API
+        # Verify via getMsg API - expect populated response
         api_result = self._verify_message_via_api(message_id)
-        self.assertIsNotNone(api_result, f"Message {message_id} should be retrievable via API")
+        self.assertIsNotNone(api_result, f"getMsg should return message data for {message_id}")
+        self.assertNotEqual(api_result, {}, "getMsg should not return empty dict for existing message")
         
-        # Verify content matches what we wrote
+        # Verify content integrity
         self.assertEqual(api_result.get("message_id"), message_id)
         self.assertEqual(api_result.get("deposition_data_set_id"), self.dep_id)
         self.assertEqual(api_result.get("message_subject"), subject)
-        self.assertIn("persistence testing", api_result.get("message_text", ""))
-        self.assertEqual(api_result.get("sender"), "persistence@test.com")
+        self.assertIn("getMsg testing", api_result.get("message_text", ""))
+        self.assertEqual(api_result.get("sender"), "getmsg@test.com")
+        print(f"   ✅ Message verified via getMsg API")
+
+    def test_write_message_and_verify_via_list(self):
+        """Write a message and verify it appears in message list."""
+        print(f"\n📝 Testing message persistence via message list...")
         
-        print(f"   ✅ Message verified via API:")
-        print(f"      ID: {api_result.get('message_id')}")
-        print(f"      Dataset: {api_result.get('deposition_data_set_id')}")
-        print(f"      Subject: {api_result.get('message_subject')}")
-        print(f"      Sender: {api_result.get('sender')}")
+        subject = "MESSAGE_LIST VERIFICATION TEST"
+        body = f"Message created at {datetime.utcnow().isoformat()}Z for list testing"
+        
+        print(f"   Subject: {subject}")
 
-        # Also verify it appears in message lists
+        # Create and process message
+        req_for_msg = self._Req(
+            self.site_id, self.dep_id,
+            sender="list@test.com",
+            subject=subject,
+            message_text=body,
+        )
+        msg_obj = self.Message.fromReqObj(req_for_msg, verbose=True)
+
+        io = self._new_io()
+        write_res = io.processMsg(msg_obj)
+        write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
+
+        self.assertTrue(write_ok, "Message should be written successfully")
+        print(f"   ✅ Message written successfully")
+        
+        message_id = msg_obj.messageId
+        self.assertIsNotNone(message_id, "Message should have an ID")
+        print(f"   🆔 Message ID: {message_id}")
+
+        # Verify via message list
         found_in_list = self._find_message_in_list(message_id)
-        if found_in_list:
-            print(f"   ✅ Message found in message list")
-        else:
-            print(f"   ⚠️  Message not found in message list (may be filtered)")
+        self.assertIsNotNone(found_in_list, f"Message {message_id} must be found in message list")
+        print(f"   ✅ Message found in message list")
 
-    def test_02_write_status_and_verify_persistence(self):
+    def test_handle_getMsg_empty_response(self):
+        """Test behavior when getMsg returns empty dict for non-existent message."""
+        print(f"\n📝 Testing getMsg empty response handling...")
+        
+        # Test with definitely non-existent message ID
+        non_existent_id = "DEFINITELY_NON_EXISTENT_MESSAGE_12345"
+        
+        io = self._new_io()
+        api_result = io.getMsg(p_msgId=non_existent_id, p_depId=self.dep_id)
+        
+        # getMsg should return empty dict or None for non-existent messages
+        self.assertTrue(api_result == {} or api_result is None, 
+                       f"getMsg should return empty dict or None for non-existent message, got: {type(api_result)}")
+        print(f"   ✅ getMsg correctly returned {type(api_result)} for non-existent message")
+
+    def test_write_status_and_verify_persistence(self):
         """Write message status changes and verify they're persisted via API."""
         print(f"\n📊 Testing message status persistence...")
         
         subject = "STATUS PERSISTENCE TEST"
         body = f"Message for status persistence testing: {datetime.utcnow().isoformat()}Z"
 
-        # Create message first - let system generate ID
+        # Create message first
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
             sender="status@test.com",
@@ -264,7 +301,6 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
         self.assertTrue(write_ok, "Message should be written successfully")
 
-        # Get the message ID
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
@@ -304,7 +340,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertIsInstance(status_info['all_actioned'], bool)
         self.assertIsInstance(status_info['any_release'], bool)
 
-    def test_03_list_recent_test_messages(self):
+    def test_list_recent_test_messages(self):
         """List all recent test messages to verify persistence via API."""
         print(f"\n📋 Listing recent test messages via API...")
         
@@ -330,17 +366,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
         if message_data['total_messages'] > 0:
             self.assertGreater(len(message_data['all_records']), 0, "Should have records if total > 0")
 
-    def test_04_comprehensive_read_write_cycle(self):
-        """Complete end-to-end test with full verification via API."""
-        print(f"\n🔄 Comprehensive read-write cycle test...")
+    def test_comprehensive_read_write_cycle_success_path(self):
+        """Test complete end-to-end cycle expecting successful getMsg retrieval."""
+        print(f"\n🔄 Comprehensive cycle test - success path...")
         
-        subject = "COMPREHENSIVE CYCLE TEST"
-        body = f"Complete test message created at {datetime.utcnow().isoformat()}Z"
+        subject = "COMPREHENSIVE SUCCESS TEST"
+        body = f"Success path test message created at {datetime.utcnow().isoformat()}Z"
 
-        # 1. Write message - let system generate ID
+        # Write message
         req_for_msg = self._Req(
             self.site_id, self.dep_id,
-            sender="cycle@test.com",
+            sender="success@test.com",
             subject=subject,
             message_text=body,
         )
@@ -352,37 +388,30 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertTrue(write_ok)
         print(f"   ✅ Step 1: Message written")
         
-        # Get the message ID
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
 
-        # 2. Read back via MessagingIo API
+        # Read back via getMsg API - expect success
         api_result = self._verify_message_via_api(message_id)
-        self.assertIsNotNone(api_result, "Message should be retrievable via API")
-        print(f"   ✅ Step 2: Message read via API")
-        print(f"      API Subject: {api_result.get('message_subject', 'N/A')}")
-
-        # 3. Verify content integrity
+        self.assertIsNotNone(api_result, "Message should be retrievable via getMsg API")
+        self.assertNotEqual(api_result, {}, "getMsg should return populated data, not empty dict")
+        print(f"   ✅ Step 2: Message read via getMsg API")
+        
+        # Verify content integrity 
         self.assertEqual(api_result.get('message_subject'), subject, "Subject should match")
         self.assertEqual(api_result.get('message_id'), message_id, "Message ID should match")
-        self.assertEqual(api_result.get('sender'), "cycle@test.com", "Sender should match")
+        self.assertEqual(api_result.get('sender'), "success@test.com", "Sender should match")
         self.assertEqual(api_result.get('deposition_data_set_id'), self.dep_id, "Dataset ID should match")
-        self.assertIn("Complete test message", api_result.get('message_text', ''), "Message text should contain expected content")
+        self.assertIn("Success path test message", api_result.get('message_text', ''), "Message text should contain expected content")
         print(f"   ✅ Step 3: Content integrity verified")
 
-        # 4. Test message listing
+        # Test message listing consistency
         found_in_list = self._find_message_in_list(message_id)
-        if found_in_list:
-            print(f"   ✅ Step 4: Message found in listing")
-            # Verify consistency between direct get and list
-            if isinstance(found_in_list, dict):
-                list_subject = found_in_list.get('message_subject')
-                self.assertEqual(list_subject, subject, "Subject should match between getMsg and list")
-        else:
-            print(f"   ⚠️  Step 4: Message not found in listing (may be filtered)")
+        self.assertIsNotNone(found_in_list, f"Message {message_id} must be found in message listing")
+        print(f"   ✅ Step 4: Message found in listing")
 
-        # 5. Test status operations
+        # Test status operations
         status_dict = {
             "deposition_data_set_id": self.dep_id,
             "message_id": message_id,
@@ -393,12 +422,57 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertIsInstance(read_result, bool, "markMsgAsRead should return boolean")
         print(f"   ✅ Step 5: Status operations tested")
 
-        print(f"\n🎯 PERSISTENCE VERIFICATION COMPLETE (API-based)")
-        print(f"   Message ID: {message_id}")
-        print(f"   API Retrieval: CONFIRMED")
-        print(f"   Content Integrity: CONFIRMED")
-        print(f"   List Consistency: {'CONFIRMED' if found_in_list else 'CHECK REQUIRED'}")
-        print(f"   Status Operations: CONFIRMED")
+        print(f"\n🎯 SUCCESS PATH VERIFICATION COMPLETE")
+
+    def test_08_comprehensive_read_write_cycle_fallback_path(self):
+        """Test complete end-to-end cycle handling getMsg empty response with list fallback."""
+        print(f"\n🔄 Comprehensive cycle test - fallback path...")
+        
+        subject = "COMPREHENSIVE FALLBACK TEST"
+        body = f"Fallback path test message created at {datetime.utcnow().isoformat()}Z"
+
+        # Write message
+        req_for_msg = self._Req(
+            self.site_id, self.dep_id,
+            sender="fallback@test.com",
+            subject=subject,
+            message_text=body,
+        )
+        msg_obj = self.Message.fromReqObj(req_for_msg, verbose=True)
+
+        io = self._new_io()
+        write_res = io.processMsg(msg_obj)
+        write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
+        self.assertTrue(write_ok)
+        print(f"   ✅ Step 1: Message written")
+        
+        message_id = msg_obj.messageId
+        self.assertIsNotNone(message_id, "Message should have an ID")
+        print(f"   🆔 Message ID: {message_id}")
+
+        # Read back via getMsg API
+        api_result = self._verify_message_via_api(message_id)
+        
+        # Test fallback behavior when getMsg returns empty dict
+        if api_result == {}:
+            print(f"   ⚠️  Step 2: getMsg returned empty dict - testing fallback")
+            
+            # Verify fallback via message list works
+            found_in_list = self._find_message_in_list(message_id)
+            self.assertIsNotNone(found_in_list, f"Message {message_id} must be found in message list when getMsg fails")
+            print(f"   ✅ Step 3: Fallback via message list successful")
+        else:
+            # If getMsg worked, this test becomes same as success path - that's fine
+            self.assertIsNotNone(api_result, "Message should be retrievable")
+            print(f"   ✅ Step 2: getMsg worked (no fallback needed)")
+            print(f"   ✅ Step 3: Direct retrieval successful")
+
+        # Always test message listing consistency
+        found_in_list = self._find_message_in_list(message_id)
+        self.assertIsNotNone(found_in_list, f"Message {message_id} must be found in message listing")
+        print(f"   ✅ Step 4: Message found in listing")
+
+        print(f"\n🎯 FALLBACK PATH VERIFICATION COMPLETE")
 
 
 if __name__ == "__main__":
