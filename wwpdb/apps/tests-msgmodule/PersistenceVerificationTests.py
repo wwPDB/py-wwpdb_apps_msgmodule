@@ -436,7 +436,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
             "message_id": message_id,
             "read_status": "Y"
         }
-        read_result = io.markMsgAsRead(p_statusDict=status_dict)
+        read_result = io.markMsgAsRead(p_msgStatusDict=status_dict)
         self.assertIsInstance(read_result, bool, "markMsgAsRead should return boolean")
         print(f"   ✅ Step 3: Status operations tested")
 
