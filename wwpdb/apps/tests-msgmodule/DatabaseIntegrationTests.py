@@ -162,14 +162,19 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✓ Found {len(actual_list)} messages in RECORD_LIST")
             
             # VALIDATE each message record has required fields
+            # Records are returned as lists, not dictionaries
+            # Order: [ordinal_id, message_id, deposition_data_set_id, timestamp, sender, context_type, context_value, parent_message_id, message_subject, ...]
             for i, message in enumerate(actual_list):
-                self.assertIsInstance(message, dict, f"Message {i} must be a dictionary")
-                # Verify essential fields exist (even if empty/None)
-                self.assertIn('message_id', message, f"Message {i} missing 'message_id' field")
-                self.assertIn('deposition_data_set_id', message, f"Message {i} missing 'deposition_data_set_id' field")
-                # sender might be optional depending on message type
-                if len(actual_list) > 0:
-                    print(f"✓ Sample message fields: {list(message.keys())}")
+                self.assertIsInstance(message, list, f"Message {i} must be a list")
+                # Verify essential fields exist (record should have at least message_id, dataset_id, etc.)
+                self.assertGreaterEqual(len(message), 9, f"Message {i} should have at least 9 fields")
+                
+                # Verify required field positions contain valid data
+                self.assertIsNotNone(message[1], f"Message {i} missing message_id at index 1")  # message_id
+                self.assertIsNotNone(message[2], f"Message {i} missing deposition_data_set_id at index 2")  # dataset_id
+                
+                if len(actual_list) > 0 and i == 0:
+                    print(f"✓ Sample message structure: ordinal_id={message[0]}, message_id={message[1]}, dataset_id={message[2]}, sender={message[4]}")
                     break
             
         except Exception as e:
@@ -615,9 +620,10 @@ class DatabaseIntegrationTests(unittest.TestCase):
                     write_was_successful = bool(write_success)
                 
                 # Look for our specific message in the results
+                # Records are lists with message_id at index 1
                 found_our_message = False
                 for msg in actual_messages:
-                    if msg.get('message_id') == msg_id:
+                    if isinstance(msg, list) and len(msg) > 1 and msg[1] == msg_id:
                         found_our_message = True
                         print(f"✓ SUCCESS: Found our test message {msg_id} in database!")
                         break
@@ -702,8 +708,9 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 print(f"✓ Found {len(actual_messages)} total messages for dataset {test_dataset_id}")
                 
                 # Look for our specific message
+                # Records are lists with message_id at index 1
                 for msg in actual_messages:
-                    if msg.get('message_id') == msg_id:
+                    if isinstance(msg, list) and len(msg) > 1 and msg[1] == msg_id:
                         found_message = msg
                         break
                         
@@ -713,22 +720,24 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 print(f"✓ Found {len(actual_messages)} total messages for dataset {test_dataset_id}")
                 
                 for msg in actual_messages:
-                    if msg.get('message_id') == msg_id:
+                    if isinstance(msg, list) and len(msg) > 1 and msg[1] == msg_id:
                         found_message = msg
                         break
             
             # Step 8: Assert message persistence
             if found_message:
                 print(f"✓ SUCCESS: Message {msg_id} was found in database!")
-                print(f"  - Subject: {found_message.get('message_subject')}")
-                print(f"  - Sender: {found_message.get('sender')}")
+                # Access fields by index: [ordinal_id, message_id, deposition_data_set_id, timestamp, sender, context_type, context_value, parent_message_id, message_subject, ...]
+                print(f"  - Subject: {found_message[8] if len(found_message) > 8 else 'N/A'}")  # message_subject at index 8
+                print(f"  - Sender: {found_message[4] if len(found_message) > 4 else 'N/A'}")   # sender at index 4
                 print(f"  - Dataset: {found_message.get('deposition_data_set_id')}")
                 
                 # Verify the data matches what we sent
-                self.assertEqual(found_message.get('message_id'), msg_id)
-                self.assertEqual(found_message.get('message_subject'), test_subject)
-                self.assertEqual(found_message.get('sender'), "db.persistence@test.com")
-                self.assertEqual(found_message.get('deposition_data_set_id'), test_dataset_id)
+                # Access fields by index: [ordinal_id, message_id, deposition_data_set_id, timestamp, sender, context_type, context_value, parent_message_id, message_subject, ...]
+                self.assertEqual(found_message[1], msg_id)  # message_id at index 1
+                self.assertEqual(found_message[8], test_subject)  # message_subject at index 8
+                self.assertEqual(found_message[4], "db.persistence@test.com")  # sender at index 4
+                self.assertEqual(found_message[2], test_dataset_id)  # deposition_data_set_id at index 2
                 # Note: message_text might be truncated or formatted differently in database
                 
                 print("✓ All message data verified correctly!")
