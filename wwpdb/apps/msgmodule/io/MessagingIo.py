@@ -167,12 +167,8 @@ from mmcif.io.PdbxReader import PdbxReader
 #
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
-# Database-backed stubs that provide the same interface
-from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
-from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport
-# Original file-based imports (no longer used)
-# from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
-# from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport
+# Use routing wrapper that selectively chooses between db and file implementations
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport, MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.apps.msgmodule.models.Message import AutoMessage, AutoNote
