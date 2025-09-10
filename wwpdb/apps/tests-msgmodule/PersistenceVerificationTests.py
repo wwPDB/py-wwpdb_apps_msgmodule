@@ -359,10 +359,21 @@ class TestMessagingIoPersistence(unittest.TestCase):
         print(f"      In no-action list: {status_info['in_no_action_list']}")
         print(f"      In release list: {status_info['in_release_list']}")
 
-        # Basic assertions about status
+        # Verify that status changes were properly persisted
         self.assertIsInstance(status_info['all_read'], bool)
         self.assertIsInstance(status_info['all_actioned'], bool)
         self.assertIsInstance(status_info['any_release'], bool)
+        
+        # More specific assertions - verify the message appears in expected lists
+        # After marking as read, it should appear in the read list
+        self.assertTrue(status_info['in_read_list'], 
+                       f"Message {message_id} should appear in read list after being marked as read")
+        
+        # After tagging as action required, it should NOT appear in no-action list
+        self.assertFalse(status_info['in_no_action_list'], 
+                        f"Message {message_id} should NOT appear in no-action list after being tagged as action required")
+        
+        print(f"   ✅ Status persistence verified: message correctly appears in read list and not in no-action list")
 
     def test_list_recent_test_messages(self):
         """List all recent test messages to verify persistence via API."""
