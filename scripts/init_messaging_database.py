@@ -123,7 +123,7 @@ def get_create_table_statements():
             message_id VARCHAR(255) UNIQUE NOT NULL,
             deposition_data_set_id VARCHAR(50) NOT NULL,
             timestamp DATETIME NOT NULL,
-            sender VARCHAR(100) NOT NULL,
+            sender VARCHAR(255) NOT NULL,
             context_type VARCHAR(50),
             context_value VARCHAR(255),
             parent_message_id VARCHAR(255),

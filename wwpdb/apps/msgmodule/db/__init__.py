@@ -14,10 +14,17 @@ from .Models import (
     MessageStatus,
 )
 
+# Import database services
+from .DataAccessLayer import (
+    DataAccessLayer,
+)
+
 __all__ = [
     # SQLAlchemy Models
     "Base",
     "MessageInfo",
     "MessageFileReference", 
     "MessageStatus",
+    # Database Services
+    "DataAccessLayer",
 ]

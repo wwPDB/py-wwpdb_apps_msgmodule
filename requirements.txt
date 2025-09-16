@@ -9,5 +9,9 @@ wwpdb.utils.emdb ~= 0.17
 wwpdb.apps.wf_engine
 wwpdb.utils.nmr
 
+# Database dependencies for messaging system
+sqlalchemy >= 1.4.0
+pymysql >= 1.0.0
+
 # For testing python 2
 mock; python_version < '3'
