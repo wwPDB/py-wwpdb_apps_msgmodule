@@ -443,8 +443,8 @@ class PdbxMessageIo:
         # File references for deposition (+ content type if set)
         with self._dal.db_connection.get_session() as sess:
             q = sess.query(ORMFileRef).filter(ORMFileRef.deposition_data_set_id == self._deposition_id)
-            if self._content_type:
-                q = q.filter(ORMFileRef.content_type == self._content_type)
+            # Remove content_type filtering for file references since they use different content types
+            # than messages (e.g., 'auxiliary-file-annotate' vs 'messages-to-depositor')
             file_refs = q.all()
         
         self._loaded_file_refs = [
