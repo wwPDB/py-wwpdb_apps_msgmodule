@@ -53,7 +53,7 @@ class MessagingDataImport(object):
             self._io_impl = IoMessagingDataImport(self._reqObj, self._verbose, self._log)
         return self._io_impl
     
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin
         """Route getFilePath call to appropriate implementation based on content type"""
         if contentType in self.DB_BACKED_CONTENT_TYPES:
             return self._get_db_impl().getFilePath(contentType, format, **kwargs)

@@ -8,7 +8,7 @@ the CIF structure:
 - pdbx_deposition_message_status
 """
 
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, UniqueConstraint
+from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, UniqueConstraint
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship

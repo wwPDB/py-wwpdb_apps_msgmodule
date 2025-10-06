@@ -39,7 +39,9 @@ class DatabaseConnection:
                 f"?charset={self.db_config.get('charset', 'utf8mb4')}"
             )
             
-            logger.info(f"Attempting database connection to: mysql+pymysql://{self.db_config['username']}:***@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']}")
+            logger.info("Attempting database connection to: mysql+pymysql://%s:***@%s:%s/%s",
+                        self.db_config['username'], self.db_config['host'],
+                        self.db_config['port'], self.db_config['database'])
             
             # Create engine
             self._engine = create_engine(

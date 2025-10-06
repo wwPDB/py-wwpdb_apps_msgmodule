@@ -465,9 +465,9 @@ class TestMessagingIo(unittest.TestCase):
 
     @patch.object(MessagingIo, "getNotesList", return_value=[{"note_id": "N1"}])
     def test_getNotesList(self, mock_method):
-        res = self.messaging_io.getNotesList("D_000000")
+        res = self.messaging_io.getNotesList()
         self.assertIsInstance(res, list)
-        mock_method.assert_called_once_with("D_000000")
+        mock_method.assert_called_once_with()
 
     @patch.object(
         MessagingIo,
@@ -475,32 +475,15 @@ class TestMessagingIo(unittest.TestCase):
         return_value=True,
     )
     def test_autoMsg(self, mock_method):
-        # Minimal viable set of args based on signature
-        kwargs = dict(
-            p_depDataSetId="D_000000",
-            p_op="create",
-            p_msgId=None,
-            p_msgSubject="Test Subject",
-            p_msgType="text",
-            p_msgLvl="info",
-            p_msgRsltnLvl="none",
-            p_msgGroupId=None,
-            p_msgAnnCategory=None,
-            p_msgAnnTask=None,
-            p_msgAnnSubTask=None,
-            p_fileReferences=[],
-            msg="Body",
-            p_sender="annotator",
-            p_testemail=False,
-            p_tmpltType=None,
+        # Minimal viable set of args based on signature: autoMsg(self, p_depIdList, p_tmpltType="release-publ", p_isEmdbEntry=False, p_sender="auto")
+        ok = self.messaging_io.autoMsg(
+            p_depIdList=["D_000000"],
+            p_tmpltType="release-publ",
+            p_isEmdbEntry=False,
+            p_sender="annotator"
         )
-        ok = self.messaging_io.autoMsg(**kwargs)
         self.assertIsInstance(ok, bool)
         mock_method.assert_called_once()
-        # Ensure key arguments passed through
-        passed_kwargs = mock_method.call_args.kwargs
-        self.assertEqual(passed_kwargs["p_depDataSetId"], "D_000000")
-        self.assertEqual(passed_kwargs["p_msgSubject"], "Test Subject")
 
     @patch.object(MessagingIo, "sendSingle", return_value=True)
     def test_sendSingle(self, mock_method):

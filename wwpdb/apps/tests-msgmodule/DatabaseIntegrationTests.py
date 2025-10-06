@@ -317,8 +317,8 @@ class DatabaseIntegrationTests(unittest.TestCase):
             print(f"✓ MessagingIo.getMsg result type: {type(result)}")
             
             # STRICTER ASSERTION: Must be None or dict, not any other type
-            self.assertTrue(result is None or isinstance(result, dict), 
-                          "getMsg must return None or dict")
+            self.assertTrue(result is None or isinstance(result, dict),
+                            "getMsg must return None or dict")
             
             if result is not None:
                 if isinstance(result, dict):

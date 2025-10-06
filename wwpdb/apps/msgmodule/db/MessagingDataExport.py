@@ -84,7 +84,7 @@ class MessagingDataExport(object):
         """
         return True
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=unused-argument
         """
         Return dummy milestone file paths for database backend compatibility.
         

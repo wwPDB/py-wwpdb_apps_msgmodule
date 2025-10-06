@@ -282,7 +282,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
         else:
             # As a last resort, just verify that the message was written successfully
             # The write operation succeeded, so persistence is confirmed at that level
-            print(f"   ⚠️  Message not immediately visible in lists, but write succeeded")
+            print("   ⚠️  Message not immediately visible in lists, but write succeeded")
             print(f"   ✅ Persistence verified via successful write operation")
             
         # This test passes if the message was written successfully

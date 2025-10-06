@@ -421,32 +421,32 @@ class PdbxMessageStatus(_BasePdbxMessage):
         model = MessageStatus()
         super().__init__(model, verbose, log)
 
-    def setReadStatus(self, v: str):
+    def setReadStatus(self, status='N'):
         if self._model:
-            self._model.read_status = v
-        self._row_dict["read_status"] = v
+            self._model.read_status = status
+        self._row_dict["read_status"] = status
 
     def getReadStatus(self) -> str:
         if self._model:
             return self._model.read_status or "N"
         return self._row_dict.get("read_status", "N")
 
-    def setActionReqd(self, v: str):
+    def setActionReqdStatus(self, status='N'):
         if self._model:
-            self._model.action_reqd = v
-        self._row_dict["action_reqd"] = v
+            self._model.action_reqd = status
+        self._row_dict["action_reqd"] = status
 
-    def getActionReqd(self) -> str:
+    def getActionReqdStatus(self) -> str:
         if self._model:
             return self._model.action_reqd or "N"
         return self._row_dict.get("action_reqd", "N")
 
-    def setForRelease(self, v: str):
+    def setReadyForRelStatus(self, status='N'):
         if self._model:
-            self._model.for_release = v
-        self._row_dict["for_release"] = v
+            self._model.for_release = status
+        self._row_dict["for_release"] = status
 
-    def getForRelease(self) -> str:
+    def getReadyForRelStatus(self) -> str:
         if self._model:
             return self._model.for_release or "N"
         return self._row_dict.get("for_release", "N")
