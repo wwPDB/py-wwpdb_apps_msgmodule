@@ -64,7 +64,8 @@ class FileSizeLogger:
                 # Use a logger since that's what the original does
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.debug(f"+{self.__class__.__name__} -- bypassing filesize logging for dummy path: {self.__filePath}")
+                logger.debug("+%s -- bypassing filesize logging for dummy path: %s",
+                           self.__class__.__name__, self.__filePath)
             return self
         else:
             # Use real file size logging for actual paths
@@ -73,13 +74,15 @@ class FileSizeLogger:
                 if self.__verbose and self.__debug:
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.debug(f"+{self.__class__.__name__} -- filesize for {self.__filePath} before call: {filesize} bytes.")
+                    logger.debug("+%s -- filesize for %s before call: %s bytes.",
+                               self.__class__.__name__, self.__filePath, filesize)
             except (OSError, FileNotFoundError):
                 # File doesn't exist yet, that's ok
                 if self.__verbose and self.__debug:
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.debug(f"+{self.__class__.__name__} -- file {self.__filePath} does not exist yet.")
+                    logger.debug("+%s -- file %s does not exist yet.",
+                               self.__class__.__name__, self.__filePath)
             return self
 
     def __exit__(self, exc_type, value, tb):
@@ -91,7 +94,8 @@ class FileSizeLogger:
             if self.__verbose and self.__debug:
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.debug(f"+{self.__class__.__name__} -- bypassing filesize logging cleanup for dummy path: {self.__filePath}")
+                logger.debug("+%s -- bypassing filesize logging cleanup for dummy path: %s",
+                           self.__class__.__name__, self.__filePath)
         else:
             # Use real file size logging for actual paths
             try:
@@ -99,13 +103,15 @@ class FileSizeLogger:
                 if self.__verbose and self.__debug:
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.debug(f"+{self.__class__.__name__} -- filesize for {self.__filePath} after call: {filesize} bytes.")
+                    logger.debug("+%s -- filesize for %s after call: %s bytes.",
+                               self.__class__.__name__, self.__filePath, filesize)
             except (OSError, FileNotFoundError):
                 # File might have been deleted or never created
                 if self.__verbose and self.__debug:
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.debug(f"+{self.__class__.__name__} -- file {self.__filePath} not found after call.")
+                    logger.debug("+%s -- file %s not found after call.",
+                               self.__class__.__name__, self.__filePath)
 
 
 class LockFile:
@@ -165,7 +171,7 @@ class LockFile:
         if self._is_dummy:
             # No-op for dummy paths
             if self.__debug and self.__lfh:
-                self.__lfh.write(f"LockFile(acquire) bypassing lock for dummy path {self.__filePath}\n")
+                self.__lfh.write("LockFile(acquire) bypassing lock for dummy path %s\n" % self.__filePath)
             self.__isLocked = True
             return
             
@@ -188,7 +194,7 @@ class LockFile:
                 try:
                     self.__fd = os.open(self.__lockFilePath, os.O_CREAT | os.O_EXCL | os.O_RDWR)
                     if self.__debug and self.__lfh:
-                        self.__lfh.write(f"LockFile(acquire) created lock file {self.__lockFilePath}\n")
+                        self.__lfh.write("LockFile(acquire) created lock file %s\n" % self.__lockFilePath)
                     break
                 except OSError as myErr:
                     if myErr.errno != errno.EEXIST:
@@ -211,7 +217,7 @@ class LockFile:
         if self._is_dummy:
             # No-op for dummy paths
             if self.__debug and self.__lfh:
-                self.__lfh.write(f"LockFile(release) bypassing unlock for dummy path {self.__filePath}\n")
+                self.__lfh.write("LockFile(release) bypassing unlock for dummy path %s\n" % self.__filePath)
             self.__isLocked = False
             return
             
@@ -226,7 +232,7 @@ class LockFile:
             if os.path.exists(self.__lockFilePath):
                 os.unlink(self.__lockFilePath)
             if self.__debug and self.__lfh:
-                self.__lfh.write(f"LockFile(release) removed lock file {self.__lockFilePath}\n")
+                self.__lfh.write("LockFile(release) removed lock file %s\n" % self.__lockFilePath)
         self.__isLocked = False
 
     def __enter__(self):

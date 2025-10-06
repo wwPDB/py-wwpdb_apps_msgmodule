@@ -63,8 +63,10 @@ class DatabaseConnection:
             logger.info("Database connection initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to setup database: {e}")
-            logger.error(f"Database config: host={self.db_config.get('host')}, port={self.db_config.get('port')}, database={self.db_config.get('database')}, username={self.db_config.get('username')}")
+            logger.error("Failed to setup database: %s", e)
+            logger.error("Database config: host=%s, port=%s, database=%s, username=%s",
+                        self.db_config.get('host'), self.db_config.get('port'),
+                        self.db_config.get('database'), self.db_config.get('username'))
             raise
     
     def get_session(self) -> Session:
@@ -77,7 +79,7 @@ class DatabaseConnection:
             Base.metadata.create_all(self._engine)
             logger.info("All tables created successfully")
         except Exception as e:
-            logger.error(f"Error creating tables: {e}")
+            logger.error("Error creating tables: %s", e)
             raise
     
     def close(self):
@@ -100,15 +102,15 @@ class BaseDAO(Generic[ModelType]):
             with self.db_connection.get_session() as session:
                 session.add(obj)
                 session.commit()
-                logger.info(f"Created {self.model_class.__name__} record")
+                logger.info("Created %s record", self.model_class.__name__)
                 return True
         except SQLAlchemyError as e:
-            logger.error(f"Error creating {self.model_class.__name__}: {e}")
-            logger.error(f"Record data: {obj.__dict__ if hasattr(obj, '__dict__') else str(obj)}")
+            logger.error("Error creating %s: %s", self.model_class.__name__, e)
+            logger.error("Record data: %s", obj.__dict__ if hasattr(obj, '__dict__') else str(obj))
             return False
         except Exception as e:
-            logger.error(f"Unexpected error creating {self.model_class.__name__}: {e}")
-            logger.error(f"Record data: {obj.__dict__ if hasattr(obj, '__dict__') else str(obj)}")
+            logger.error("Unexpected error creating %s: %s", self.model_class.__name__, e)
+            logger.error("Record data: %s", obj.__dict__ if hasattr(obj, '__dict__') else str(obj))
             return False
     
     def get_by_id(self, record_id: str, id_field: str = 'ordinal_id') -> Optional[ModelType]:
@@ -119,7 +121,7 @@ class BaseDAO(Generic[ModelType]):
                     getattr(self.model_class, id_field) == record_id
                 ).first()
         except SQLAlchemyError as e:
-            logger.error(f"Error getting {self.model_class.__name__} {record_id}: {e}")
+            logger.error("Error getting %s %s: %s", self.model_class.__name__, record_id, e)
             return None
     
     def get_all(self) -> List[ModelType]:
@@ -128,7 +130,7 @@ class BaseDAO(Generic[ModelType]):
             with self.db_connection.get_session() as session:
                 return session.query(self.model_class).all()
         except SQLAlchemyError as e:
-            logger.error(f"Error getting all {self.model_class.__name__} records: {e}")
+            logger.error("Error getting all %s records: %s", self.model_class.__name__, e)
             return []
     
     def update(self, obj: ModelType) -> bool:
@@ -137,10 +139,10 @@ class BaseDAO(Generic[ModelType]):
             with self.db_connection.get_session() as session:
                 session.merge(obj)
                 session.commit()
-                logger.info(f"Updated {self.model_class.__name__} record")
+                logger.info("Updated %s record", self.model_class.__name__)
                 return True
         except SQLAlchemyError as e:
-            logger.error(f"Error updating {self.model_class.__name__}: {e}")
+            logger.error("Error updating %s: %s", self.model_class.__name__, e)
             return False
     
     def delete(self, record_id: str, id_field: str = 'ordinal_id') -> bool:
@@ -153,11 +155,11 @@ class BaseDAO(Generic[ModelType]):
                 if obj:
                     session.delete(obj)
                     session.commit()
-                    logger.info(f"Deleted {self.model_class.__name__} {record_id}")
+                    logger.info("Deleted %s %s", self.model_class.__name__, record_id)
                     return True
                 return False
         except SQLAlchemyError as e:
-            logger.error(f"Error deleting {self.model_class.__name__} {record_id}: {e}")
+            logger.error("Error deleting %s %s: %s", self.model_class.__name__, record_id, e)
             return False
 
 
@@ -179,7 +181,7 @@ class MessageDAO(BaseDAO[MessageInfo]):
                     MessageInfo.deposition_data_set_id == deposition_id
                 ).all()
         except SQLAlchemyError as e:
-            logger.error(f"Error getting messages for deposition {deposition_id}: {e}")
+            logger.error("Error getting messages for deposition %s: %s", deposition_id, e)
             return []
     
     def get_by_content_type(self, content_type: str) -> List[MessageInfo]:
@@ -190,7 +192,7 @@ class MessageDAO(BaseDAO[MessageInfo]):
                     MessageInfo.content_type == content_type
                 ).all()
         except SQLAlchemyError as e:
-            logger.error(f"Error getting messages by content type {content_type}: {e}")
+            logger.error("Error getting messages by content type %s: %s", content_type, e)
             return []
 
 
@@ -208,7 +210,7 @@ class FileReferenceDAO(BaseDAO[MessageFileReference]):
                     MessageFileReference.message_id == message_id
                 ).all()
         except SQLAlchemyError as e:
-            logger.error(f"Error getting file references for message {message_id}: {e}")
+            logger.error("Error getting file references for message %s: %s", message_id, e)
             return []
 
 
@@ -241,10 +243,10 @@ class MessageStatusDAO(BaseDAO[MessageStatus]):
                     session.add(status)
                 
                 session.commit()
-                logger.info(f"Created/updated status for message {status.message_id}")
+                logger.info("Created/updated status for message %s", status.message_id)
                 return True
         except SQLAlchemyError as e:
-            logger.error(f"Error creating/updating status for {status.message_id}: {e}")
+            logger.error("Error creating/updating status for %s: %s", status.message_id, e)
             return False
 
 

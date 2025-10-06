@@ -114,7 +114,7 @@ class PdbxMessageIo:
         
         self.__site_id = site_id
         if self.__verbose:
-            self.__lfh.write(f"PdbxMessageIo: Using site_id: {repr(self.__site_id)}\n")
+            self.__lfh.write("PdbxMessageIo: Using site_id: %r\n" % self.__site_id)
         if not db_config:
             cI = ConfigInfo(self.__site_id)
             
@@ -126,12 +126,12 @@ class PdbxMessageIo:
             password = cI.get("SITE_DB_ADMIN_PASS", "")
             
             if self.__verbose:
-                self.__lfh.write(f"PdbxMessageIo: Database config for site_id={self.__site_id}:\n")
-                self.__lfh.write(f"  SITE_DB_HOST_NAME: {host}\n")
-                self.__lfh.write(f"  SITE_DB_PORT_NUMBER: {port}\n") 
-                self.__lfh.write(f"  WWPDB_MESSAGING_DB_NAME: {database}\n")
-                self.__lfh.write(f"  SITE_DB_ADMIN_USER: {username}\n")
-                self.__lfh.write(f"  SITE_DB_ADMIN_PASS: {'***' if password else 'None'}\n")
+                self.__lfh.write("PdbxMessageIo: Database config for site_id=%s:\n" % self.__site_id)
+                self.__lfh.write("  SITE_DB_HOST_NAME: %s\n" % host)
+                self.__lfh.write("  SITE_DB_PORT_NUMBER: %s\n" % port)
+                self.__lfh.write("  WWPDB_MESSAGING_DB_NAME: %s\n" % database)
+                self.__lfh.write("  SITE_DB_ADMIN_USER: %s\n" % username)
+                self.__lfh.write("  SITE_DB_ADMIN_PASS: %s\n" % ('***' if password else 'None'))
             
             db_config = {
                 "host": host,
@@ -145,27 +145,27 @@ class PdbxMessageIo:
             # Validate critical configuration
             if not host:
                 if self.__verbose:
-                    self.__lfh.write(f"PdbxMessageIo: ERROR - SITE_DB_HOST_NAME not configured for site_id={self.__site_id}\n")
+                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_DB_HOST_NAME not configured for site_id=%s\n" % self.__site_id)
                 raise ValueError(f"Database host not configured for site_id={self.__site_id}. Check SITE_DB_HOST_NAME in ConfigInfo.")
             
             if not database:
                 if self.__verbose:
-                    self.__lfh.write(f"PdbxMessageIo: ERROR - WWPDB_MESSAGING_DB_NAME not configured for site_id={self.__site_id}\n")
+                    self.__lfh.write("PdbxMessageIo: ERROR - WWPDB_MESSAGING_DB_NAME not configured for site_id=%s\n" % self.__site_id)
                 raise ValueError(f"Database name not configured for site_id={self.__site_id}. Check WWPDB_MESSAGING_DB_NAME in ConfigInfo.")
             
             if not username:
                 if self.__verbose:
-                    self.__lfh.write(f"PdbxMessageIo: ERROR - SITE_DB_ADMIN_USER not configured for site_id={self.__site_id}\n")
+                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_DB_ADMIN_USER not configured for site_id=%s\n" % self.__site_id)
                 raise ValueError(f"Database username not configured for site_id={self.__site_id}. Check SITE_DB_ADMIN_USER in ConfigInfo.")
         
         try:
             self._dal = DataAccessLayer(db_config)
             
             if self.__verbose:
-                self.__lfh.write(f"PdbxMessageIo: Database adapter initialized successfully\n")
+                self.__lfh.write("PdbxMessageIo: Database adapter initialized successfully\n")
         except Exception as e:
             if self.__verbose:
-                self.__lfh.write(f"PdbxMessageIo: ERROR - Failed to initialize database adapter: {e}\n")
+                self.__lfh.write("PdbxMessageIo: ERROR - Failed to initialize database adapter: %s\n" % e)
             raise ValueError(f"Failed to initialize database adapter for site_id={self.__site_id}: {e}") from e
 
         # Current context selected by read(filePath)
@@ -291,7 +291,7 @@ class PdbxMessageIo:
         # Messages
         for m in self._pending_messages:
             if self.__verbose:
-                logger.info(f"Processing message data: {m}")
+                logger.info("Processing message data: %s", m)
             
             msg = ORMMessageInfo(
                 message_id=m["message_id"],
@@ -309,14 +309,15 @@ class PdbxMessageIo:
             )
             
             if self.__verbose:
-                logger.info(f"Created ORM object: message_id={msg.message_id}, deposition_data_set_id={msg.deposition_data_set_id}, timestamp={msg.timestamp}")
+                logger.info("Created ORM object: message_id=%s, deposition_data_set_id=%s, timestamp=%s",
+                          msg.message_id, msg.deposition_data_set_id, msg.timestamp)
             
             if not self._dal.create_message(msg):
-                logger.error(f"Failed to create message with ID: {m['message_id']}")
+                logger.error("Failed to create message with ID: %s", m['message_id'])
                 success = False
             else:
                 if self.__verbose:
-                    logger.info(f"Successfully created message with ID: {m['message_id']}")
+                    logger.info("Successfully created message with ID: %s", m['message_id'])
 
         # File references
         for fr in self._pending_file_refs:
@@ -331,7 +332,7 @@ class PdbxMessageIo:
                 upload_file_name=fr.get("upload_file_name"),
             )
             if not self._dal.create_file_reference(ref):
-                logger.error(f"Failed to create file reference for message ID: {fr['message_id']}")
+                logger.error("Failed to create file reference for message ID: %s", fr['message_id'])
                 success = False
 
         # Status
@@ -344,7 +345,7 @@ class PdbxMessageIo:
                 for_release=st.get("for_release", "N"),
             )
             if not self._dal.create_or_update_status(status):
-                logger.error(f"Failed to create/update status for message ID: {st['message_id']}")
+                logger.error("Failed to create/update status for message ID: %s", st['message_id'])
                 success = False
 
         # merge in-memory origcomm refs (not persisted)
