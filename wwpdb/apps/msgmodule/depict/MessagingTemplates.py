@@ -71,8 +71,7 @@ Twitter: http://twitter.com/#!/buildmodels
 Protein Data Bank in Europe (PDBe), a wwPDB partner site
 http://www.PDBe.org
 
-EMBL Outstation Hinxton
-European Bioinformatics Institute
+EMBL's European Bioinformatics Institute
 Wellcome Trust Genome Campus
 Hinxton
 Cambridge CB10 1SD UK
