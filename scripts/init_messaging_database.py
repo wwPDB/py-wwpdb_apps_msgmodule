@@ -38,15 +38,16 @@ def get_database_config_from_configinfo(site_id):
         
         config_info = ConfigInfo(site_id)
         
-        # Get database configuration from ConfigInfo (same keys as MessagingDb)
-        host = config_info.get("SITE_DB_HOST_NAME")
-        user = config_info.get("SITE_DB_ADMIN_USER")
-        database = config_info.get("WWPDB_MESSAGING_DB_NAME")
-        port = config_info.get("SITE_DB_PORT_NUMBER", "3306")
-        password = config_info.get("SITE_DB_ADMIN_PASS", "")
+        # Get database configuration from ConfigInfo (using messaging-specific keys)
+        host = config_info.get("SITE_MESSAGE_DB_HOST_NAME")
+        user = config_info.get("SITE_MESSAGE_DB_USER_NAME")
+        database = config_info.get("SITE_MESSAGE_DB_NAME")
+        port = config_info.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
+        password = config_info.get("SITE_MESSAGE_DB_PASSWORD", "")
+        socket = config_info.get("SITE_MESSAGE_DB_SOCKET")  # Optional socket parameter
         
         if not all([host, user, database]):
-            missing = [k for k, v in [("SITE_DB_HOST_NAME", host), ("SITE_DB_ADMIN_USER", user), ("WWPDB_MESSAGING_DB_NAME", database)] if not v]
+            missing = [k for k, v in [("SITE_MESSAGE_DB_HOST_NAME", host), ("SITE_MESSAGE_DB_USER_NAME", user), ("SITE_MESSAGE_DB_NAME", database)] if not v]
             raise RuntimeError(f"Missing required ConfigInfo database settings: {', '.join(missing)}")
 
         config = {
@@ -57,6 +58,10 @@ def get_database_config_from_configinfo(site_id):
             "database": database,
             "charset": "utf8mb4",
         }
+        
+        # Add socket if specified
+        if socket:
+            config["unix_socket"] = socket
         
         logger.info(f"Using database configuration from ConfigInfo for site {site_id}")
         # Log config without password

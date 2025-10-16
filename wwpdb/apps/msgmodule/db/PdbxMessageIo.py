@@ -119,19 +119,22 @@ class PdbxMessageIo:
             cI = ConfigInfo(self.__site_id)
             
             # Debug configuration values
-            host = cI.get("SITE_DB_HOST_NAME")
-            port = cI.get("SITE_DB_PORT_NUMBER", "3306")
-            database = cI.get("WWPDB_MESSAGING_DB_NAME")
-            username = cI.get("SITE_DB_ADMIN_USER")
-            password = cI.get("SITE_DB_ADMIN_PASS", "")
+            host = cI.get("SITE_MESSAGE_DB_HOST_NAME")
+            port = cI.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
+            database = cI.get("SITE_MESSAGE_DB_NAME")
+            username = cI.get("SITE_MESSAGE_DB_USER_NAME")
+            password = cI.get("SITE_MESSAGE_DB_PASSWORD", "")
+            socket = cI.get("SITE_MESSAGE_DB_SOCKET")  # Optional socket parameter
             
             if self.__verbose:
                 self.__lfh.write("PdbxMessageIo: Database config for site_id=%s:\n" % self.__site_id)
-                self.__lfh.write("  SITE_DB_HOST_NAME: %s\n" % host)
-                self.__lfh.write("  SITE_DB_PORT_NUMBER: %s\n" % port)
-                self.__lfh.write("  WWPDB_MESSAGING_DB_NAME: %s\n" % database)
-                self.__lfh.write("  SITE_DB_ADMIN_USER: %s\n" % username)
-                self.__lfh.write("  SITE_DB_ADMIN_PASS: %s\n" % ('***' if password else 'None'))
+                self.__lfh.write("  SITE_MESSAGE_DB_HOST_NAME: %s\n" % host)
+                self.__lfh.write("  SITE_MESSAGE_DB_PORT_NUMBER: %s\n" % port)
+                self.__lfh.write("  SITE_MESSAGE_DB_NAME: %s\n" % database)
+                self.__lfh.write("  SITE_MESSAGE_DB_USER_NAME: %s\n" % username)
+                self.__lfh.write("  SITE_MESSAGE_DB_PASSWORD: %s\n" % ('***' if password else 'None'))
+                if socket:
+                    self.__lfh.write("  SITE_MESSAGE_DB_SOCKET: %s\n" % socket)
             
             db_config = {
                 "host": host,
@@ -142,21 +145,25 @@ class PdbxMessageIo:
                 "charset": "utf8mb4",
             }
             
+            # Add socket if specified
+            if socket:
+                db_config["unix_socket"] = socket
+            
             # Validate critical configuration
             if not host:
                 if self.__verbose:
-                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_DB_HOST_NAME not configured for site_id=%s\n" % self.__site_id)
-                raise ValueError(f"Database host not configured for site_id={self.__site_id}. Check SITE_DB_HOST_NAME in ConfigInfo.")
+                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_MESSAGE_DB_HOST_NAME not configured for site_id=%s\n" % self.__site_id)
+                raise ValueError(f"Database host not configured for site_id={self.__site_id}. Check SITE_MESSAGE_DB_HOST_NAME in ConfigInfo.")
             
             if not database:
                 if self.__verbose:
-                    self.__lfh.write("PdbxMessageIo: ERROR - WWPDB_MESSAGING_DB_NAME not configured for site_id=%s\n" % self.__site_id)
-                raise ValueError(f"Database name not configured for site_id={self.__site_id}. Check WWPDB_MESSAGING_DB_NAME in ConfigInfo.")
+                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_MESSAGE_DB_NAME not configured for site_id=%s\n" % self.__site_id)
+                raise ValueError(f"Database name not configured for site_id={self.__site_id}. Check SITE_MESSAGE_DB_NAME in ConfigInfo.")
             
             if not username:
                 if self.__verbose:
-                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_DB_ADMIN_USER not configured for site_id=%s\n" % self.__site_id)
-                raise ValueError(f"Database username not configured for site_id={self.__site_id}. Check SITE_DB_ADMIN_USER in ConfigInfo.")
+                    self.__lfh.write("PdbxMessageIo: ERROR - SITE_MESSAGE_DB_USER_NAME not configured for site_id=%s\n" % self.__site_id)
+                raise ValueError(f"Database username not configured for site_id={self.__site_id}. Check SITE_MESSAGE_DB_USER_NAME in ConfigInfo.")
         
         try:
             self._dal = DataAccessLayer(db_config)
