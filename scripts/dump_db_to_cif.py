@@ -119,10 +119,11 @@ logger = logging.getLogger(__name__)
 
 
 def escape_non_ascii(text: str) -> str:
-    """Escape non-ASCII characters to ASCII using backslash notation."""
+    """Escape non-ASCII characters to ASCII using Unicode escape notation."""
     if not text:
         return text
-    return text.encode('ascii', 'backslashreplace').decode()
+    # Fix: Use unicode_escape to get \uXXXX format
+    return text.encode('unicode_escape').decode('ascii')
 
 
 class DbToCifExporter:
