@@ -384,10 +384,11 @@ class DbToCifExporter:
                 for col in columns:
                     value = self._get_message_attribute_value(message, col)
                     escaped_value = escape_non_ascii(str(value)) if value is not None else "?"
-                    # Handle special CIF formatting for multiline text in loops
+                    # In CIF loops, newlines need to be replaced with spaces or escaped
+                    # Semicolon text fields (;...;) cannot be used in loops
                     if col in ("message_text", "message_subject") and value and "\n" in str(value):
-                        # For loops, use semicolon text field format
-                        escaped_value = f"\n;{escaped_value}\n;"
+                        # Replace newlines with spaces for loop compatibility
+                        escaped_value = escaped_value.replace("\n", " ")
                     row_values.append(escaped_value)
                 loop.add_row(row_values)
         else:
