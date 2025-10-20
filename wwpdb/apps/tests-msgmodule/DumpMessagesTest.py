@@ -460,11 +460,12 @@ class TestDbToCifExporter(unittest.TestCase):
                         tags = item.loop.tags
                         if "_pdbx_deposition_message_info.message_id" in tags:
                             msg_id_idx = tags.index("_pdbx_deposition_message_info.message_id")
-                            for row in item.loop:
+                            # Iterate using loop indices (gemmi requires loop[row, col] access)
+                            for row_idx in range(item.loop.length()):
                                 msg_data = {}
-                                for i, tag in enumerate(tags):
+                                for col_idx, tag in enumerate(tags):
                                     field = tag.split(".")[-1]
-                                    msg_data[field] = row[i].strip("'\"")
+                                    msg_data[field] = item.loop[row_idx, col_idx].strip("'\"")
                                 messages_found.append(msg_data)
                             break
                 
