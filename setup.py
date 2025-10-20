@@ -55,6 +55,7 @@ setup(
         "wwpdb.apps.wf_engine",
         "wwpdb.utils.nmr",
         "pymysql",
+        "gemmi >= 0.6.0",
     ],
     packages=find_packages(exclude=["wwpdb.apps.tests-msgmodule", "mock-data"]),
     # Enables Manifest to be used
