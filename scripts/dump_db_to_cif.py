@@ -188,6 +188,7 @@ class DbToCifExporter:
         if not messages:
             log_event("no_messages_found", deposition_id=deposition_id,
                      message="No messages found in database for deposition")
+            self.stats["depositions_processed"] += 1
             return True  # Not an error, just no data
         
         # Group messages by content type
