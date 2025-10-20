@@ -87,8 +87,12 @@ class TestDbToCifExporter(unittest.TestCase):
     def _create_test_message(self, subject_suffix=""):
         """Create a test message in the database for export testing"""
         
+        # Capture site_id from test class for use in MockRequest
+        test_site_id = self.site_id
+        
         class MockRequest:
             def __init__(self, dep_id, subject, sender, body):
+                self.site_id = test_site_id  # Add site_id as direct attribute
                 self._values = {
                     'identifier': dep_id,
                     'subject': subject,
@@ -98,7 +102,7 @@ class TestDbToCifExporter(unittest.TestCase):
                     'content_type': 'messages-to-depositor',
                     'message_state': 'livemsg',
                     'send_status': 'Y',
-                    'WWPDB_SITE_ID': self.site_id,
+                    'WWPDB_SITE_ID': test_site_id,
                     'filesource': 'archive'
                 }
             
