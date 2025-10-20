@@ -112,6 +112,9 @@ class TestDbToCifExporter(unittest.TestCase):
             def getRawValue(self, key):
                 return self._values.get(key, '')
             
+            def getValueList(self, key):
+                return []
+            
             def newSessionObj(self):
                 return MockSession()
             
