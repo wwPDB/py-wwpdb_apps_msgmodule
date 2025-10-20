@@ -384,11 +384,12 @@ class DbToCifExporter:
                 for col in columns:
                     value = self._get_message_attribute_value(message, col)
                     escaped_value = escape_non_ascii(str(value)) if value is not None else "?"
-                    # In CIF loops, all values must be single-line
+                    # In CIF loops, all values must be single-line and quoted to handle spaces
                     # Replace any newlines (real or escaped) with spaces
                     if escaped_value and escaped_value != "?":
                         escaped_value = escaped_value.replace("\n", " ").replace("\\n", " ")
-                    row_values.append(escaped_value)
+                    # Quote all values to handle spaces (timestamps, text with spaces, etc.)
+                    row_values.append(f"'{escaped_value}'")
                 loop.add_row(row_values)
         else:
             # Single message - use item format
@@ -427,7 +428,9 @@ class DbToCifExporter:
                 row_values = []
                 for col in columns:
                     value = self._get_file_ref_attribute_value(file_ref, col)
-                    row_values.append(escape_non_ascii(str(value)) if value is not None else "?")
+                    escaped_value = escape_non_ascii(str(value)) if value is not None else "?"
+                    # Quote all values to handle spaces
+                    row_values.append(f"'{escaped_value}'")
                 loop.add_row(row_values)
         else:
             file_ref = file_refs[0]
@@ -453,7 +456,9 @@ class DbToCifExporter:
                 row_values = []
                 for col in columns:
                     value = self._get_status_attribute_value(status, col)
-                    row_values.append(escape_non_ascii(str(value)) if value is not None else "?")
+                    escaped_value = escape_non_ascii(str(value)) if value is not None else "?"
+                    # Quote all values to handle spaces
+                    row_values.append(f"'{escaped_value}'")
                 loop.add_row(row_values)
         else:
             status = statuses[0]
