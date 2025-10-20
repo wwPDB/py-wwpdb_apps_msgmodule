@@ -145,12 +145,14 @@ class CifToDbMigrator:
 
     def _get_database_config(self) -> Dict:
         """Get database configuration from ConfigInfo"""
-        host = self.config_info.get("SITE_DB_HOST_NAME")
-        user = self.config_info.get("SITE_DB_ADMIN_USER")
-        database = self.config_info.get("WWPDB_MESSAGING_DB_NAME")
-        port = self.config_info.get("SITE_DB_PORT_NUMBER", "3306")
-        password = self.config_info.get("SITE_DB_ADMIN_PASS", "")
-        
+        # Try messaging-specific configuration first
+        host = self.config_info.get("SITE_MESSAGE_DB_HOST_NAME")
+        user = self.config_info.get("SITE_MESSAGE_DB_USER_NAME") 
+        database = self.config_info.get("SITE_MESSAGE_DB_NAME")
+        port = self.config_info.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
+        password = self.config_info.get("SITE_MESSAGE_DB_PASSWORD", "")
+        # socket = self.config_info.get("SITE_MESSAGE_DB_SOCKET")  # Optional socket parameter
+
         if not all([host, user, database]):
             raise RuntimeError("Missing required database configuration")
 
