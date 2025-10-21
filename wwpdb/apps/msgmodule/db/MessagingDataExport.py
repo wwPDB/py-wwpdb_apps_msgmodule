@@ -25,13 +25,13 @@ class MessagingDataExport(object):
     This class provides the same interface but returns dummy file paths.
     """
 
-    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
-        self.__lfh = log
+        # self.__lfh = log
         self.__reqObj = reqObj
-        self.__debug = False
+        # self.__debug = False
 
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin,unused-argument
         """
         Return a dummy file path that contains the deposition ID and content type.
         
@@ -78,13 +78,13 @@ class MessagingDataExport(object):
         path = self.getFilePath(**kwargs)
         return path, path
 
-    def exportFile(self, **kwargs):
+    def exportFile(self, **kwargs):  # pylint: disable=unused-argument
         """
         Stub method for compatibility.
         """
         return True
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=unused-argument
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=unused-argument,redefined-builtin
         """
         Return dummy milestone file paths for database backend compatibility.
         

@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 
@@ -25,13 +25,13 @@ class PdbxMessageIo:
         if self.__legacycomm:
             self.__impl = PdbxMessageIoLegacy(verbose, log)
         else:
-            self.__impl = PdbxMessageDb(site_id, verbose, log, db_config)
+            self.__impl = PdbxMessageIoDb(site_id, verbose, log, db_config)
 
     def read(self, filePath: str, logtag: str = "", deposition_id: str = None) -> bool:
         if self.__legacycomm:
             return self.__impl.read(filePath, logtag)
         else:
-            return self.__impl.read(filePath, logtag, deposition_id)
+            return self.__impl.read(filePath, logtag, deposition_id)  # pylint:  disable=too-many-function-args
 
     def getCategory(self, catName: str = "pdbx_deposition_message_info") -> List[Dict]:
         return self.__impl.getCategory(catName)
@@ -70,7 +70,7 @@ class PdbxMessageIo:
         return self.__impl.complyStyle()
 
     def setBlock(self, blockId: str) -> bool:
-        return self.__imple.setBlock(blockId)
+        return self.__impl.setBlock(blockId)
 
     def newBlock(self, blockId: str) -> None:
         self.__impl.newBlock(blockId)
@@ -108,21 +108,16 @@ class LockFile(object):
         """
         return self.__limpl.__enter__()
 
-    def __exit__(self, type, value, traceback):
-        self.__limpl.__exit__(type, value, traceback)
+    def __exit__(self, exc_type, value, traceback):
+        self.__limpl.__exit__(exc_type, value, traceback)
 
     def __del__(self):
         self.__limpl.__del__()
 
-# FileSizeLogger is a router now
+
 class FileSizeLogger(object):
     def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         """Prepare the file size logger. Specify the file to report on"""
-        self.__filePath = filePath
-        #
-        # self.__lfh = log
-        self.__verbose = verbose
-        self.__debug = True
         self.__legacycomm = not ConfigInfoAppMessaging().get_msgdb_support()
         if self.__legacycomm:
             self.__limpl = FileSizeLoggerLegacy(filePath, verbose, log)
@@ -160,4 +155,3 @@ class FileSizeLoggerLegacy(object):
         filesize = os.stat(self.__filePath).st_size
         if self.__verbose and self.__debug:
             logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
-

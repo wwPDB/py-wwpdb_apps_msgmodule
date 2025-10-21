@@ -25,7 +25,7 @@ class FileSizeLogger:
     no-op operations for them, while preserving real file size logging for actual paths.
     """
     
-    def __init__(self, filePath, verbose=False, log=sys.stderr):
+    def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         """
         Initialize FileSizeLogger with same interface as original.
         
@@ -202,7 +202,7 @@ class LockFile:
                         raise
                     # handle timeout and retry -
                     if (time.time() - timeBegin) >= self.__timeoutSeconds:
-                        raise LockFileTimeoutException("LockFile(acquire) Internal timeout of %d (seconds) exceeded for %s" %
+                        raise LockFileTimeoutException("LockFile(acquire) Internal timeout of %d (seconds) exceeded for %s" %  # pylint: disable=raise-missing-from
                                                        (self.__timeoutSeconds, self.__filePath))
                     time.sleep(self.__retrySeconds)
             self.__isLocked = True
@@ -243,7 +243,7 @@ class LockFile:
             self.acquire()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, value, traceback):
         """
         Internal method for Context-management support.  Invoked at the end of a 'with' clause.
         """

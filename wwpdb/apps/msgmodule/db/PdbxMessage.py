@@ -51,7 +51,7 @@ class _BasePdbxMessage:
         self._model = model_instance
         self._row_dict = {}
 
-    def setOrdinalId(self, id: int):
+    def setOrdinalId(self, id: int):  # pylint:  disable=redefined-builtin
         if self._model:
             self._model.ordinal_id = id
         self._row_dict["ordinal_id"] = id

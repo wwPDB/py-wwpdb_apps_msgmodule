@@ -145,7 +145,6 @@ import smtplib
 import sys
 import textwrap
 import time
-from typing import Dict, List
 
 try:
     from html import unescape
@@ -1992,7 +1991,7 @@ class MessagingIo(object):
                     if ok:
                         msgsFrmDpstrLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-            # For database-backed storage (dummy paths), skip file existence checks  
+            # For database-backed storage (dummy paths), skip file existence checks
             if self.__msgsToDpstrFilePath and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                 fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
                 if fileSizeToDpstr > 0:
@@ -5195,5 +5194,4 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
         if self.__verbose:
             logger.info("following email address found to be invalid: %s\n", email)
         return False
-
 

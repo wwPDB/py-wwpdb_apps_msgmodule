@@ -287,7 +287,7 @@ class PdbxMessageIo:
         self._pending_statuses.append(dict(rowAttribDict))
         return True
 
-    def write(self, filePath: str) -> bool:
+    def write(self, filePath: str) -> bool:  # pylint: disable=unused-argument
         """Commit pending rows to DB. filePath is ignored (retained for API compatibility)."""
         if self.__verbose:
             logger.info("DB MessageIo write() pending: msgs=%d files=%d statuses=%d",

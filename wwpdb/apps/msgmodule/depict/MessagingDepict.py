@@ -55,8 +55,8 @@ import sys
 import time
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 # Use routing database-backed stub instead of file-based implementation
-from  wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
-from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
+# from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 

@@ -26,16 +26,16 @@ class MessagingDataImport(object):
     the PdbxMessageIo can parse for deposition_id and content_type.
     """
 
-    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
-        self.__lfh = log
+        # self.__lfh = log
         self.__reqObj = reqObj
-        self.__debug = False
+        # self.__debug = False
         
         # Set up instance variables to match original interface
         self.__setup()
 
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin,unused-argument
         """
         Return a dummy file path that contains the deposition ID and content type.
         
@@ -75,13 +75,13 @@ class MessagingDataImport(object):
             logger.error("Error in MessagingDataImport.getFilePath: %s", e)
             raise
 
-    def checkFilePathExists(self, filePath):
+    def checkFilePathExists(self, filePath):  # pylint: disable=unused-argument
         """
         Always return True since database storage doesn't depend on file existence.
         """
         return True
 
-    def getFileReference(self, **kwargs):
+    def getFileReference(self, **kwargs):  # pylint: disable=unused-argument
         """
         Stub method for compatibility.
         """
@@ -105,10 +105,10 @@ class MessagingDataImport(object):
             siteId = self.__reqObj.getValue("WWPDB_SITE_ID")
             if not siteId:
                 raise ValueError("WWPDB_SITE_ID is required")
-            self.__siteId = str(siteId)
+            # self.__siteId = str(siteId)
             
             self.__groupId = str(self.__reqObj.getValue("groupid") or "").upper()
-            self.__fileSource = "archive"  # Default file source
+            # self.__fileSource = "archive"  # Default file source
                 
             if self.__verbose:
                 logger.debug("Database stub initialized - identifier: %s, instance: %s", 
@@ -118,7 +118,7 @@ class MessagingDataImport(object):
             logger.exception("Error in __setup: %s", e)
             raise ValueError(f"Failed to initialize MessagingDataImport: {e}") from e
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=redefined-builtin,unused-argument
         """
         Return dummy milestone file paths for database backend compatibility.
         
@@ -158,9 +158,3 @@ class MessagingDataImport(object):
             logger.error("Error in getMileStoneFilePaths: %s", e)
             raise
 
-    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):
-        """
-        Internal method to match original interface.
-        Returns a dummy file path for database backend compatibility.
-        """
-        return self.getFilePath(contentType=contentType, format=fmt)
