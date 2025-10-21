@@ -21,7 +21,7 @@ import sys
 import logging
 
 # Use database-backed stub instead of file-based implementation
-from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 
 logger = logging.getLogger(__name__)
 

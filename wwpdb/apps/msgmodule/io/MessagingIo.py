@@ -145,6 +145,7 @@ import smtplib
 import sys
 import textwrap
 import time
+from typing import Dict, List
 
 try:
     from html import unescape
@@ -154,9 +155,12 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
+from mmcif_utils.message.PdbxMessage import PdbxMessageInfo as PdbxMessageInfoLegacy, PdbxMessageFileReference as PdbxMessageFileReferenceLegacy, \
+    PdbxMessageOrigCommReference as PdbxMessageOrigCommReferenceLegacy, PdbxMessageStatus as PdbxMessageStatusLegacy
+from wwpdb.apps.msgmodule.io.CompatIo import PdbxMessageIo, LockFile, FileSizeLogger
 # Database-backed message classes (instead of CIF-based)
 from wwpdb.apps.msgmodule.db.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
-from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+# from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo as PdbxMessageIoDb
 # from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
@@ -166,6 +170,7 @@ from mmcif.io.PdbxReader import PdbxReader
 
 #
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
 # Use routing wrapper that selectively chooses between db and file implementations
 from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport, MessagingDataExport
@@ -182,8 +187,8 @@ from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
 
 #
 from mmcif_utils.persist.PdbxPersist import PdbxPersist
-# from wwpdb.apps.msgmodule.db.LockFile import LockFile
-from wwpdb.apps.msgmodule.db.LockFile import LockFile, FileSizeLogger
+# from wwpdb.apps.msgmodule.db.LockFile import LockFile as LockFileDb
+# from wwpdb.apps.msgmodule.db.LockFile import FileSizeLogger as FileSizeLoggerDb
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from oslo_concurrency import lockutils
@@ -200,6 +205,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+###########################
 class MessagingIo(object):
     # List of categories to parse from model file
     ctgrsReqrdFrmModelFile = [
@@ -237,7 +243,6 @@ class MessagingIo(object):
         self.__skipCopyIfSame = True
         #
         self.__reqObj = reqObj
-
         #
         # Added by ZF
         #
@@ -252,6 +257,7 @@ class MessagingIo(object):
         # self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(self.__siteId).get_msgdb_support()
         self.__cI = ConfigInfo(self.__siteId)
         self.__cIA = ConfigInfoAppEm(self.__siteId)
         self.__emdDialectMappingFile = self.__cIA.get_emd_mapping_file_path()
@@ -973,7 +979,10 @@ class MessagingIo(object):
             if self.__verbose and self.__debug:
                 logger.info("p_msgObj.isLive is: %r", p_msgObj.isLive)
             if p_msgObj.isLive:  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
-                mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
+                if self.__legacycomm:
+                    mI = PdbxMessageInfoLegacy(verbose=self.__verbose, log=self.__lfh)
+                else:
+                    mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
                 mI.set(p_msgObj.getMsgDict())
                 if self.__verbose and self.__debug:
                     logger.info("p_msgObj.getMsgDict() is: %r", p_msgObj.getMsgDict())
@@ -1259,7 +1268,10 @@ class MessagingIo(object):
         origRecipientAsAscii = self.__encodeUtf8ToCif(origRecipient)
         origSubjectAsAscii = self.__encodeUtf8ToCif(origSubject)
 
-        msgOrigCommRef = PdbxMessageOrigCommReference(verbose=self.__verbose, log=self.__lfh)
+        if self.__legacycomm:
+            msgOrigCommRef = PdbxMessageOrigCommReferenceLegacy(verbose=self.__verbose, log=self.__lfh)
+        else:
+            msgOrigCommRef = PdbxMessageOrigCommReference(verbose=self.__verbose, log=self.__lfh)
         msgOrigCommRef.setMessageId(p_msgObj.messageId)
         msgOrigCommRef.setDepositionId(p_msgObj.depositionId)
         msgOrigCommRef.setOrigSender(origSenderAsAscii)
@@ -1656,7 +1668,10 @@ class MessagingIo(object):
         bOk = False
         #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
+            if self.__legacycomm:
+                mS = PdbxMessageStatusLegacy(verbose=self.__verbose, log=self.__lfh)
+            else:
+                mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
             mS.set(p_msgStatusDict)
             msgId = mS.getMessageId()
             #
@@ -1853,7 +1868,10 @@ class MessagingIo(object):
         bOk = False
         #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
+            if self.__legacycomm:
+                mS = PdbxMessageStatusLegacy(verbose=self.__verbose, log=self.__lfh)
+            else:
+                mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
             mS.set(p_msgStatusDict)
             msgId = mS.getMessageId()
             #
@@ -2853,7 +2871,10 @@ class MessagingIo(object):
 
     def __createMsgFileReference(self, p_msgId, p_depId, p_contentType, p_contentFormat, p_annotPartitionNum, p_annotVersionNum, p_upldFileName=None, p_storageType="archive"):
 
-        mfr = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
+        if self.__legacycomm:
+            mfr = PdbxMessageFileReferenceLegacy(verbose=self.__verbose, log=self.__lfh)
+        else:
+            mfr = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
         mfr.setMessageId(p_msgId)
         mfr.setDepositionId(p_depId)
         mfr.setStorageType(p_storageType)
@@ -5175,27 +5196,4 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             logger.info("following email address found to be invalid: %s\n", email)
         return False
 
-# # FileSizeLogger is now imported from wwpdb.apps.msgmodule.db.LockFile
-# class FileSizeLogger(object):
-#     """Simple class to support trace logging for file size before and after a given action"""
 
-#     def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
-#         """Prepare the file size logger. Specify the file to report on"""
-#         self.__filePath = filePath
-#         #
-#         # self.__lfh = log
-#         self.__verbose = verbose
-#         self.__debug = True
-#         #
-
-#     def __enter__(self):
-#         filesize = os.stat(self.__filePath).st_size
-#         if self.__verbose and self.__debug:
-#             logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
-
-#         return self
-
-#     def __exit__(self, exc_type, value, tb):
-#         filesize = os.stat(self.__filePath).st_size
-#         if self.__verbose and self.__debug:
-#             logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)

@@ -13,11 +13,11 @@ Uses database-backed implementation for: messages-from-depositor, messages-to-de
 Uses original file-based implementation for: everything else
 """
 
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport as DbMessagingDataImport
 from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport as DbMessagingDataExport
 from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport as IoMessagingDataImport
 from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport as IoMessagingDataExport
-
 
 class MessagingDataImport(object):
     """
@@ -40,6 +40,8 @@ class MessagingDataImport(object):
         self._log = log
         self._db_impl = None
         self._io_impl = None
+        siteId = str(self._reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(siteId).get_msgdb_support()
     
     def _get_db_impl(self):
         """Lazy initialization of database-backed implementation"""
@@ -55,7 +57,7 @@ class MessagingDataImport(object):
     
     def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin
         """Route getFilePath call to appropriate implementation based on content type"""
-        if contentType in self.DB_BACKED_CONTENT_TYPES:
+        if (not self.__legacycomm) and contentType in self.DB_BACKED_CONTENT_TYPES:
             return self._get_db_impl().getFilePath(contentType, format, **kwargs)
         else:
             return self._get_io_impl().getFilePath(contentType, format, **kwargs)
@@ -83,6 +85,8 @@ class MessagingDataExport(object):
         self._log = log
         self._db_impl = None
         self._io_impl = None
+        siteId = str(self._reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(siteId).get_msgdb_support()
     
     def _get_db_impl(self):
         """Lazy initialization of database-backed implementation"""
@@ -98,7 +102,7 @@ class MessagingDataExport(object):
     
     def getFilePath(self, contentType="model", format="pdbx", **kwargs):
         """Route getFilePath call to appropriate implementation based on content type"""
-        if contentType in self.DB_BACKED_CONTENT_TYPES:
+        if (not self.__legacycomm) and contentType in self.DB_BACKED_CONTENT_TYPES:
             return self._get_db_impl().getFilePath(contentType, format, **kwargs)
         else:
             return self._get_io_impl().getFilePath(contentType, format, **kwargs)
