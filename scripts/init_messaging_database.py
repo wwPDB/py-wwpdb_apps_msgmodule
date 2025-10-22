@@ -125,13 +125,13 @@ def get_create_table_statements():
         """
         CREATE TABLE IF NOT EXISTS pdbx_deposition_message_info (
             ordinal_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-            message_id VARCHAR(255) UNIQUE NOT NULL,
+            message_id VARCHAR(64) UNIQUE NOT NULL,
             deposition_data_set_id VARCHAR(50) NOT NULL,
             timestamp DATETIME NOT NULL,
-            sender VARCHAR(255) NOT NULL,
+            sender VARCHAR(150) NOT NULL,
             context_type VARCHAR(50),
             context_value VARCHAR(255),
-            parent_message_id VARCHAR(255),
+            parent_message_id VARCHAR(64),
             message_subject TEXT NOT NULL,
             message_text LONGTEXT NOT NULL,
             message_type VARCHAR(20) DEFAULT 'text',
@@ -159,7 +159,7 @@ def get_create_table_statements():
         """
         CREATE TABLE IF NOT EXISTS pdbx_deposition_message_file_reference (
             ordinal_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-            message_id VARCHAR(255) NOT NULL,
+            message_id VARCHAR(64) NOT NULL,
             deposition_data_set_id VARCHAR(50) NOT NULL,
             content_type VARCHAR(50) NOT NULL,
             content_format VARCHAR(20) NOT NULL,
@@ -184,7 +184,7 @@ def get_create_table_statements():
     statements.append(
         """
         CREATE TABLE IF NOT EXISTS pdbx_deposition_message_status (
-            message_id VARCHAR(255) PRIMARY KEY,
+            message_id VARCHAR(64) PRIMARY KEY,
             deposition_data_set_id VARCHAR(50) NOT NULL,
             read_status CHAR(1) DEFAULT 'N',
             action_reqd CHAR(1) DEFAULT 'N',

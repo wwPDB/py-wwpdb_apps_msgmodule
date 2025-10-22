@@ -24,13 +24,13 @@ class MessageInfo(Base):
     
     # Database columns - exactly matching mmCIF attributes
     ordinal_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    message_id = Column(String(255), unique=True, nullable=False, index=True)
+    message_id = Column(String(64), unique=True, nullable=False, index=True)
     deposition_data_set_id = Column(String(50), nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False, index=True)
-    sender = Column(String(255), nullable=False, index=True)
+    sender = Column(String(150), nullable=False, index=True)
     context_type = Column(String(50), nullable=True, index=True)
     context_value = Column(String(255), nullable=True)
-    parent_message_id = Column(String(255), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=True, index=True)
+    parent_message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=True, index=True)
     message_subject = Column(Text, nullable=False)
     message_text = Column(LONGTEXT, nullable=False)
     message_type = Column(String(20), nullable=True, default='text')
@@ -50,7 +50,7 @@ class MessageFileReference(Base):
     
     # Database columns - exactly matching mmCIF attributes
     ordinal_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    message_id = Column(String(255), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=False, index=True)
+    message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=False, index=True)
     deposition_data_set_id = Column(String(50), nullable=False, index=True)
     content_type = Column(String(50), nullable=False, index=True)
     content_format = Column(String(20), nullable=False)
@@ -75,7 +75,7 @@ class MessageStatus(Base):
     __tablename__ = 'pdbx_deposition_message_status'
     
     # Database columns - exactly matching mmCIF attributes
-    message_id = Column(String(255), ForeignKey('pdbx_deposition_message_info.message_id'), primary_key=True)
+    message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), primary_key=True)
     deposition_data_set_id = Column(String(50), nullable=False, index=True)
     read_status = Column(CHAR(1), nullable=True, default='N', index=True)
     action_reqd = Column(CHAR(1), nullable=True, default='N', index=True)
