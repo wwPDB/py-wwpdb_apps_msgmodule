@@ -581,6 +581,15 @@ class DbToCifExporter:
             return True
             
         except Exception as e:
+            import traceback
+            sys.stderr.write(f"\n{'='*60}\n")
+            sys.stderr.write(f"EXCEPTION in _export_messages_to_cif:\n")
+            sys.stderr.write(f"  Deposition: {deposition_id}\n")
+            sys.stderr.write(f"  File: {file_path}\n")
+            sys.stderr.write(f"  Error: {type(e).__name__}: {e}\n")
+            sys.stderr.write(f"{'='*60}\n")
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.write(f"{'='*60}\n\n")
             log_event("file_write_failed", deposition_id=deposition_id,
                      file_path=file_path, content_type=content_type, error=str(e))
             return False
