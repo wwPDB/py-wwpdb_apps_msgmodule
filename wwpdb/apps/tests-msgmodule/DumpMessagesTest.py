@@ -425,14 +425,16 @@ class TestDbToCifExporter(unittest.TestCase):
             deposition_list = [self.dep_id]  # Use the configured test deposition
             results = exporter.export_bulk(deposition_list, self.test_output_dir, overwrite=True)
             
-            self.assertIn("successful", results, "Results should contain 'successful' key")
-            self.assertIn("failed", results, "Results should contain 'failed' key")
+            # Results is now a BulkExportResult dataclass with .successful and .failed attributes
+            self.assertIsNotNone(results, "Results should not be None")
+            self.assertTrue(hasattr(results, 'successful'), "Results should have 'successful' attribute")
+            self.assertTrue(hasattr(results, 'failed'), "Results should have 'failed' attribute")
             
             # At least our test deposition should be processed
-            total_processed = len(results["successful"]) + len(results["failed"])
+            total_processed = results.total_processed
             self.assertGreater(total_processed, 0, "At least one deposition should be processed")
             
-            print(f"   ✅ Bulk export completed: {len(results['successful'])} successful, {len(results['failed'])} failed")
+            print(f"   ✅ Bulk export completed: {len(results.successful)} successful, {len(results.failed)} failed")
             
         except Exception as e:
             self.fail(f"Bulk export test failed: {e}")
@@ -542,27 +544,26 @@ class TestDbToCifExporter(unittest.TestCase):
         try:
             exporter = DbToCifExporter(self.site_id)
             
-            # Check initial stats
-            initial_stats = exporter.stats.copy()
-            self.assertEqual(initial_stats["depositions_processed"], 0)
-            self.assertEqual(initial_stats["files_created"], 0)
-            self.assertEqual(initial_stats["messages_exported"], 0)
-            self.assertEqual(initial_stats["errors"], 0)
+            # Check initial stats - stats is now an ExportStatistics dataclass
+            self.assertEqual(exporter.stats.depositions_processed, 0)
+            self.assertEqual(exporter.stats.files_created, 0)
+            self.assertEqual(exporter.stats.messages_exported, 0)
+            self.assertEqual(exporter.stats.errors, 0)
             
             # Perform an export
             success = exporter.export_deposition(self.dep_id, self.test_output_dir, overwrite=True)
             
             # Check updated stats
             final_stats = exporter.stats
-            self.assertGreaterEqual(final_stats["depositions_processed"], 1)
+            self.assertGreaterEqual(final_stats.depositions_processed, 1)
             
             if success:
                 # If export succeeded, we should have some activity
                 print(f"   📊 Export statistics:")
-                print(f"       Depositions processed: {final_stats['depositions_processed']}")
-                print(f"       Files created: {final_stats['files_created']}")
-                print(f"       Messages exported: {final_stats['messages_exported']}")
-                print(f"       Errors: {final_stats['errors']}")
+                print(f"       Depositions processed: {final_stats.depositions_processed}")
+                print(f"       Files created: {final_stats.files_created}")
+                print(f"       Messages exported: {final_stats.messages_exported}")
+                print(f"       Errors: {final_stats.errors}")
             
             print("   ✅ Export statistics tracking validated")
             
