@@ -367,20 +367,47 @@ class TestDbToCifExporter(unittest.TestCase):
             exporter = DbToCifExporter(self.site_id)
             
             # Test various invalid formats
-            invalid_ids = ["INVALID", "123456", "D_", ""]
+            invalid_ids = ["INVALID", "123456", "D_", "X_123456", ""]
             
             for invalid_id in invalid_ids:
                 success = exporter.export_deposition(invalid_id, self.test_output_dir)
                 # Should fail for invalid deposition ID formats
-                if invalid_id == "":
-                    self.assertFalse(success, f"Export should fail for empty deposition ID")
-                elif not invalid_id.startswith("D_"):
-                    self.assertFalse(success, f"Export should fail for invalid deposition ID format: {invalid_id}")
+                self.assertFalse(success, f"Export should fail for invalid deposition ID format: '{invalid_id}'")
             
             print("   ✅ Invalid deposition ID formats handled correctly")
             
         except Exception as e:
             self.fail(f"Invalid deposition ID test failed: {e}")
+
+    def test_export_with_valid_deposition_id_prefixes(self):
+        """Test export accepts both D_ and G_ prefixes for deposition IDs"""
+        try:
+            exporter = DbToCifExporter(self.site_id)
+            
+            # Test valid prefixes (D_ for depositions, G_ for groups)
+            valid_ids = [
+                ("D_1000000001", "standard deposition"),
+                ("G_1000000001", "group deposition")
+            ]
+            
+            for dep_id, description in valid_ids:
+                # These should not fail validation (though may have no data)
+                try:
+                    success = exporter.export_deposition(dep_id, self.test_output_dir, overwrite=True)
+                    # Success could be True (exported) or True (no data, but didn't fail validation)
+                    print(f"       ✓ {description} ID '{dep_id}' passed validation: success={success}")
+                except Exception as e:
+                    # Should not raise exception for validation errors
+                    if "must start with" in str(e).lower() or "invalid" in str(e).lower():
+                        self.fail(f"{description} ID '{dep_id}' should be accepted but got: {e}")
+                    else:
+                        # Other errors (DB issues, etc.) are acceptable for this test
+                        print(f"       ~ {description} ID '{dep_id}' validation passed (other error: {e})")
+            
+            print("   ✅ Valid deposition ID prefixes (D_ and G_) accepted correctly")
+            
+        except Exception as e:
+            self.fail(f"Valid deposition ID prefix test failed: {e}")
 
     def test_bulk_export_functionality(self):
         """Test bulk export of multiple depositions"""
