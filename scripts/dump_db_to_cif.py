@@ -284,11 +284,18 @@ def format_cif_loop_value(value: Any) -> str:
         return "?"
     
     escaped = escape_non_ascii(str(value))
-    # Replace newlines with spaces for loop values
+    # Replace newlines and multiple spaces with single space for loop values
     escaped = escaped.replace("\n", " ").replace("\\n", " ")
+    # Collapse multiple spaces into single space
+    while "  " in escaped:
+        escaped = escaped.replace("  ", " ")
+    escaped = escaped.strip()
     
-    # For loop values, use quotes only if necessary (contains spaces or special chars)
-    if " " in escaped or any(c in escaped for c in "[]{}()"):
+    # CIF loop values must be on a single line - check if escaping is needed
+    # Always quote if contains spaces or special characters
+    if " " in escaped or any(c in escaped for c in "'\"[]{}()"):
+        # Escape any single quotes inside by doubling them (CIF standard)
+        escaped = escaped.replace("'", "''")
         return f"'{escaped}'"
     
     return escaped
