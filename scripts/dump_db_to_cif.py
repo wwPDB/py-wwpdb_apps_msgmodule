@@ -173,9 +173,16 @@ class DbToCifExporter:
                  output_dir=output_dir, overwrite=overwrite)
         
         # Validate deposition ID format
-        if not deposition_id or not deposition_id.startswith('D_'):
+        if not deposition_id:
             log_event("invalid_deposition_id", deposition_id=deposition_id,
-                     message="Deposition ID must start with 'D_'")
+                     message="Deposition ID cannot be empty")
+            return False
+        
+        # Check for valid deposition ID prefix (D_ for depositions, G_ for groups)
+        valid_prefixes = ('D_', 'G_')
+        if not deposition_id.startswith(valid_prefixes):
+            log_event("invalid_deposition_id", deposition_id=deposition_id,
+                     message=f"Deposition ID must start with one of: {', '.join(valid_prefixes)}")
             return False
         
         # Get all messages for the deposition
