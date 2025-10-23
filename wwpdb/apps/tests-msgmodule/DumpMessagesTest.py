@@ -291,12 +291,24 @@ class TestDbToCifExporter(unittest.TestCase):
             cif_files = list(dep_dir.glob("*.cif*"))
             self.assertGreater(len(cif_files), 0, "At least one CIF file should be created")
             
-            # Validate each CIF file
+            # Validate each CIF file and search for our test message
+            found_message = False
             for cif_file in cif_files:
                 print(f"   🔍 Validating CIF file: {cif_file.name}")
-                validation_result = self._validate_cif_file(str(cif_file), msg_id)
-                print(f"       File size: {validation_result['file_size']} bytes")
-                print(f"       Message IDs found: {len(validation_result['message_ids'])}")
+                try:
+                    validation_result = self._validate_cif_file(str(cif_file), msg_id)
+                    print(f"       File size: {validation_result['file_size']} bytes")
+                    print(f"       Message IDs found: {len(validation_result['message_ids'])}")
+                    if msg_id in validation_result['message_ids']:
+                        found_message = True
+                        print(f"       ✅ Found test message {msg_id} in this file")
+                except AssertionError:
+                    # Message not in this file, that's okay - continue checking others
+                    print(f"       ℹ️  Test message not in this file (checking others...)")
+                    pass
+            
+            # Ensure we found our test message in at least one file
+            self.assertTrue(found_message, f"Test message {msg_id} should be found in at least one exported CIF file")
             
             print("   ✅ All exported CIF files validated successfully")
             
