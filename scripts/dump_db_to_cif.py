@@ -280,13 +280,18 @@ def format_cif_loop_value(value: Any) -> str:
     Returns:
         str: Formatted value for loop
     """
-    if value is None:
-        return "'?'"
+    if value is None or value == "":
+        return "?"
     
     escaped = escape_non_ascii(str(value))
     # Replace newlines with spaces for loop values
     escaped = escaped.replace("\n", " ").replace("\\n", " ")
-    return f"'{escaped}'"
+    
+    # For loop values, use quotes only if necessary (contains spaces or special chars)
+    if " " in escaped or any(c in escaped for c in "[]{}()"):
+        return f"'{escaped}'"
+    
+    return escaped
 
 
 class DbToCifExporter:
