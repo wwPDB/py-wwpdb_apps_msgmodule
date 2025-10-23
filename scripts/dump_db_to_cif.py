@@ -276,9 +276,9 @@ class DbToCifExporter:
 
     def _get_output_file_path(self, deposition_id: str, content_type: str, 
                              output_dir: str = None) -> Optional[str]:
-        """Get output file path for deposition and content type"""
+        """Get output file path for deposition and content type using PathInfo"""
         if output_dir:
-            # Custom output directory
+            # Custom output directory - manually construct path
             output_path = Path(output_dir) / deposition_id
             try:
                 output_path.mkdir(parents=True, exist_ok=True)
@@ -289,14 +289,14 @@ class DbToCifExporter:
                          output_dir=str(output_path), error=str(e))
                 return None
         else:
-            # Use standard PathInfo location
+            # Use standard PathInfo API to get next version for writing
             try:
                 return self.path_info.getFilePath(
                     dataSetId=deposition_id,
                     contentType=content_type,
                     formatType="pdbx",
                     fileSource="archive",
-                    versionId="latest",
+                    versionId="next",
                 )
             except Exception as e:
                 logger.debug(f"PathInfo failed for {deposition_id} {content_type}: {e}")
