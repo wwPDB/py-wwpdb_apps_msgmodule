@@ -570,11 +570,11 @@ class DbToCifExporter:
             # Ensure output directory exists
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
-            # Write CIF file with options to prevent line wrapping  
-            # Use high align_loops value to prevent wrapping of long message text (LONGTEXT fields)
-            write_options = gemmi.cif.WriteOptions()
-            write_options.align_loops = 9999  # High value to prevent wrapping
-            doc.write_file(file_path, write_options)
+            # Write CIF file - use as_string() to avoid alignment issues with write_file()
+            # gemmi's write_file() with align_loops causes spacing issues that break parsing
+            cif_content = doc.as_string()
+            with open(file_path, 'w') as f:
+                f.write(cif_content)
             
             log_event("file_exported", deposition_id=deposition_id, file_path=file_path,
                      content_type=content_type, messages=len(messages))
