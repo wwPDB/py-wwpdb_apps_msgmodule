@@ -573,7 +573,7 @@ class DbToCifExporter:
             # Write CIF file with options to prevent line wrapping
             # Use very high align_loops value to prevent wrapping of long message text (LONGTEXT fields)
             write_options = gemmi.cif.WriteOptions()
-            write_options.align_loops = 2147483647  # Property assignment - prevents wrapping for any practical string length
+            setattr(write_options, 'align_loops', 2147483647)  # Use setattr to avoid any property descriptor issues
             doc.write_file(file_path, write_options)
             
             log_event("file_exported", deposition_id=deposition_id, file_path=file_path,
