@@ -291,14 +291,22 @@ def format_cif_loop_value(value: Any) -> str:
         escaped = escaped.replace("  ", " ")
     escaped = escaped.strip()
     
-    # CIF loop values must be on a single line - check if escaping is needed
-    # Always quote if contains spaces or special characters
-    if " " in escaped or any(c in escaped for c in "'\"[]{}()"):
-        # Escape any single quotes inside by doubling them (CIF standard)
-        escaped = escaped.replace("'", "''")
-        return f"'{escaped}'"
+    # CIF loop values must be on a single line
+    # Check if we need quoting
+    needs_quoting = " " in escaped or any(c in escaped for c in "'\"[]{}()")
     
-    return escaped
+    if not needs_quoting:
+        return escaped
+    
+    # Choose quote style: use double quotes if text contains single quotes
+    # This avoids the complex escaping issues with doubled single quotes
+    if "'" in escaped:
+        # Use double quotes and escape any internal double quotes
+        escaped = escaped.replace('"', '\\"')
+        return f'"{escaped}"'
+    else:
+        # Use single quotes - no single quotes inside so no escaping needed
+        return f"'{escaped}'"
 
 
 class DbToCifExporter:
