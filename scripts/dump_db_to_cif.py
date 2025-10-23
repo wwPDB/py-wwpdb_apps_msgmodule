@@ -91,6 +91,12 @@ def validate_deposition_id(deposition_id: str) -> None:
         raise DepositionIdError(
             f"Deposition ID must start with one of: {', '.join(VALID_DEPOSITION_PREFIXES)}"
         )
+    
+    # Check that there's an identifier after the prefix (more than just "D_" or "G_")
+    if len(deposition_id) <= 2:
+        raise DepositionIdError(
+            "Deposition ID must have an identifier after the prefix"
+        )
 
 @dataclass
 class DatabaseConfig:
