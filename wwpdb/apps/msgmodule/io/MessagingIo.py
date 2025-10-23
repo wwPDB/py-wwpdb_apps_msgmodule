@@ -1976,7 +1976,7 @@ class MessagingIo(object):
 
             # For database-backed storage (dummy paths), skip file existence checks  
             if self.__msgsToDpstrFilePath and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
-                fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
+                fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath) if not self.__msgsToDpstrFilePath.startswith("/dummy") else 1
                 if fileSizeToDpstr > 0:
                     with LockFile(
                         self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
