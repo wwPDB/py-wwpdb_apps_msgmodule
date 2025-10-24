@@ -118,6 +118,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def unescape_non_ascii(text: str) -> str:
+    """
+    Decode Unicode escape sequences in text.
+    
+    Converts \\uXXXX sequences back to actual Unicode characters.
+    This is the reverse operation of escape_non_ascii() in dump_db_to_cif.py.
+    
+    Args:
+        text: String potentially containing \\uXXXX escape sequences
+        
+    Returns:
+        String with escape sequences decoded to Unicode characters
+        
+    Examples:
+        >>> unescape_non_ascii("caf\\u00e9")
+        'café'
+        >>> unescape_non_ascii("\\u4f60\\u597d")
+        '你好'
+    """
+    if not text or '\\u' not in text:
+        return text
+    
+    try:
+        # Use codecs.decode to handle unicode-escape
+        # The text is already a string with literal \uXXXX sequences
+        # We need to treat it as if it were bytes and decode it
+        return text.encode('utf-8').decode('unicode-escape')
+    except Exception as e:
+        # If decoding fails, return original text
+        logger.warning(f"Failed to unescape text: {e}")
+        return text
+
+
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
@@ -333,8 +366,8 @@ class CifToDbMigrator:
                 context_type=msg_info.get("context_type"),
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
-                message_subject=msg_info.get("message_subject", ""),
-                message_text=msg_info.get("message_text", ""),
+                message_subject=unescape_non_ascii(msg_info.get("message_subject", "")),
+                message_text=unescape_non_ascii(msg_info.get("message_text", "")),
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
