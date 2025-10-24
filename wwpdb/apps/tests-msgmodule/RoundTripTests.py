@@ -188,11 +188,28 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
             if orig_val != exp_val:
                 differences.append(f"{field}: '{orig_val}' != '{exp_val}'")
         
-        # Compare message text (may have whitespace differences)
-        orig_text = original.get("message_text", "").strip()
-        exp_text = exported.get("message_text", "").strip()
-        if orig_text != exp_text:
-            differences.append(f"message_text differs (length: {len(orig_text)} vs {len(exp_text)})")
+        # Compare message text with normalized whitespace
+        # CIF text blocks may have different line ending conventions or trailing whitespace
+        orig_text = original.get("message_text", "")
+        exp_text = exported.get("message_text", "")
+        
+        # Normalize: strip outer whitespace, normalize line endings, remove trailing spaces per line
+        def normalize_text(text):
+            lines = text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+            # Strip trailing whitespace from each line but preserve empty lines
+            normalized_lines = [line.rstrip() for line in lines]
+            return '\n'.join(normalized_lines).strip()
+        
+        orig_normalized = normalize_text(orig_text)
+        exp_normalized = normalize_text(exp_text)
+        
+        if orig_normalized != exp_normalized:
+            # Show both raw and normalized lengths for debugging
+            differences.append(
+                f"message_text differs: "
+                f"original {len(orig_text)} bytes (normalized: {len(orig_normalized)}), "
+                f"exported {len(exp_text)} bytes (normalized: {len(exp_normalized)})"
+            )
         
         return differences
 

@@ -238,12 +238,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def escape_non_ascii(text: str) -> str:
-    """Escape non-ASCII characters to ASCII using Unicode escape notation."""
+def escape_non_ascii(text: str, preserve_newlines: bool = False) -> str:
+    """Escape non-ASCII characters to ASCII using Unicode escape notation.
+    
+    Args:
+        text: Text to escape
+        preserve_newlines: If True, preserve actual newlines instead of escaping them
+        
+    Returns:
+        Text with non-ASCII characters escaped
+    """
     if not text:
         return text
-    # Fix: Use unicode_escape to get \uXXXX format
-    return text.encode('unicode_escape').decode('ascii')
+    
+    if preserve_newlines:
+        # Split on newlines, escape each part, rejoin with actual newlines
+        lines = text.split('\n')
+        escaped_lines = []
+        for line in lines:
+            # Only encode non-newline characters
+            escaped = ''.join(
+                c if ord(c) < 128 else f'\\u{ord(c):04x}'
+                for c in line
+            )
+            escaped_lines.append(escaped)
+        return '\n'.join(escaped_lines)
+    else:
+        # Original behavior: escape everything including newlines
+        return text.encode('unicode_escape').decode('ascii')
 
 
 def format_cif_value(value: Any, is_multiline: bool = False) -> str:
@@ -260,7 +282,8 @@ def format_cif_value(value: Any, is_multiline: bool = False) -> str:
     if value is None:
         return "?"
     
-    escaped = escape_non_ascii(str(value))
+    # For multiline values, preserve newlines
+    escaped = escape_non_ascii(str(value), preserve_newlines=is_multiline)
     
     if is_multiline and "\n" in str(value):
         return f"\n;{escaped}\n;"
@@ -270,12 +293,13 @@ def format_cif_value(value: Any, is_multiline: bool = False) -> str:
     return escaped
 
 
-def format_cif_loop_value(value: Any) -> str:
+def format_cif_loop_value(value: Any, allow_multiline: bool = False) -> str:
     """
-    Format value for CIF loop (always single-line, quoted).
+    Format value for CIF loop.
     
     Args:
         value: The value to format
+        allow_multiline: If True and value contains newlines, use semicolon format
         
     Returns:
         str: Formatted value for loop
@@ -283,15 +307,22 @@ def format_cif_loop_value(value: Any) -> str:
     if value is None or value == "":
         return "?"
     
-    escaped = escape_non_ascii(str(value))
-    # Replace newlines and multiple spaces with single space for loop values
-    escaped = escaped.replace("\n", " ").replace("\\n", " ")
+    str_value = str(value)
+    
+    # For multiline text in loops, use semicolon format to preserve newlines
+    if allow_multiline and "\n" in str_value:
+        escaped = escape_non_ascii(str_value, preserve_newlines=True)
+        return f"\n;{escaped}\n;"
+    
+    # For single-line values, escape and flatten
+    escaped = escape_non_ascii(str_value, preserve_newlines=False)
+    # Replace any escaped newlines with spaces (from unicode_escape)
+    escaped = escaped.replace("\\n", " ").replace("\\r", " ")
     # Collapse multiple spaces into single space
     while "  " in escaped:
         escaped = escaped.replace("  ", " ")
     escaped = escaped.strip()
     
-    # CIF loop values must be on a single line
     # Check if we need quoting
     needs_quoting = " " in escaped or any(c in escaped for c in "'\"[]{}()")
     
@@ -299,13 +330,10 @@ def format_cif_loop_value(value: Any) -> str:
         return escaped
     
     # Choose quote style: use double quotes if text contains single quotes
-    # This avoids the complex escaping issues with doubled single quotes
     if "'" in escaped:
-        # Use double quotes and escape any internal double quotes
         escaped = escaped.replace('"', '\\"')
         return f'"{escaped}"'
     else:
-        # Use single quotes - no single quotes inside so no escaping needed
         return f"'{escaped}'"
 
 
@@ -628,7 +656,9 @@ class DbToCifExporter:
                 row_values = []
                 for col in columns:
                     value = self._get_message_attribute_value(message, col)
-                    row_values.append(format_cif_loop_value(value))
+                    # Preserve newlines in message_text and message_subject
+                    allow_multiline = col in ("message_text", "message_subject")
+                    row_values.append(format_cif_loop_value(value, allow_multiline=allow_multiline))
                 loop.add_row(row_values)
         else:
             # Single message - use item format
