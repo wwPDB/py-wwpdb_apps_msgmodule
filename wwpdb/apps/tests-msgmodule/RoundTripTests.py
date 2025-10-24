@@ -18,13 +18,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
 
-# Setup test path
+# Setup test path - follow same pattern as other test files
 if __package__ is None or __package__ == "":
     from os import path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from .commonsetup import TESTOUTPUT
+    from commonsetup import TESTOUTPUT
 else:
-    from ..commonsetup import TESTOUTPUT
+    from .commonsetup import TESTOUTPUT
 
 # Remove mock ConfigInfo to allow real database access
 if 'wwpdb.utils.config.ConfigInfo' in sys.modules:
@@ -35,12 +35,18 @@ try:
 except ImportError:
     gemmi = None
 
-# Import the migration and export modules
+# Import the migration and export modules from scripts directory
+# Note: scripts/ contains standalone executables, not part of wwpdb package structure
 try:
-    scripts_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'scripts')
-    sys.path.insert(0, scripts_path)
-    from ..scripts.migrate_cif_to_db import CifToDbMigrator
-    from ..scripts.dump_db_to_cif import DbToCifExporter, escape_non_ascii, format_cif_value
+    scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'scripts')
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    
+    import migrate_cif_to_db
+    import dump_db_to_cif
+    
+    CifToDbMigrator = migrate_cif_to_db.CifToDbMigrator
+    DbToCifExporter = dump_db_to_cif.DbToCifExporter
 except ImportError as e:
     print(f"Warning: Could not import migration scripts: {e}")
     CifToDbMigrator = None
