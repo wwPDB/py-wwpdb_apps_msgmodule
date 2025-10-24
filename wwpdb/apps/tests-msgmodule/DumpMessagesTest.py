@@ -182,10 +182,10 @@ class TestDbToCifExporter(unittest.TestCase):
                         if tag.startswith("_pdbx_deposition_message_info"):
                             has_message_info = True
                         if tag == "_pdbx_deposition_message_info.message_id":
-                            # Get message IDs from loop values using gemmi's val() method
+                            # Get message IDs from loop values using gemmi's indexing
                             msg_id_col = item.loop.tags.index(tag)
                             for i in range(item.loop.length()):
-                                msg_id = item.loop.val(i, msg_id_col).strip("'\"")
+                                msg_id = item.loop[i, msg_id_col].strip("'\"")
                                 message_ids_found.append(msg_id)
                             # Found and processed message_id column, no need to check other tags
                             break
