@@ -120,10 +120,13 @@ logger = logging.getLogger(__name__)
 
 def unescape_non_ascii(text: str) -> str:
     """
-    Decode Unicode escape sequences in text.
+    Decode Unicode escape sequences in text, including surrogate pairs for emoji.
     
     Converts \\uXXXX sequences back to actual Unicode characters.
     This is the reverse operation of escape_non_ascii() in dump_db_to_cif.py.
+    
+    Handles both BMP characters (\\uXXXX) and surrogate pairs (\\uD8XX\\uDCXX)
+    for characters outside the Basic Multilingual Plane (like emoji).
     
     Args:
         text: String potentially containing \\uXXXX escape sequences
@@ -136,15 +139,40 @@ def unescape_non_ascii(text: str) -> str:
         'café'
         >>> unescape_non_ascii("\\u4f60\\u597d")
         '你好'
+        >>> unescape_non_ascii("\\ud83e\\uddec")  # Surrogate pair for 🧬
+        '🧬'
     """
     if not text or '\\u' not in text:
         return text
     
     try:
-        # Use codecs.decode to handle unicode-escape
-        # The text is already a string with literal \uXXXX sequences
-        # We need to treat it as if it were bytes and decode it
-        return text.encode('utf-8').decode('unicode-escape')
+        # Python's unicode-escape codec doesn't handle surrogate pairs correctly
+        # We need to decode them manually
+        import re
+        
+        def decode_match(match):
+            escape_seq = match.group(0)
+            try:
+                # Try direct unicode-escape decoding first
+                return escape_seq.encode('utf-8').decode('unicode-escape')
+            except:
+                return escape_seq
+        
+        # First pass: decode individual \uXXXX sequences
+        # This will create surrogate characters that need to be combined
+        result = re.sub(r'\\u[0-9a-fA-F]{4}', decode_match, text)
+        
+        # Second pass: encode to UTF-16, then decode back to UTF-8
+        # This properly combines surrogate pairs into full Unicode characters
+        try:
+            # Encode as UTF-16 (which handles surrogates), then decode as UTF-8
+            result = result.encode('utf-16', 'surrogatepass').decode('utf-16')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            # If surrogate handling fails, return the first-pass result
+            pass
+        
+        return result
+        
     except Exception as e:
         # If decoding fails, return original text
         logger.warning(f"Failed to unescape text: {e}")
