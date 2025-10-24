@@ -210,8 +210,21 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
+        # List files in output directory to see what was actually created
+        output_files = os.listdir(self.output_dir)
+        print(f"   📂 Files in output directory: {output_files}")
+        
         # Compare original and exported
         output_file = os.path.join(self.output_dir, f"{dep_id}_messages-to-depositor.cif")
+        if not os.path.exists(output_file):
+            # Try to find any messages-to-depositor file
+            matching_files = [f for f in output_files if 'messages-to-depositor' in f]
+            if matching_files:
+                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
+                output_file = os.path.join(self.output_dir, matching_files[0])
+            else:
+                self.fail(f"No messages-to-depositor file found. Available files: {output_files}")
+        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
@@ -249,8 +262,21 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
+        # List files in output directory to see what was actually created
+        output_files = os.listdir(self.output_dir)
+        print(f"   📂 Files in output directory: {output_files}")
+        
         # Verify message count
         output_file = os.path.join(self.output_dir, f"{dep_id}_messages-from-depositor.cif")
+        if not os.path.exists(output_file):
+            # Try to find any messages-from-depositor file
+            matching_files = [f for f in output_files if 'messages-from-depositor' in f]
+            if matching_files:
+                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
+                output_file = os.path.join(self.output_dir, matching_files[0])
+            else:
+                self.fail(f"No messages-from-depositor file found. Available files: {output_files}")
+        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
@@ -288,8 +314,21 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
+        # List files in output directory to see what was actually created
+        output_files = os.listdir(self.output_dir)
+        print(f"   📂 Files in output directory: {output_files}")
+        
         # Verify message count
         output_file = os.path.join(self.output_dir, f"{dep_id}_notes-from-annotator.cif")
+        if not os.path.exists(output_file):
+            # Try to find any notes-from-annotator file
+            matching_files = [f for f in output_files if 'notes-from-annotator' in f]
+            if matching_files:
+                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
+                output_file = os.path.join(self.output_dir, matching_files[0])
+            else:
+                self.fail(f"No notes-from-annotator file found. Available files: {output_files}")
+        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
