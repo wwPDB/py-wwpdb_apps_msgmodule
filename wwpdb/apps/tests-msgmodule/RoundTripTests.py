@@ -117,67 +117,42 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
             msg_loop = block.find_loop("_pdbx_deposition_message_info.ordinal_id")
         
         if msg_loop:
-            for row in msg_loop:
-                result["messages"].append({
-                    "ordinal": row.str(0),
-                    "message_id": row.str(1),
-                    "deposition_data_set_id": row.str(2),
-                    "sender": row.str(3) if len(row) > 3 else "?",
-                    "context_type": row.str(4) if len(row) > 4 else "?",
-                    "context_value": row.str(5) if len(row) > 5 else "?",
-                    "subject": row.str(6) if len(row) > 6 else "?",
-                    "message_text": row.str(7) if len(row) > 7 else "?",
-                    "send_timestamp": row.str(8) if len(row) > 8 else "?",
-                    "message_type": row.str(9) if len(row) > 9 else "?",
-                    "parent_message_id": row.str(10) if len(row) > 10 else "?"
-                })
+            # Get column tags to determine the order
+            tags = msg_loop.tags
+            
+            for values in msg_loop:
+                # values is a list of strings for each row
+                msg_dict = {}
+                for i, tag in enumerate(tags):
+                    # Extract the field name from the tag (e.g., "_pdbx_deposition_message_info.message_id" -> "message_id")
+                    field_name = tag.split('.')[-1]
+                    msg_dict[field_name] = values[i] if i < len(values) else "?"
+                
+                result["messages"].append(msg_dict)
         else:
             print(f"   ⚠️  No message loop found in CIF file: {file_path}")
         
         # Extract file references
         ref_loop = block.find_loop("_pdbx_deposition_message_file_reference.ordinal")
         if ref_loop:
-            for row in msg_loop:
-                result["messages"].append({
-                    "ordinal": row.str(0),
-                    "message_id": row.str(1),
-                    "deposition_data_set_id": row.str(2),
-                    "sender": row.str(3),
-                    "context_type": row.str(4),
-                    "context_value": row.str(5),
-                    "subject": row.str(6),
-                    "message_text": row.str(7),
-                    "send_timestamp": row.str(8),
-                    "message_type": row.str(9),
-                    "parent_message_id": row.str(10)
-                })
-        
-        # Extract file references
-        ref_loop = block.find_loop("_pdbx_deposition_message_file_reference.ordinal")
-        if ref_loop:
-            for row in ref_loop:
-                result["file_refs"].append({
-                    "ordinal": row.str(0),
-                    "message_id": row.str(1),
-                    "file_name": row.str(2),
-                    "file_type": row.str(3),
-                    "content_type": row.str(4),
-                    "version_id": row.str(5),
-                    "storage_type": row.str(6),
-                    "upload_timestamp": row.str(7)
-                })
+            tags = ref_loop.tags
+            for values in ref_loop:
+                ref_dict = {}
+                for i, tag in enumerate(tags):
+                    field_name = tag.split('.')[-1]
+                    ref_dict[field_name] = values[i] if i < len(values) else "?"
+                result["file_refs"].append(ref_dict)
         
         # Extract statuses
         status_loop = block.find_loop("_pdbx_deposition_message_status.ordinal")
         if status_loop:
-            for row in status_loop:
-                result["statuses"].append({
-                    "ordinal": row.str(0),
-                    "deposition_data_set_id": row.str(1),
-                    "message_id": row.str(2),
-                    "read_status": row.str(3),
-                    "timestamp": row.str(4)
-                })
+            tags = status_loop.tags
+            for values in status_loop:
+                status_dict = {}
+                for i, tag in enumerate(tags):
+                    field_name = tag.split('.')[-1]
+                    status_dict[field_name] = values[i] if i < len(values) else "?"
+                result["statuses"].append(status_dict)
         
         return result
 
