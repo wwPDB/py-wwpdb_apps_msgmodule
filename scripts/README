@@ -7,22 +7,31 @@
 
 ## 1. Configuration Requirements
 
-Add this variable to your site configuration:
+Add these messaging-specific variables to your site configuration:
 
 ````bash
 # filepath: site.cfg
 # ...existing code...
-wwpdb_messaging_db_name = wwpdb_messaging  # or your preferred database name
+
+# Messaging database configuration
+site_message_db_host_name = your_db_host         # Database server hostname
+site_message_db_port_number = 3306               # Database port (default: 3306)
+site_message_db_name = wwpdb_messaging          # Database name
+site_message_db_user_name = messaging_user      # Database username
+site_message_db_password = your_password        # Database password
+site_message_db_socket = /path/to/socket        # Optional: Unix socket path
+
 # ...existing code...
 ````
 
-The migration scripts will use existing site configuration variables:
+**Required configuration variables:**
 
-- `SITE_DB_HOST_NAME`
-- `SITE_DB_PORT_NUMBER`
-- `SITE_DB_ADMIN_USER`
-- `SITE_DB_ADMIN_PASS`
-- `WWPDB_MESSAGING_DB_NAME` (new, required)
+- `SITE_MESSAGE_DB_HOST_NAME` - Database server hostname
+- `SITE_MESSAGE_DB_USER_NAME` - Database username  
+- `SITE_MESSAGE_DB_NAME` - Database name
+- `SITE_MESSAGE_DB_PORT_NUMBER` - Database port (default: 3306)
+- `SITE_MESSAGE_DB_PASSWORD` - Database password (can be empty)
+- `SITE_MESSAGE_DB_SOCKET` - Optional Unix socket path
 
 ---
 
@@ -153,6 +162,35 @@ python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --jso
 - Database remains available for future migration attempts
 - Re-run migration scripts (duplicate-safe)
 - For complete reset: use `--drop-and-recreate`
+
+### Database Export: `dump_db_to_cif.py`
+
+Exports message data from database back to CIF format files. **Reverse operation** of `migrate_cif_to_db.py`.
+
+````bash
+# Export single deposition
+python dump_db_to_cif.py --site-id RCSB --deposition D_123456
+
+# Export multiple depositions
+python dump_db_to_cif.py --site-id RCSB --depositions D_123456 D_789012
+
+# Export all depositions from database
+python dump_db_to_cif.py --site-id RCSB --all
+
+# Custom output directory with logging
+python dump_db_to_cif.py --site-id RCSB --all --output-dir /backup/cif-export --json-log export.json
+
+# Overwrite existing files
+python dump_db_to_cif.py --site-id RCSB --deposition D_123456 --overwrite
+````
+
+**Key features:**
+
+- Uses `gemmi` library for proper CIF formatting
+- ASCII escaping: `text.encode('ascii', 'backslashreplace').decode()`
+- Structured JSON logging for audit trails
+- Bulk export with progress reporting
+- File organization by content type
 
 ---
 
