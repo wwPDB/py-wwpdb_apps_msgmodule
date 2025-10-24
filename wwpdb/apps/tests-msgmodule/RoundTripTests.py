@@ -180,8 +180,8 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         """Compare two message dictionaries and return list of differences"""
         differences = []
         
-        # Compare key fields (ignore auto-generated fields like ordinal)
-        key_fields = ["message_id", "deposition_data_set_id", "sender", "subject"]
+        # Compare key fields that must match exactly
+        key_fields = ["message_id", "deposition_data_set_id", "sender", "message_subject"]
         for field in key_fields:
             orig_val = original.get(field, "?")
             exp_val = exported.get(field, "?")
@@ -195,6 +195,30 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
             differences.append(f"message_text differs (length: {len(orig_text)} vs {len(exp_text)})")
         
         return differences
+
+    def _validate_round_trip(self, original_data: Dict, exported_data: Dict, content_type: str):
+        """Validate that round-trip preserved data integrity"""
+        
+        # Check message counts
+        orig_count = len(original_data["messages"])
+        exp_count = len(exported_data["messages"])
+        self.assertEqual(orig_count, exp_count, 
+                        f"Message count mismatch: {orig_count} original vs {exp_count} exported")
+        
+        # Compare each message
+        all_differences = []
+        for idx, (orig_msg, exp_msg) in enumerate(zip(original_data["messages"], exported_data["messages"])):
+            diffs = self._compare_messages(orig_msg, exp_msg)
+            if diffs:
+                all_differences.append(f"Message {idx + 1}: " + ", ".join(diffs))
+        
+        if all_differences:
+            self.fail(f"Data integrity issues found in {content_type}:\n" + "\n".join(all_differences))
+        
+        print(f"   ✅ Round-trip validation successful ({orig_count} messages)")
+        print(f"      - All message_ids preserved")
+        print(f"      - All subjects preserved")
+        print(f"      - All message text preserved")
 
     # ---- Round-trip tests ----
 
@@ -247,14 +271,11 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         else:
             self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
-        # Compare original and exported
+        # Compare original and exported with detailed validation
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
-        self.assertEqual(len(original_data["messages"]), len(exported_data["messages"]),
-                        "Should have same number of messages")
-        
-        print(f"   ✅ Round-trip validation successful ({len(original_data['messages'])} messages)")
+        self._validate_round_trip(original_data, exported_data, "messages-to-depositor")
 
     def test_messages_from_depositor_round_trip(self):
         """Test round-trip with real messages-from-depositor file"""
@@ -304,14 +325,11 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         else:
             self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
-        # Verify message count
+        # Verify message count and data integrity
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
-        self.assertEqual(len(original_data["messages"]), len(exported_data["messages"]),
-                        "Should have same number of messages")
-        
-        print(f"   ✅ Round-trip validation successful ({len(original_data['messages'])} messages)")
+        self._validate_round_trip(original_data, exported_data, "messages-from-depositor")
 
     def test_notes_from_annotator_round_trip(self):
         """Test round-trip with real notes-from-annotator file"""
@@ -366,14 +384,11 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         else:
             self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
-        # Verify message count
+        # Verify message count and data integrity
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
-        self.assertEqual(len(original_data["messages"]), len(exported_data["messages"]),
-                        "Should have same number of messages")
-        
-        print(f"   ✅ Round-trip validation successful ({len(original_data['messages'])} messages)")
+        self._validate_round_trip(original_data, exported_data, "notes-from-annotator")
 
 
 if __name__ == "__main__":
