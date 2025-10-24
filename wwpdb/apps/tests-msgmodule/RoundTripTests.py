@@ -111,48 +111,43 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         result = {"messages": [], "file_refs": [], "statuses": []}
         
-        # Extract messages - try both column name variants
-        msg_loop = block.find_loop("_pdbx_deposition_message_info.ordinal")
-        if not msg_loop:
-            msg_loop = block.find_loop("_pdbx_deposition_message_info.ordinal_id")
-        
-        if msg_loop:
-            # Get column tags to determine the order
-            tags = msg_loop.tags
-            
-            for values in msg_loop:
-                # values is a list of strings for each row
-                msg_dict = {}
-                for i, tag in enumerate(tags):
-                    # Extract the field name from the tag (e.g., "_pdbx_deposition_message_info.message_id" -> "message_id")
-                    field_name = tag.split('.')[-1]
-                    msg_dict[field_name] = values[i] if i < len(values) else "?"
+        # Iterate through block items to find loops
+        for item in block:
+            if not item.loop:
+                continue
                 
-                result["messages"].append(msg_dict)
-        else:
+            loop = item.loop
+            tags = loop.tags
+            
+            # Check if this is a message info loop
+            if any(tag.startswith("_pdbx_deposition_message_info.") for tag in tags):
+                for i in range(loop.length()):
+                    msg_dict = {}
+                    for col_idx, tag in enumerate(tags):
+                        field_name = tag.split('.')[-1]
+                        msg_dict[field_name] = loop[i, col_idx]
+                    result["messages"].append(msg_dict)
+            
+            # Check if this is a file reference loop
+            elif any(tag.startswith("_pdbx_deposition_message_file_reference.") for tag in tags):
+                for i in range(loop.length()):
+                    ref_dict = {}
+                    for col_idx, tag in enumerate(tags):
+                        field_name = tag.split('.')[-1]
+                        ref_dict[field_name] = loop[i, col_idx]
+                    result["file_refs"].append(ref_dict)
+            
+            # Check if this is a status loop
+            elif any(tag.startswith("_pdbx_deposition_message_status.") for tag in tags):
+                for i in range(loop.length()):
+                    status_dict = {}
+                    for col_idx, tag in enumerate(tags):
+                        field_name = tag.split('.')[-1]
+                        status_dict[field_name] = loop[i, col_idx]
+                    result["statuses"].append(status_dict)
+        
+        if not result["messages"]:
             print(f"   ⚠️  No message loop found in CIF file: {file_path}")
-        
-        # Extract file references
-        ref_loop = block.find_loop("_pdbx_deposition_message_file_reference.ordinal")
-        if ref_loop:
-            tags = ref_loop.tags
-            for values in ref_loop:
-                ref_dict = {}
-                for i, tag in enumerate(tags):
-                    field_name = tag.split('.')[-1]
-                    ref_dict[field_name] = values[i] if i < len(values) else "?"
-                result["file_refs"].append(ref_dict)
-        
-        # Extract statuses
-        status_loop = block.find_loop("_pdbx_deposition_message_status.ordinal")
-        if status_loop:
-            tags = status_loop.tags
-            for values in status_loop:
-                status_dict = {}
-                for i, tag in enumerate(tags):
-                    field_name = tag.split('.')[-1]
-                    status_dict[field_name] = values[i] if i < len(values) else "?"
-                result["statuses"].append(status_dict)
         
         return result
 
