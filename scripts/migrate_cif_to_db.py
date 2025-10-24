@@ -417,7 +417,7 @@ class CifToDbMigrator:
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
                 message_subject=unescape_non_ascii(msg_info.get("message_subject", "")),
-                message_text=unescape_non_ascii(msg_info.get("message_text", "")),
+                message_text=unescape_non_ascii(message_text),
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
