@@ -487,19 +487,25 @@ class MessagingIo(object):
                 # For database-backed storage (dummy paths), skip file existence checks
                 if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
-                    if ok:
-                        recordSetLst = (
-                            pdbxMsgIo_frmDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    try:
+                        ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
+                        if ok:
+                            recordSetLst = (
+                                pdbxMsgIo_frmDpstr.getMessageInfo()
+                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    finally:
+                        pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections
 
                 if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
-                    if ok:
-                        recordSetLst.extend(
-                            pdbxMsgIo_toDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    try:
+                        ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
+                        if ok:
+                            recordSetLst.extend(
+                                pdbxMsgIo_toDpstr.getMessageInfo()
+                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    finally:
+                        pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections
 
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
@@ -507,17 +513,20 @@ class MessagingIo(object):
                 # For database-backed storage (dummy paths), skip file existence checks
                 if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
                     pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+                    try:
+                        ok = pdbxMsgIo_notes.read(self.__notesFilePath)
 
-                    if ok:
-                        if contentType == "notes":
-                            recordSetLst = (
-                                pdbxMsgIo_notes.getMessageInfo()
-                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                        elif bCommHstryRqstd:
-                            fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
-                            recordSetLst.extend(onlyArchvdCommsLst)
+                        if ok:
+                            if contentType == "notes":
+                                recordSetLst = (
+                                    pdbxMsgIo_notes.getMessageInfo()
+                                )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                            elif bCommHstryRqstd:
+                                fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
+                                onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
+                                recordSetLst.extend(onlyArchvdCommsLst)
+                    finally:
+                        pdbxMsgIo_notes.close()  # Explicitly close to release database connections
 
             for record in recordSetLst:
 
