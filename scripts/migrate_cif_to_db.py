@@ -234,15 +234,21 @@ class CifToDbMigrator:
         success = True
         files_found = []
         files_missing = []
+        deferred_statuses = []  # Collect statuses to insert after all messages
         
         for msg_type in message_types:
             file_path = self._get_file_path(deposition_id, msg_type)
             if file_path and os.path.exists(file_path):
                 files_found.append({"type": msg_type, "path": file_path})
-                if not self._migrate_file(file_path, msg_type, dry_run):
+                if not self._migrate_file(file_path, msg_type, dry_run, deferred_statuses):
                     success = False
             else:
                 files_missing.append({"type": msg_type, "expected_path": file_path})
+        
+        # Now insert all deferred statuses after all messages are in the database
+        if not dry_run and success and deferred_statuses:
+            for status in deferred_statuses:
+                self.data_access.create_or_update_status(status)
         
         log_event("deposition_complete", deposition_id=deposition_id, success=success,
                  files_found=len(files_found), files_missing=len(files_missing))
@@ -299,7 +305,7 @@ class CifToDbMigrator:
             logger.debug(f"No {message_type} file for {deposition_id}: {e}")
             return None
 
-    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False) -> bool:
+    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False, deferred_statuses: List = None) -> bool:
         """Migrate a single CIF file"""
         deposition_id = os.path.basename(os.path.dirname(file_path))
         filename = os.path.basename(file_path)
@@ -338,11 +344,14 @@ class CifToDbMigrator:
                          message="File parsed successfully but contains no messages")
                 return True
 
-            # Store in database
+            # Store messages and file refs immediately, but defer statuses
             if not dry_run:
-                success = self._store_data(messages, file_refs, statuses)
+                success = self._store_data(messages, file_refs, [])  # Empty list for statuses
                 if success:
                     self.stats["migrated"] += len(messages)
+                    # Collect statuses to be inserted later
+                    if deferred_statuses is not None:
+                        deferred_statuses.extend(statuses)
                     log_event("store_success", deposition_id=deposition_id, 
                              messages_stored=len(messages))
                 else:
@@ -385,6 +394,19 @@ class CifToDbMigrator:
                         break
                     except ValueError:
                         continue
+
+            # Get message text and check size
+            message_text = msg_info.get("message_text", "")
+            message_text_size = len(message_text.encode('utf-8'))
+            
+            # Log if message is unusually large (> 1MB)
+            if message_text_size > 1024 * 1024:
+                logger.warning(
+                    "Large message detected: %s (%.2f MB) for deposition %s",
+                    msg_info.get("message_id", "unknown"),
+                    message_text_size / (1024 * 1024),
+                    msg_info.get("deposition_data_set_id", "unknown")
+                )
 
             message = MessageInfo(
                 message_id=msg_info.get("message_id", str(uuid.uuid4())),
