@@ -181,12 +181,13 @@ class TestDbToCifExporter(unittest.TestCase):
                     for tag in item.loop.tags:
                         if tag.startswith("_pdbx_deposition_message_info"):
                             has_message_info = True
-                            if tag == "_pdbx_deposition_message_info.message_id":
-                                # Get message IDs from loop values using gemmi's val() method
-                                msg_id_col = item.loop.tags.index(tag)
-                                for i in range(item.loop.length()):
-                                    msg_id = item.loop.val(i, msg_id_col).strip("'\"")
-                                    message_ids_found.append(msg_id)
+                        if tag == "_pdbx_deposition_message_info.message_id":
+                            # Get message IDs from loop values using gemmi's val() method
+                            msg_id_col = item.loop.tags.index(tag)
+                            for i in range(item.loop.length()):
+                                msg_id = item.loop.val(i, msg_id_col).strip("'\"")
+                                message_ids_found.append(msg_id)
+                            # Found and processed message_id column, no need to check other tags
                             break
             
             self.assertTrue(has_message_info, "CIF should contain _pdbx_deposition_message_info category")
