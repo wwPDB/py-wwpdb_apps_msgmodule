@@ -407,6 +407,172 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         self._validate_round_trip(original_data, exported_data, "notes-from-annotator")
 
+    def test_non_ascii_characters_round_trip(self):
+        """Test round-trip with non-ASCII characters in message text
+        
+        This test validates that special characters survive the full cycle:
+        1. Create message in database with Unicode characters
+        2. Export to CIF (should escape non-ASCII)
+        3. Re-import from CIF to database
+        4. Compare database records to verify character preservation
+        """
+        print("\n🔄 Testing non-ASCII character round-trip...")
+        
+        # Import database classes
+        from wwpdb.apps.msgmodule.db import MessageInfo
+        from datetime import datetime
+        import uuid
+        
+        # Create test deposition ID
+        test_dep_id = f"D_TEST_UNICODE_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        test_message_id = str(uuid.uuid4())
+        
+        print(f"   📋 Using test deposition ID: {test_dep_id}")
+        print(f"   🔖 Message ID: {test_message_id}")
+        
+        # Create message with various non-ASCII characters
+        test_message_text = """Test message with special characters:
+        
+Greek: α β γ δ Ω
+Cyrillic: Д п р и в е т
+Chinese: 你好世界
+Japanese: こんにちは
+Arabic: مرحبا
+Accents: café, naïve, résumé
+Symbols: © ™ € £ ¥
+Emoji: 🧬 🔬 ⚛️
+Math: ∑ ∫ √ ∞
+"""
+        
+        test_subject = "Unicode Test: café naïve résumé 你好 مرحبا"
+        
+        # Step 1: Create message directly in database
+        print(f"   📝 Creating message in database with non-ASCII text...")
+        migrator = CifToDbMigrator(self.site_id)
+        
+        message1 = MessageInfo(
+            message_id=test_message_id,
+            deposition_data_set_id=test_dep_id,
+            timestamp=datetime.now(),
+            sender="test-user@example.com",
+            context_type="test",
+            context_value="unicode-test",
+            parent_message_id=test_message_id,
+            message_subject=test_subject,
+            message_text=test_message_text,
+            message_type="text",
+            send_status="Y",
+            content_type="messages-to-depositor"
+        )
+        
+        session = migrator.data_access.db_connection.get_session()
+        try:
+            session.add(message1)
+            session.commit()
+            print(f"   ✅ Message created in database")
+            
+            # Step 2: Export to CIF
+            print(f"   📤 Exporting to CIF...")
+            exporter = DbToCifExporter(self.site_id)
+            export_success = exporter.export_deposition(
+                test_dep_id, 
+                output_dir=self.output_dir, 
+                overwrite=True
+            )
+            self.assertTrue(export_success, "Export should succeed")
+            
+            # Find the exported file
+            dep_output_dir = os.path.join(self.output_dir, test_dep_id)
+            self.assertTrue(os.path.isdir(dep_output_dir), "Export directory should exist")
+            
+            exported_files = os.listdir(dep_output_dir)
+            print(f"   📂 Exported files: {exported_files}")
+            
+            matching_files = [f for f in exported_files if 'messages-to-depositor' in f]
+            self.assertTrue(len(matching_files) > 0, "Should have exported CIF file")
+            
+            exported_cif = os.path.join(dep_output_dir, matching_files[0])
+            print(f"   ✅ Exported to: {os.path.basename(exported_cif)}")
+            
+            # Verify the CIF contains escaped characters
+            with open(exported_cif, 'r', encoding='utf-8') as f:
+                cif_content = f.read()
+                # Check for some escape sequences
+                self.assertIn('\\u', cif_content, "CIF should contain Unicode escapes")
+                print(f"   ✅ CIF contains Unicode escape sequences")
+            
+            # Step 3: Delete original message from database
+            print(f"   🗑️  Deleting original message from database...")
+            session.delete(message1)
+            session.commit()
+            
+            # Verify deletion
+            retrieved = migrator.data_access.get_message_by_id(test_message_id)
+            self.assertIsNone(retrieved, "Message should be deleted")
+            print(f"   ✅ Original message deleted")
+            
+            # Step 4: Re-import from CIF
+            print(f"   📥 Re-importing from CIF...")
+            import_success = migrator._migrate_file(
+                exported_cif, 
+                "messages-to-depositor", 
+                dry_run=False
+            )
+            self.assertTrue(import_success, "Re-import should succeed")
+            print(f"   ✅ Re-imported from CIF")
+            
+            # Step 5: Retrieve the re-imported message
+            message2 = migrator.data_access.get_message_by_id(test_message_id)
+            self.assertIsNotNone(message2, "Re-imported message should exist")
+            
+            # Step 6: Compare original and re-imported messages
+            print(f"   🔍 Comparing original vs re-imported message...")
+            
+            # Compare critical fields
+            self.assertEqual(message1.message_id, message2.message_id, "Message ID should match")
+            self.assertEqual(message1.deposition_data_set_id, message2.deposition_data_set_id, 
+                           "Deposition ID should match")
+            self.assertEqual(message1.sender, message2.sender, "Sender should match")
+            
+            # Compare subject - normalize whitespace
+            subject1_normalized = ' '.join(message1.message_subject.split())
+            subject2_normalized = ' '.join(message2.message_subject.split())
+            self.assertEqual(subject1_normalized, subject2_normalized, 
+                           f"Subject should match:\nOriginal: {repr(subject1_normalized)}\nRe-imported: {repr(subject2_normalized)}")
+            
+            # Compare message text - normalize whitespace and line endings
+            def normalize_text(text):
+                return '\n'.join(line.rstrip() for line in text.replace('\r\n', '\n').split('\n')).strip()
+            
+            text1_normalized = normalize_text(message1.message_text)
+            text2_normalized = normalize_text(message2.message_text)
+            
+            if text1_normalized != text2_normalized:
+                print(f"   ❌ Text mismatch!")
+                print(f"      Original length: {len(text1_normalized)}")
+                print(f"      Re-imported length: {len(text2_normalized)}")
+                print(f"      Original (first 200 chars): {repr(text1_normalized[:200])}")
+                print(f"      Re-imported (first 200 chars): {repr(text2_normalized[:200])}")
+                self.fail("Message text should match after normalization")
+            
+            print(f"   ✅ All fields preserved correctly!")
+            print(f"      - Message ID: {message2.message_id}")
+            print(f"      - Subject: {message2.message_subject[:50]}...")
+            print(f"      - Text length: {len(message2.message_text)} chars")
+            print(f"      - Special chars verified: α, 你好, café, 🧬, etc.")
+            print(f"   ✅ Non-ASCII round-trip validation successful!")
+            
+        finally:
+            # Cleanup: delete test message
+            try:
+                test_msg = migrator.data_access.get_message_by_id(test_message_id)
+                if test_msg:
+                    session.delete(test_msg)
+                    session.commit()
+            except:
+                pass
+            session.close()
+
 
 if __name__ == "__main__":
     unittest.main()
