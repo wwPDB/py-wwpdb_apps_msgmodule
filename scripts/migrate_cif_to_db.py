@@ -334,6 +334,19 @@ class CifToDbMigrator:
                     except ValueError:
                         continue
 
+            # Get message text and check size
+            message_text = msg_info.get("message_text", "")
+            message_text_size = len(message_text.encode('utf-8'))
+            
+            # Log if message is unusually large (> 1MB)
+            if message_text_size > 1024 * 1024:
+                logger.warning(
+                    "Large message detected: %s (%.2f MB) for deposition %s",
+                    msg_info.get("message_id", "unknown"),
+                    message_text_size / (1024 * 1024),
+                    msg_info.get("deposition_data_set_id", "unknown")
+                )
+
             message = MessageInfo(
                 message_id=msg_info.get("message_id", str(uuid.uuid4())),
                 deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
@@ -343,7 +356,7 @@ class CifToDbMigrator:
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
                 message_subject=msg_info.get("message_subject", ""),
-                message_text=msg_info.get("message_text", ""),
+                message_text=message_text,
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
