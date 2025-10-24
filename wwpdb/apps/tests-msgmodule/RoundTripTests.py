@@ -210,21 +210,26 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
-        # List files in output directory to see what was actually created
-        output_files = os.listdir(self.output_dir)
-        print(f"   📂 Files in output directory: {output_files}")
+        # List files in output directory - dump_db_to_cif creates a subdirectory per deposition
+        output_items = os.listdir(self.output_dir)
+        print(f"   📂 Items in output directory: {output_items}")
+        
+        # The exporter creates a subdirectory named after the deposition ID
+        dep_output_dir = os.path.join(self.output_dir, dep_id)
+        if os.path.isdir(dep_output_dir):
+            dep_output_files = os.listdir(dep_output_dir)
+            print(f"   📂 Files in {dep_id}/ subdirectory: {dep_output_files}")
+            
+            # Look for messages-to-depositor file in the subdirectory
+            matching_files = [f for f in dep_output_files if 'messages-to-depositor' in f]
+            if matching_files:
+                output_file = os.path.join(dep_output_dir, matching_files[0])
+            else:
+                self.fail(f"No messages-to-depositor file found in {dep_id}/. Available files: {dep_output_files}")
+        else:
+            self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
         # Compare original and exported
-        output_file = os.path.join(self.output_dir, f"{dep_id}_messages-to-depositor.cif")
-        if not os.path.exists(output_file):
-            # Try to find any messages-to-depositor file
-            matching_files = [f for f in output_files if 'messages-to-depositor' in f]
-            if matching_files:
-                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
-                output_file = os.path.join(self.output_dir, matching_files[0])
-            else:
-                self.fail(f"No messages-to-depositor file found. Available files: {output_files}")
-        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
@@ -262,21 +267,26 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
-        # List files in output directory to see what was actually created
-        output_files = os.listdir(self.output_dir)
-        print(f"   📂 Files in output directory: {output_files}")
+        # List files in output directory - dump_db_to_cif creates a subdirectory per deposition
+        output_items = os.listdir(self.output_dir)
+        print(f"   📂 Items in output directory: {output_items}")
+        
+        # The exporter creates a subdirectory named after the deposition ID
+        dep_output_dir = os.path.join(self.output_dir, dep_id)
+        if os.path.isdir(dep_output_dir):
+            dep_output_files = os.listdir(dep_output_dir)
+            print(f"   📂 Files in {dep_id}/ subdirectory: {dep_output_files}")
+            
+            # Look for messages-from-depositor file in the subdirectory
+            matching_files = [f for f in dep_output_files if 'messages-from-depositor' in f]
+            if matching_files:
+                output_file = os.path.join(dep_output_dir, matching_files[0])
+            else:
+                self.fail(f"No messages-from-depositor file found in {dep_id}/. Available files: {dep_output_files}")
+        else:
+            self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
         # Verify message count
-        output_file = os.path.join(self.output_dir, f"{dep_id}_messages-from-depositor.cif")
-        if not os.path.exists(output_file):
-            # Try to find any messages-from-depositor file
-            matching_files = [f for f in output_files if 'messages-from-depositor' in f]
-            if matching_files:
-                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
-                output_file = os.path.join(self.output_dir, matching_files[0])
-            else:
-                self.fail(f"No messages-from-depositor file found. Available files: {output_files}")
-        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
@@ -314,21 +324,26 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         self.assertTrue(export_success, "Export from database should succeed")
         print(f"   ✅ Exported from database")
         
-        # List files in output directory to see what was actually created
-        output_files = os.listdir(self.output_dir)
-        print(f"   📂 Files in output directory: {output_files}")
+        # List files in output directory - dump_db_to_cif creates a subdirectory per deposition
+        output_items = os.listdir(self.output_dir)
+        print(f"   📂 Items in output directory: {output_items}")
+        
+        # The exporter creates a subdirectory named after the deposition ID
+        dep_output_dir = os.path.join(self.output_dir, dep_id)
+        if os.path.isdir(dep_output_dir):
+            dep_output_files = os.listdir(dep_output_dir)
+            print(f"   📂 Files in {dep_id}/ subdirectory: {dep_output_files}")
+            
+            # Look for notes-from-annotator file in the subdirectory
+            matching_files = [f for f in dep_output_files if 'notes-from-annotator' in f]
+            if matching_files:
+                output_file = os.path.join(dep_output_dir, matching_files[0])
+            else:
+                self.fail(f"No notes-from-annotator file found in {dep_id}/. Available files: {dep_output_files}")
+        else:
+            self.fail(f"Expected subdirectory {dep_id} not found. Available items: {output_items}")
         
         # Verify message count
-        output_file = os.path.join(self.output_dir, f"{dep_id}_notes-from-annotator.cif")
-        if not os.path.exists(output_file):
-            # Try to find any notes-from-annotator file
-            matching_files = [f for f in output_files if 'notes-from-annotator' in f]
-            if matching_files:
-                print(f"   ⚠️  Expected {os.path.basename(output_file)}, found: {matching_files}")
-                output_file = os.path.join(self.output_dir, matching_files[0])
-            else:
-                self.fail(f"No notes-from-annotator file found. Available files: {output_files}")
-        
         original_data = self._parse_cif_file(input_file)
         exported_data = self._parse_cif_file(output_file)
         
