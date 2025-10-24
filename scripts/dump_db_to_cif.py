@@ -321,7 +321,18 @@ def format_cif_loop_value(value: Any, allow_multiline: bool = False) -> str:
     if value is None or value == "":
         return "?"
     
+    # Numeric values (int, float) should never be quoted
+    if isinstance(value, (int, float)):
+        return str(value)
+    
     str_value = str(value)
+    
+    # Check if string value is actually a number - don't quote it
+    try:
+        float(str_value)
+        return str_value
+    except ValueError:
+        pass
     
     # For multiline text in loops, use semicolon format to preserve newlines
     if allow_multiline and "\n" in str_value:
