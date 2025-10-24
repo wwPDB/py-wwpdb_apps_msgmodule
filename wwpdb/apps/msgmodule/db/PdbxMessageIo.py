@@ -194,6 +194,29 @@ class PdbxMessageIo:
         # Current blockId (no-op for DB)
         self._block_id: Optional[str] = None
 
+    def close(self):
+        """Explicitly close database connections. Should be called when done with this instance."""
+        if self._dal:
+            self._dal.close()
+            if self.__verbose:
+                self.__lfh.write("PdbxMessageIo: Database connections closed\n")
+    
+    def __del__(self):
+        """Ensure database connections are closed when object is garbage collected"""
+        try:
+            self.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
+    
+    def __enter__(self):
+        """Context manager entry - allows usage with 'with' statement"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - ensures connections are closed"""
+        self.close()
+        return False  # Don't suppress exceptions
+
     # --------- Query (read) API ---------
 
     def read(self, filePath: str, logtag: str = "", deposition_id: str = None) -> bool:

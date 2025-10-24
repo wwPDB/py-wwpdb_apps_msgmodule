@@ -7,6 +7,7 @@ inheritance and polymorphism for clean, maintainable code.
 
 import logging
 import time
+import threading
 from typing import Dict, List, Optional, Type, TypeVar, Generic
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -19,6 +20,67 @@ logger = logging.getLogger(__name__)
 # Generic type for SQLAlchemy models
 ModelType = TypeVar('ModelType', bound=Base)
 
+# Global engine cache - one engine per unique connection string
+# This ensures all PdbxMessageIo instances share the same connection pool
+_engine_cache = {}
+_engine_cache_lock = threading.Lock()
+
+
+def _get_or_create_engine(db_config: Dict):
+    """Get or create a shared engine for the given database configuration.
+    
+    This implements a singleton pattern per connection string, ensuring that all
+    PdbxMessageIo instances share the same connection pool, preventing connection
+    leaks even if __del__ is not called promptly.
+    """
+    # Create connection string for cache key
+    connection_string = (
+        f"mysql+pymysql://{db_config['username']}:{db_config['password']}"
+        f"@{db_config['host']}:{db_config['port']}/{db_config['database']}"
+        f"?charset={db_config.get('charset', 'utf8mb4')}"
+    )
+    
+    # Thread-safe cache access
+    with _engine_cache_lock:
+        if connection_string not in _engine_cache:
+            logger.info("Creating new shared engine for: mysql+pymysql://%s:***@%s:%s/%s",
+                       db_config['username'], db_config['host'],
+                       db_config['port'], db_config['database'])
+            
+            # Create engine with enhanced connection handling for large messages
+            # Using pool_size=3 to avoid exceeding MySQL connection limits:
+            # 10 WSGI processes * 3 connections/process * 3 servers = 90 connections (vs default limit of 150)
+            engine = create_engine(
+                connection_string,
+                pool_size=db_config.get('pool_size', 3),  # Reduced from 10 to 3
+                max_overflow=10,  # Reduced from 20 to 10
+                pool_pre_ping=True,  # Verify connections before use
+                pool_recycle=3600,   # Recycle connections after 1 hour to prevent stale connections
+                connect_args={
+                    'connect_timeout': 300,  # 5 minute timeout for large operations
+                },
+                isolation_level="READ COMMITTED",  # Avoid stale reads from REPEATABLE READ
+                echo=False  # Set to True for SQL debugging
+            )
+            
+            # Test connection and set max_allowed_packet for large messages
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                try:
+                    conn.execute(text("SET SESSION max_allowed_packet=67108864"))
+                    logger.info("Set SESSION max_allowed_packet to 64MB for large messages")
+                except Exception as e:
+                    logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")
+                
+                logger.info("Database connection test successful")
+            
+            _engine_cache[connection_string] = engine
+            logger.info("Shared engine cached - all instances will reuse this connection pool")
+        else:
+            logger.debug("Reusing existing shared engine for database connection")
+    
+    return _engine_cache[connection_string]
+
 
 class DatabaseConnection:
     """Manages database connection and session factory"""
@@ -28,50 +90,39 @@ class DatabaseConnection:
         self.db_config = db_config
         self._engine = None
         self._session_factory = None
+        self._is_shared_engine = True  # Track that we're using a shared engine
         self._setup_database()
     
     def _setup_database(self):
         """Setup database connection and session factory"""
         try:
-            # Create connection string
-            connection_string = (
-                f"mysql+pymysql://{self.db_config['username']}:{self.db_config['password']}"
-                f"@{self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']}"
-                f"?charset={self.db_config.get('charset', 'utf8mb4')}"
+            # Use shared engine instead of creating a new one
+            self._engine = _get_or_create_engine(self.db_config)
+            
+            # Create session factory with explicit configuration to avoid stale reads
+            self._session_factory = sessionmaker(
+                bind=self._engine,
+                autoflush=True,
+                expire_on_commit=True  # Ensure objects are refreshed after commit
             )
             
-            logger.info("Attempting database connection to: mysql+pymysql://%s:***@%s:%s/%s",
-                        self.db_config['username'], self.db_config['host'],
-                        self.db_config['port'], self.db_config['database'])
+            logger.info("Database connection initialized successfully with shared engine")
             
-            # Create engine with enhanced connection handling for large messages
-            self._engine = create_engine(
-                connection_string,
-                pool_size=self.db_config.get('pool_size', 10),
-                max_overflow=20,
-                pool_pre_ping=True,  # Verify connections before use
-                pool_recycle=3600,   # Recycle connections after 1 hour to prevent stale connections
-                connect_args={
-                    'connect_timeout': 300,  # 5 minute timeout for large operations
-                },
-                echo=False  # Set to True for SQL debugging
+        except Exception as e:
+            logger.error("Failed to setup database: %s", e)
+            logger.error("Database config: host=%s, port=%s, database=%s, username=%s",
+                        self.db_config.get('host'), self.db_config.get('port'),
+                        self.db_config.get('database'), self.db_config.get('username'))
+            raise
+            
+            # Create session factory with explicit configuration to avoid stale reads
+            self._session_factory = sessionmaker(
+                bind=self._engine,
+                autoflush=True,
+                expire_on_commit=True  # Ensure objects are refreshed after commit
             )
             
-            # Test connection and set max_allowed_packet for large messages
-            with self._engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-                # Try to increase max_allowed_packet for large messages (64MB)
-                try:
-                    conn.execute(text("SET SESSION max_allowed_packet=67108864"))
-                    logger.info("Set SESSION max_allowed_packet to 64MB for large messages")
-                except Exception as e:
-                    logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")
-                
-                logger.info("Database connection test successful")
-            
-            # Create session factory
-            self._session_factory = sessionmaker(bind=self._engine)
-            
+            self._is_open = True  # Mark connection as open
             logger.info("Database connection initialized successfully")
             
         except Exception as e:
@@ -95,10 +146,22 @@ class DatabaseConnection:
             raise
     
     def close(self):
-        """Close database connections"""
-        if self._engine:
-            self._engine.dispose()
-            logger.info("Database connections closed")
+        """Close database connections.
+        
+        Note: Since we're using a shared engine, we don't dispose of it here.
+        The engine and its connection pool are managed globally and shared across
+        all instances. Individual sessions are automatically closed after use.
+        """
+        # Don't dispose of shared engine - it's managed globally
+        logger.debug("DatabaseConnection.close() called - session factory cleared (shared engine retained)")
+        self._session_factory = None
+    
+    def __del__(self):
+        """Ensure connections are closed when object is garbage collected"""
+        try:
+            self.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
 
 
 class BaseDAO(Generic[ModelType]):
@@ -339,6 +402,13 @@ class DataAccessLayer:
     def close(self):
         """Close database connections"""
         self.db_connection.close()
+    
+    def __del__(self):
+        """Ensure connections are closed when object is garbage collected"""
+        try:
+            self.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
     
     # Convenience methods for common operations
     def create_message(self, message: MessageInfo) -> bool:
