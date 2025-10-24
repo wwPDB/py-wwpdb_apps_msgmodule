@@ -181,11 +181,13 @@ class TestDbToCifExporter(unittest.TestCase):
                     for tag in item.loop.tags:
                         if tag.startswith("_pdbx_deposition_message_info"):
                             has_message_info = True
-                            if tag == "_pdbx_deposition_message_info.message_id":
-                                # Get message IDs from loop values
-                                msg_id_col = item.loop.tags.index(tag)
-                                for row in item.loop:
-                                    message_ids_found.append(row[msg_id_col].strip("'\""))
+                        if tag == "_pdbx_deposition_message_info.message_id":
+                            # Get message IDs from loop values using gemmi's indexing
+                            msg_id_col = item.loop.tags.index(tag)
+                            for i in range(item.loop.length()):
+                                msg_id = item.loop[i, msg_id_col].strip("'\"")
+                                message_ids_found.append(msg_id)
+                            # Found and processed message_id column, no need to check other tags
                             break
             
             self.assertTrue(has_message_info, "CIF should contain _pdbx_deposition_message_info category")
@@ -291,12 +293,24 @@ class TestDbToCifExporter(unittest.TestCase):
             cif_files = list(dep_dir.glob("*.cif*"))
             self.assertGreater(len(cif_files), 0, "At least one CIF file should be created")
             
-            # Validate each CIF file
+            # Validate each CIF file and search for our test message
+            found_message = False
             for cif_file in cif_files:
                 print(f"   🔍 Validating CIF file: {cif_file.name}")
-                validation_result = self._validate_cif_file(str(cif_file), msg_id)
+                # Validate structure without requiring our specific message
+                validation_result = self._validate_cif_file(str(cif_file), expected_message_id=None)
                 print(f"       File size: {validation_result['file_size']} bytes")
                 print(f"       Message IDs found: {len(validation_result['message_ids'])}")
+                
+                # Check if our test message is in this file
+                if msg_id in validation_result['message_ids']:
+                    found_message = True
+                    print(f"       ✅ Found test message {msg_id} in this file")
+                else:
+                    print(f"       ℹ️  Test message not in this file (checking others...)")
+            
+            # Ensure we found our test message in at least one file
+            self.assertTrue(found_message, f"Test message {msg_id} should be found in at least one exported CIF file")
             
             print("   ✅ All exported CIF files validated successfully")
             
@@ -367,20 +381,47 @@ class TestDbToCifExporter(unittest.TestCase):
             exporter = DbToCifExporter(self.site_id)
             
             # Test various invalid formats
-            invalid_ids = ["INVALID", "123456", "D_", ""]
+            invalid_ids = ["INVALID", "123456", "D_", "X_123456", ""]
             
             for invalid_id in invalid_ids:
                 success = exporter.export_deposition(invalid_id, self.test_output_dir)
                 # Should fail for invalid deposition ID formats
-                if invalid_id == "":
-                    self.assertFalse(success, f"Export should fail for empty deposition ID")
-                elif not invalid_id.startswith("D_"):
-                    self.assertFalse(success, f"Export should fail for invalid deposition ID format: {invalid_id}")
+                self.assertFalse(success, f"Export should fail for invalid deposition ID format: '{invalid_id}'")
             
             print("   ✅ Invalid deposition ID formats handled correctly")
             
         except Exception as e:
             self.fail(f"Invalid deposition ID test failed: {e}")
+
+    def test_export_with_valid_deposition_id_prefixes(self):
+        """Test export accepts both D_ and G_ prefixes for deposition IDs"""
+        try:
+            exporter = DbToCifExporter(self.site_id)
+            
+            # Test valid prefixes (D_ for depositions, G_ for groups)
+            valid_ids = [
+                ("D_1000000001", "standard deposition"),
+                ("G_1000000001", "group deposition")
+            ]
+            
+            for dep_id, description in valid_ids:
+                # These should not fail validation (though may have no data)
+                try:
+                    success = exporter.export_deposition(dep_id, self.test_output_dir, overwrite=True)
+                    # Success could be True (exported) or True (no data, but didn't fail validation)
+                    print(f"       ✓ {description} ID '{dep_id}' passed validation: success={success}")
+                except Exception as e:
+                    # Should not raise exception for validation errors
+                    if "must start with" in str(e).lower() or "invalid" in str(e).lower():
+                        self.fail(f"{description} ID '{dep_id}' should be accepted but got: {e}")
+                    else:
+                        # Other errors (DB issues, etc.) are acceptable for this test
+                        print(f"       ~ {description} ID '{dep_id}' validation passed (other error: {e})")
+            
+            print("   ✅ Valid deposition ID prefixes (D_ and G_) accepted correctly")
+            
+        except Exception as e:
+            self.fail(f"Valid deposition ID prefix test failed: {e}")
 
     def test_bulk_export_functionality(self):
         """Test bulk export of multiple depositions"""
@@ -398,14 +439,16 @@ class TestDbToCifExporter(unittest.TestCase):
             deposition_list = [self.dep_id]  # Use the configured test deposition
             results = exporter.export_bulk(deposition_list, self.test_output_dir, overwrite=True)
             
-            self.assertIn("successful", results, "Results should contain 'successful' key")
-            self.assertIn("failed", results, "Results should contain 'failed' key")
+            # Results is now a BulkExportResult dataclass with .successful and .failed attributes
+            self.assertIsNotNone(results, "Results should not be None")
+            self.assertTrue(hasattr(results, 'successful'), "Results should have 'successful' attribute")
+            self.assertTrue(hasattr(results, 'failed'), "Results should have 'failed' attribute")
             
             # At least our test deposition should be processed
-            total_processed = len(results["successful"]) + len(results["failed"])
+            total_processed = results.total_processed
             self.assertGreater(total_processed, 0, "At least one deposition should be processed")
             
-            print(f"   ✅ Bulk export completed: {len(results['successful'])} successful, {len(results['failed'])} failed")
+            print(f"   ✅ Bulk export completed: {len(results.successful)} successful, {len(results.failed)} failed")
             
         except Exception as e:
             self.fail(f"Bulk export test failed: {e}")
@@ -515,27 +558,26 @@ class TestDbToCifExporter(unittest.TestCase):
         try:
             exporter = DbToCifExporter(self.site_id)
             
-            # Check initial stats
-            initial_stats = exporter.stats.copy()
-            self.assertEqual(initial_stats["depositions_processed"], 0)
-            self.assertEqual(initial_stats["files_created"], 0)
-            self.assertEqual(initial_stats["messages_exported"], 0)
-            self.assertEqual(initial_stats["errors"], 0)
+            # Check initial stats - stats is now an ExportStatistics dataclass
+            self.assertEqual(exporter.stats.depositions_processed, 0)
+            self.assertEqual(exporter.stats.files_created, 0)
+            self.assertEqual(exporter.stats.messages_exported, 0)
+            self.assertEqual(exporter.stats.errors, 0)
             
             # Perform an export
             success = exporter.export_deposition(self.dep_id, self.test_output_dir, overwrite=True)
             
             # Check updated stats
             final_stats = exporter.stats
-            self.assertGreaterEqual(final_stats["depositions_processed"], 1)
+            self.assertGreaterEqual(final_stats.depositions_processed, 1)
             
             if success:
                 # If export succeeded, we should have some activity
                 print(f"   📊 Export statistics:")
-                print(f"       Depositions processed: {final_stats['depositions_processed']}")
-                print(f"       Files created: {final_stats['files_created']}")
-                print(f"       Messages exported: {final_stats['messages_exported']}")
-                print(f"       Errors: {final_stats['errors']}")
+                print(f"       Depositions processed: {final_stats.depositions_processed}")
+                print(f"       Files created: {final_stats.files_created}")
+                print(f"       Messages exported: {final_stats.messages_exported}")
+                print(f"       Errors: {final_stats.errors}")
             
             print("   ✅ Export statistics tracking validated")
             

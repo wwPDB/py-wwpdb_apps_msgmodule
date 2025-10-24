@@ -118,6 +118,67 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def unescape_non_ascii(text: str) -> str:
+    """
+    Decode Unicode escape sequences in text, including surrogate pairs for emoji.
+    
+    Converts \\uXXXX sequences back to actual Unicode characters.
+    This is the reverse operation of escape_non_ascii() in dump_db_to_cif.py.
+    
+    Handles both BMP characters (\\uXXXX) and surrogate pairs (\\uD8XX\\uDCXX)
+    for characters outside the Basic Multilingual Plane (like emoji).
+    
+    Args:
+        text: String potentially containing \\uXXXX escape sequences
+        
+    Returns:
+        String with escape sequences decoded to Unicode characters
+        
+    Examples:
+        >>> unescape_non_ascii("caf\\u00e9")
+        'café'
+        >>> unescape_non_ascii("\\u4f60\\u597d")
+        '你好'
+        >>> unescape_non_ascii("\\ud83e\\uddec")  # Surrogate pair for 🧬
+        '🧬'
+    """
+    if not text or '\\u' not in text:
+        return text
+    
+    try:
+        # Python's unicode-escape codec doesn't handle surrogate pairs correctly
+        # We need to decode them manually
+        import re
+        
+        def decode_match(match):
+            escape_seq = match.group(0)
+            try:
+                # Try direct unicode-escape decoding first
+                return escape_seq.encode('utf-8').decode('unicode-escape')
+            except:
+                return escape_seq
+        
+        # First pass: decode individual \uXXXX sequences
+        # This will create surrogate characters that need to be combined
+        result = re.sub(r'\\u[0-9a-fA-F]{4}', decode_match, text)
+        
+        # Second pass: encode to UTF-16, then decode back to UTF-8
+        # This properly combines surrogate pairs into full Unicode characters
+        try:
+            # Encode as UTF-16 (which handles surrogates), then decode as UTF-8
+            result = result.encode('utf-16', 'surrogatepass').decode('utf-16')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            # If surrogate handling fails, return the first-pass result
+            pass
+        
+        return result
+        
+    except Exception as e:
+        # If decoding fails, return original text
+        logger.warning(f"Failed to unescape text: {e}")
+        return text
+
+
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
@@ -355,8 +416,8 @@ class CifToDbMigrator:
                 context_type=msg_info.get("context_type"),
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
-                message_subject=msg_info.get("message_subject", ""),
-                message_text=message_text,
+                message_subject=unescape_non_ascii(msg_info.get("message_subject", "")),
+                message_text=unescape_non_ascii(message_text),
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
