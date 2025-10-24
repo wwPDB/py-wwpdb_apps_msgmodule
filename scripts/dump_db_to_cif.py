@@ -241,6 +241,8 @@ logger = logging.getLogger(__name__)
 def escape_non_ascii(text: str, preserve_newlines: bool = False) -> str:
     """Escape non-ASCII characters to ASCII using Unicode escape notation.
     
+    Handles characters outside BMP (>U+FFFF) by encoding as UTF-16 surrogate pairs.
+    
     Args:
         text: Text to escape
         preserve_newlines: If True, preserve actual newlines instead of escaping them
@@ -251,16 +253,28 @@ def escape_non_ascii(text: str, preserve_newlines: bool = False) -> str:
     if not text:
         return text
     
+    def escape_char(c):
+        """Escape a single character, handling surrogate pairs for emoji"""
+        code = ord(c)
+        if code < 128:
+            return c
+        elif code <= 0xFFFF:
+            # BMP character: single \uXXXX escape
+            return f'\\u{code:04x}'
+        else:
+            # Non-BMP character: encode as UTF-16 surrogate pair
+            # Formula: code = 0x10000 + (high - 0xD800) * 0x400 + (low - 0xDC00)
+            code -= 0x10000
+            high = 0xD800 + (code >> 10)
+            low = 0xDC00 + (code & 0x3FF)
+            return f'\\u{high:04x}\\u{low:04x}'
+    
     if preserve_newlines:
         # Split on newlines, escape each part, rejoin with actual newlines
         lines = text.split('\n')
         escaped_lines = []
         for line in lines:
-            # Only encode non-newline characters
-            escaped = ''.join(
-                c if ord(c) < 128 else f'\\u{ord(c):04x}'
-                for c in line
-            )
+            escaped = ''.join(escape_char(c) for c in line)
             escaped_lines.append(escaped)
         return '\n'.join(escaped_lines)
     else:
