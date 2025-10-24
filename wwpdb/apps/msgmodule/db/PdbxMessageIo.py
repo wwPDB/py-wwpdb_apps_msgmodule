@@ -251,20 +251,54 @@ class PdbxMessageIo:
     # --------- Mutation API (append/update) ---------
 
     def update(self, catName: str, attributeName: str, value, iRow: int = 0) -> bool:
-        """Update attribute in pending row of the selected category."""
-        target = None
+        """Update attribute in loaded row and move to pending for DB write.
+        
+        For database-backed storage, we need to:
+        1. Update the loaded row (what the caller indexed into)
+        2. Add/update the corresponding pending row for write()
+        """
+        loaded_target = None
+        pending_target = None
+        
         if catName == "pdbx_deposition_message_info":
-            target = self._pending_messages
+            loaded_target = self._loaded_messages
+            pending_target = self._pending_messages
         elif catName == "pdbx_deposition_message_file_reference":
-            target = self._pending_file_refs
+            loaded_target = self._loaded_file_refs
+            pending_target = self._pending_file_refs
         elif catName == "pdbx_deposition_message_status":
-            target = self._pending_statuses
+            loaded_target = self._loaded_statuses
+            pending_target = self._pending_statuses
         elif catName == "pdbx_deposition_message_origcomm_reference":
-            target = self._pending_origcomm_refs
+            loaded_target = self._loaded_origcomm_refs
+            pending_target = self._pending_origcomm_refs
 
-        if target is None or iRow < 0 or iRow >= len(target):
+        if loaded_target is None or iRow < 0 or iRow >= len(loaded_target):
             return False
-        target[iRow][attributeName] = value
+        
+        # Update the loaded row
+        loaded_target[iRow][attributeName] = value
+        
+        # For status updates, we need to ensure the row gets written to DB
+        if catName == "pdbx_deposition_message_status":
+            # Check if this status is already in pending list
+            msg_id = loaded_target[iRow]["message_id"]
+            found = False
+            for pending_row in pending_target:
+                if pending_row["message_id"] == msg_id:
+                    # Update existing pending row
+                    pending_row[attributeName] = value
+                    found = True
+                    break
+            
+            if not found:
+                # Add updated loaded row to pending for write
+                pending_target.append(dict(loaded_target[iRow]))
+        else:
+            # For other categories, just update pending if it exists
+            if iRow < len(pending_target):
+                pending_target[iRow][attributeName] = value
+        
         return True
 
     def appendMessage(self, rowAttribDict: Dict) -> bool:
