@@ -317,8 +317,8 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         """Test round-trip with real notes-from-annotator file"""
         print("\n🔄 Testing notes-from-annotator round-trip...")
         
-        # Use existing test file
-        source_file = os.path.join(self.test_data_dir, "D_0000265933_notes-from-annotator_P1.cif.V1")
+        # Use the D_9000265933 notes file (not D_0000265933 which has mismatched data)
+        source_file = os.path.join(self.test_data_dir, "D_9000265933_notes-from-annotator_P1.cif.V1")
         if not os.path.exists(source_file):
             self.skipTest(f"Test file not found: {source_file}")
         
