@@ -105,49 +105,74 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         raise ValueError(f"Could not extract deposition ID from filename: {filename}")
 
     def _parse_cif_file(self, file_path: str) -> Dict[str, List[Dict]]:
-        """Parse a CIF file and extract message data"""
+        """Parse a CIF file and extract message data
+        
+        Handles both loop format (multiple messages) and key-value format (single message).
+        """
         doc = gemmi.cif.read_file(file_path)
         block = doc[0]
         
         result = {"messages": [], "file_refs": [], "statuses": []}
         
-        # Iterate through block items to find loops
-        for item in block:
-            if not item.loop:
-                continue
-                
-            loop = item.loop
-            tags = loop.tags
-            
-            # Check if this is a message info loop
-            if any(tag.startswith("_pdbx_deposition_message_info.") for tag in tags):
-                for i in range(loop.length()):
-                    msg_dict = {}
-                    for col_idx, tag in enumerate(tags):
-                        field_name = tag.split('.')[-1]
-                        msg_dict[field_name] = loop[i, col_idx]
-                    result["messages"].append(msg_dict)
-            
-            # Check if this is a file reference loop
-            elif any(tag.startswith("_pdbx_deposition_message_file_reference.") for tag in tags):
-                for i in range(loop.length()):
-                    ref_dict = {}
-                    for col_idx, tag in enumerate(tags):
-                        field_name = tag.split('.')[-1]
-                        ref_dict[field_name] = loop[i, col_idx]
-                    result["file_refs"].append(ref_dict)
-            
-            # Check if this is a status loop
-            elif any(tag.startswith("_pdbx_deposition_message_status.") for tag in tags):
-                for i in range(loop.length()):
-                    status_dict = {}
-                    for col_idx, tag in enumerate(tags):
-                        field_name = tag.split('.')[-1]
-                        status_dict[field_name] = loop[i, col_idx]
-                    result["statuses"].append(status_dict)
+        # Track single-value items for each category
+        msg_items = {}
+        ref_items = {}
+        status_items = {}
         
-        if not result["messages"]:
-            print(f"   ⚠️  No message loop found in CIF file: {file_path}")
+        # Iterate through block items to find both loops and key-value pairs
+        for item in block:
+            if item.loop:
+                loop = item.loop
+                tags = loop.tags
+                
+                # Check if this is a message info loop
+                if any(tag.startswith("_pdbx_deposition_message_info.") for tag in tags):
+                    for i in range(loop.length()):
+                        msg_dict = {}
+                        for col_idx, tag in enumerate(tags):
+                            field_name = tag.split('.')[-1]
+                            msg_dict[field_name] = loop[i, col_idx]
+                        result["messages"].append(msg_dict)
+                
+                # Check if this is a file reference loop
+                elif any(tag.startswith("_pdbx_deposition_message_file_reference.") for tag in tags):
+                    for i in range(loop.length()):
+                        ref_dict = {}
+                        for col_idx, tag in enumerate(tags):
+                            field_name = tag.split('.')[-1]
+                            ref_dict[field_name] = loop[i, col_idx]
+                        result["file_refs"].append(ref_dict)
+                
+                # Check if this is a status loop
+                elif any(tag.startswith("_pdbx_deposition_message_status.") for tag in tags):
+                    for i in range(loop.length()):
+                        status_dict = {}
+                        for col_idx, tag in enumerate(tags):
+                            field_name = tag.split('.')[-1]
+                            status_dict[field_name] = loop[i, col_idx]
+                        result["statuses"].append(status_dict)
+            
+            elif item.pair:
+                # Handle key-value pairs (single message format)
+                key, value = item.pair
+                
+                if key.startswith("_pdbx_deposition_message_info."):
+                    field_name = key.split('.')[-1]
+                    msg_items[field_name] = value
+                elif key.startswith("_pdbx_deposition_message_file_reference."):
+                    field_name = key.split('.')[-1]
+                    ref_items[field_name] = value
+                elif key.startswith("_pdbx_deposition_message_status."):
+                    field_name = key.split('.')[-1]
+                    status_items[field_name] = value
+        
+        # Add single-value items as messages (if any were found)
+        if msg_items:
+            result["messages"].append(msg_items)
+        if ref_items:
+            result["file_refs"].append(ref_items)
+        if status_items:
+            result["statuses"].append(status_items)
         
         return result
 
