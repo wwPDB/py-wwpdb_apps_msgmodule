@@ -499,7 +499,8 @@ class MessagingIo(object):
                                 pdbxMsgIo_frmDpstr.getMessageInfo()
                             )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     finally:
-                        pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections
+                        if not self.__legacycomm:
+                            pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections
 
                 if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
@@ -510,7 +511,8 @@ class MessagingIo(object):
                                 pdbxMsgIo_toDpstr.getMessageInfo()
                             )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     finally:
-                        pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections
+                        if not self.__legacycomm:
+                            pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections
 
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
@@ -531,7 +533,8 @@ class MessagingIo(object):
                                 onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
                                 recordSetLst.extend(onlyArchvdCommsLst)
                     finally:
-                        pdbxMsgIo_notes.close()  # Explicitly close to release database connections
+                        if not self.__legacycomm:
+                            pdbxMsgIo_notes.close()  # Explicitly close to release database connections
 
             for record in recordSetLst:
 
