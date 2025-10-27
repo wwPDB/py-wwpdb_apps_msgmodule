@@ -528,11 +528,13 @@ class PdbxMessageIo:
         ]
 
         # Status for all messages in this deposition
-        msg_ids = [m["message_id"] for m in self._loaded_messages]
+        # NOTE: Status records are deposition-scoped, not file-scoped.
+        # In legacy CIF files, all status records are stored in messages-to-depositor,
+        # regardless of which file (messages-from-depositor, messages-to-depositor, notes)
+        # contains the actual message. Therefore, we must NOT filter by msg_ids here,
+        # as that would exclude status records for messages in other content_types.
         with self._dal.db_connection.get_session() as sess:
             q = sess.query(ORMStatus).filter(ORMStatus.deposition_data_set_id == self._deposition_id)
-            if msg_ids:
-                q = q.filter(ORMStatus.message_id.in_(msg_ids))
             statuses = q.all()
         
         self._loaded_statuses = [
