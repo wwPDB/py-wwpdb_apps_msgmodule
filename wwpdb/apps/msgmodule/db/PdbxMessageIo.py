@@ -714,22 +714,32 @@ class PdbxMessageIo:
             the entire deposition regardless of content_type filter, matching legacy
             CIF behavior where all statuses are stored in messages-to-depositor.
         """
-        self._loaded_messages.clear()
-        self._loaded_file_refs.clear()
-        self._loaded_statuses.clear()
+        try:
+            self._loaded_messages.clear()
+            self._loaded_file_refs.clear()
+            self._loaded_statuses.clear()
 
-        if self._deposition_id:
-            # Load messages for specific deposition (optionally filter content_type)
-            msgs = self._dal.get_deposition_messages(self._deposition_id)
-            if self.__verbose:
-                logger.info("DB _load_from_db: Found %d total messages for deposition %s", len(msgs), self._deposition_id)
-                for m in msgs:
-                    logger.info("  Message %s: content_type=%s, subject=%s", m.message_id, m.content_type, m.message_subject)
-        else:
-            # No deposition ID available - this is an error condition
-            if self.__verbose:
-                logger.error("DB _load_from_db: No deposition_id specified - cannot load messages without deposition context")
-            return  # Return with empty loaded_messages
+            if self._deposition_id:
+                # Load messages for specific deposition (optionally filter content_type)
+                msgs = self._dal.get_deposition_messages(self._deposition_id)
+                if self.__verbose:
+                    logger.info("DB _load_from_db: Found %d total messages for deposition %s", len(msgs), self._deposition_id)
+                    for m in msgs:
+                        logger.info("  Message %s: content_type=%s, subject=%s", m.message_id, m.content_type, m.message_subject)
+            else:
+                # No deposition ID available - this is a FATAL error condition
+                error_msg = (
+                    f"DB _load_from_db: FATAL - No deposition_id specified (content_type={self._content_type}). "
+                    "Cannot load messages without deposition context. This typically means the file path "
+                    "could not be parsed or read() was called without proper context."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+        except Exception as e:
+            logger.error("DB _load_from_db: FATAL - Failed to load messages for deposition %s: %s", 
+                        self._deposition_id, str(e), exc_info=True)
+            # Re-raise so caller knows something went wrong
+            raise
         
         # Only filter by content_type if explicitly set (not empty/None)
         if self._content_type:
@@ -760,26 +770,30 @@ class PdbxMessageIo:
         ]
 
         # File references for deposition (+ content type if set)
-        with self._dal.db_connection.get_session() as sess:
-            q = sess.query(ORMFileRef).filter(ORMFileRef.deposition_data_set_id == self._deposition_id)
-            # Remove content_type filtering for file references since they use different content types
-            # than messages (e.g., 'auxiliary-file-annotate' vs 'messages-to-depositor')
-            file_refs = q.all()
-        
-        self._loaded_file_refs = [
-            {
-                "ordinal_id": fr.ordinal_id,
-                "message_id": fr.message_id,
-                "deposition_data_set_id": fr.deposition_data_set_id,
-                "content_type": fr.content_type,
-                "content_format": fr.content_format,
-                "partition_number": fr.partition_number,
-                "version_id": fr.version_id,
-                "storage_type": fr.storage_type,
-                "upload_file_name": fr.upload_file_name,
-            }
-            for fr in file_refs
-        ]
+        try:
+            with self._dal.db_connection.get_session() as sess:
+                q = sess.query(ORMFileRef).filter(ORMFileRef.deposition_data_set_id == self._deposition_id)
+                # Remove content_type filtering for file references since they use different content types
+                # than messages (e.g., 'auxiliary-file-annotate' vs 'messages-to-depositor')
+                file_refs = q.all()
+            
+            self._loaded_file_refs = [
+                {
+                    "ordinal_id": fr.ordinal_id,
+                    "message_id": fr.message_id,
+                    "deposition_data_set_id": fr.deposition_data_set_id,
+                    "content_type": fr.content_type,
+                    "content_format": fr.content_format,
+                    "partition_number": fr.partition_number,
+                    "version_id": fr.version_id,
+                    "storage_type": fr.storage_type,
+                    "upload_file_name": fr.upload_file_name,
+                }
+                for fr in file_refs
+            ]
+        except Exception:
+            logger.error("DB _load_from_db: FATAL - Failed to load file references for deposition %s", self._deposition_id, exc_info=True)
+            raise
 
         # Status for all messages in this deposition
         # NOTE: Status records are deposition-scoped, not file-scoped.
@@ -787,17 +801,21 @@ class PdbxMessageIo:
         # regardless of which file (messages-from-depositor, messages-to-depositor, notes)
         # contains the actual message. Therefore, we must NOT filter by msg_ids here,
         # as that would exclude status records for messages in other content_types.
-        with self._dal.db_connection.get_session() as sess:
-            q = sess.query(ORMStatus).filter(ORMStatus.deposition_data_set_id == self._deposition_id)
-            statuses = q.all()
-        
-        self._loaded_statuses = [
-            {
-                "message_id": st.message_id,
-                "deposition_data_set_id": st.deposition_data_set_id,
-                "read_status": st.read_status,
-                "action_reqd": st.action_reqd,
-                "for_release": st.for_release,
-            }
-            for st in statuses
-        ]
+        try:
+            with self._dal.db_connection.get_session() as sess:
+                q = sess.query(ORMStatus).filter(ORMStatus.deposition_data_set_id == self._deposition_id)
+                statuses = q.all()
+            
+            self._loaded_statuses = [
+                {
+                    "message_id": st.message_id,
+                    "deposition_data_set_id": st.deposition_data_set_id,
+                    "read_status": st.read_status,
+                    "action_reqd": st.action_reqd,
+                    "for_release": st.for_release,
+                }
+                for st in statuses
+            ]
+        except Exception:
+            logger.error("DB _load_from_db: FATAL - Failed to load status records for deposition %s", self._deposition_id, exc_info=True)
+            raise
