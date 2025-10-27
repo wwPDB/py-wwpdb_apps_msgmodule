@@ -32,6 +32,24 @@ def _get_or_create_engine(db_config: Dict):
     This implements a singleton pattern per connection string, ensuring that all
     PdbxMessageIo instances share the same connection pool, preventing connection
     leaks even if __del__ is not called promptly.
+    
+    Args:
+        db_config (Dict): Database configuration dictionary containing:
+            - host (str): Database server hostname
+            - port (int): Database server port
+            - database (str): Database name
+            - username (str): Database username
+            - password (str): Database password
+            - charset (str, optional): Character set (default: 'utf8mb4')
+            - pool_size (int, optional): Connection pool size (default: 3)
+    
+    Returns:
+        sqlalchemy.engine.Engine: Shared SQLAlchemy engine instance
+        
+    Note:
+        Uses pool_size=3 to avoid exceeding MySQL connection limits.
+        With 10 WSGI processes * 3 connections/process * 3 servers = 90 connections
+        (vs default MySQL limit of 150).
     """
     # Create connection string for cache key
     connection_string = (
@@ -83,10 +101,25 @@ def _get_or_create_engine(db_config: Dict):
 
 
 class DatabaseConnection:
-    """Manages database connection and session factory"""
+    """Manages database connection and session factory.
+    
+    This class provides a centralized interface for database connectivity,
+    using a shared connection pool to optimize resource usage across multiple
+    instances.
+    
+    Attributes:
+        db_config (Dict): Database configuration dictionary
+        _engine: SQLAlchemy engine instance (shared across instances)
+        _session_factory: SQLAlchemy session maker
+        _is_shared_engine (bool): Flag indicating shared engine usage
+    """
     
     def __init__(self, db_config: Dict):
-        """Initialize database connection with configuration"""
+        """Initialize database connection with configuration.
+        
+        Args:
+            db_config (Dict): Database configuration dictionary containing connection parameters
+        """
         self.db_config = db_config
         self._engine = None
         self._session_factory = None
@@ -94,7 +127,14 @@ class DatabaseConnection:
         self._setup_database()
     
     def _setup_database(self):
-        """Setup database connection and session factory"""
+        """Setup database connection and session factory.
+        
+        Creates or retrieves a shared engine and initializes the session factory
+        with appropriate configuration for message handling.
+        
+        Raises:
+            Exception: If database connection setup fails
+        """
         try:
             # Use shared engine instead of creating a new one
             self._engine = _get_or_create_engine(self.db_config)
@@ -133,11 +173,24 @@ class DatabaseConnection:
             raise
     
     def get_session(self) -> Session:
-        """Get a new database session"""
+        """Get a new database session.
+        
+        Returns:
+            Session: A new SQLAlchemy session for database operations
+        """
         return self._session_factory()
     
     def create_tables(self):
-        """Create all tables"""
+        """Create all messaging tables in the database.
+        
+        Creates the following tables if they don't exist:
+            - pdbx_deposition_message_info
+            - pdbx_deposition_message_file_reference
+            - pdbx_deposition_message_status
+        
+        Raises:
+            Exception: If table creation fails
+        """
         try:
             Base.metadata.create_all(self._engine)
             logger.info("All tables created successfully")
@@ -165,14 +218,44 @@ class DatabaseConnection:
 
 
 class BaseDAO(Generic[ModelType]):
-    """Base Data Access Object with common CRUD operations"""
+    """Base Data Access Object with common CRUD operations.
+    
+    Provides generic CRUD (Create, Read, Update, Delete) operations for
+    SQLAlchemy ORM models, with built-in error handling and logging.
+    
+    Attributes:
+        db_connection (DatabaseConnection): Database connection manager
+        model_class (Type[ModelType]): SQLAlchemy model class
+    
+    Type Parameters:
+        ModelType: The SQLAlchemy model type this DAO operates on
+    """
     
     def __init__(self, db_connection: DatabaseConnection, model_class: Type[ModelType]):
+        """Initialize DAO with database connection and model class.
+        
+        Args:
+            db_connection (DatabaseConnection): Database connection manager
+            model_class (Type[ModelType]): SQLAlchemy model class for this DAO
+        """
         self.db_connection = db_connection
         self.model_class = model_class
     
     def create(self, obj: ModelType) -> bool:
-        """Create a new record with retry logic for large messages"""
+        """Create a new record with retry logic for large messages.
+        
+        Implements exponential backoff retry logic to handle connection failures
+        and large message insertions that may exceed packet size limits.
+        
+        Args:
+            obj (ModelType): SQLAlchemy model instance to create
+        
+        Returns:
+            bool: True if creation succeeded, False otherwise
+            
+        Note:
+            Automatically sets SESSION max_allowed_packet to 64MB for large messages
+        """
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -223,7 +306,15 @@ class BaseDAO(Generic[ModelType]):
         return False
     
     def get_by_id(self, record_id: str, id_field: str = 'ordinal_id') -> Optional[ModelType]:
-        """Get record by ID"""
+        """Get record by ID.
+        
+        Args:
+            record_id (str): The ID value to search for
+            id_field (str): The name of the ID field (default: 'ordinal_id')
+        
+        Returns:
+            Optional[ModelType]: The model instance if found, None otherwise
+        """
         try:
             with self.db_connection.get_session() as session:
                 return session.query(self.model_class).filter(
@@ -234,7 +325,11 @@ class BaseDAO(Generic[ModelType]):
             return None
     
     def get_all(self) -> List[ModelType]:
-        """Get all records"""
+        """Get all records.
+        
+        Returns:
+            List[ModelType]: List of all model instances, empty list if none found or on error
+        """
         try:
             with self.db_connection.get_session() as session:
                 return session.query(self.model_class).all()
@@ -243,7 +338,14 @@ class BaseDAO(Generic[ModelType]):
             return []
     
     def update(self, obj: ModelType) -> bool:
-        """Update an existing record"""
+        """Update an existing record.
+        
+        Args:
+            obj (ModelType): SQLAlchemy model instance with updated values
+        
+        Returns:
+            bool: True if update succeeded, False otherwise
+        """
         try:
             with self.db_connection.get_session() as session:
                 session.merge(obj)
@@ -255,7 +357,15 @@ class BaseDAO(Generic[ModelType]):
             return False
     
     def delete(self, record_id: str, id_field: str = 'ordinal_id') -> bool:
-        """Delete a record by ID"""
+        """Delete a record by ID.
+        
+        Args:
+            record_id (str): The ID value of the record to delete
+            id_field (str): The name of the ID field (default: 'ordinal_id')
+        
+        Returns:
+            bool: True if deletion succeeded or record not found, False on error
+        """
         try:
             with self.db_connection.get_session() as session:
                 obj = session.query(self.model_class).filter(
@@ -273,17 +383,43 @@ class BaseDAO(Generic[ModelType]):
 
 
 class MessageDAO(BaseDAO[MessageInfo]):
-    """Data Access Object for Message operations with specialized methods"""
+    """Data Access Object for Message operations with specialized methods.
+    
+    Provides message-specific database operations beyond basic CRUD,
+    including queries by deposition ID and content type.
+    
+    Inherits from:
+        BaseDAO[MessageInfo]: Base DAO with generic CRUD operations
+    """
     
     def __init__(self, db_connection: DatabaseConnection):
+        """Initialize MessageDAO.
+        
+        Args:
+            db_connection (DatabaseConnection): Database connection manager
+        """
         super().__init__(db_connection, MessageInfo)
     
     def get_by_message_id(self, message_id: str) -> Optional[MessageInfo]:
-        """Get message by message_id"""
+        """Get message by message_id.
+        
+        Args:
+            message_id (str): Unique message identifier
+        
+        Returns:
+            Optional[MessageInfo]: Message instance if found, None otherwise
+        """
         return self.get_by_id(message_id, 'message_id')
     
     def get_by_deposition(self, deposition_id: str) -> List[MessageInfo]:
-        """Get all messages for a deposition"""
+        """Get all messages for a deposition.
+        
+        Args:
+            deposition_id (str): Deposition dataset ID (e.g., 'D_1000000001')
+        
+        Returns:
+            List[MessageInfo]: List of messages for the deposition, empty list if none found
+        """
         try:
             with self.db_connection.get_session() as session:
                 return session.query(MessageInfo).filter(
@@ -294,7 +430,17 @@ class MessageDAO(BaseDAO[MessageInfo]):
             return []
     
     def get_by_content_type(self, content_type: str) -> List[MessageInfo]:
-        """Get messages by content type"""
+        """Get messages by content type.
+        
+        Args:
+            content_type (str): Message content type. One of:
+                - 'messages-to-depositor'
+                - 'messages-from-depositor'
+                - 'notes-from-annotator'
+        
+        Returns:
+            List[MessageInfo]: List of messages with specified content type
+        """
         try:
             with self.db_connection.get_session() as session:
                 return session.query(MessageInfo).filter(
@@ -306,13 +452,31 @@ class MessageDAO(BaseDAO[MessageInfo]):
 
 
 class FileReferenceDAO(BaseDAO[MessageFileReference]):
-    """Data Access Object for File Reference operations with specialized methods"""
+    """Data Access Object for File Reference operations with specialized methods.
+    
+    Manages file attachment metadata associated with messages.
+    
+    Inherits from:
+        BaseDAO[MessageFileReference]: Base DAO with generic CRUD operations
+    """
     
     def __init__(self, db_connection: DatabaseConnection):
+        """Initialize FileReferenceDAO.
+        
+        Args:
+            db_connection (DatabaseConnection): Database connection manager
+        """
         super().__init__(db_connection, MessageFileReference)
     
     def get_by_message_id(self, message_id: str) -> List[MessageFileReference]:
-        """Get all file references for a message"""
+        """Get all file references for a message.
+        
+        Args:
+            message_id (str): Message identifier
+        
+        Returns:
+            List[MessageFileReference]: List of file references, empty list if none found
+        """
         try:
             with self.db_connection.get_session() as session:
                 return session.query(MessageFileReference).filter(
@@ -324,17 +488,46 @@ class FileReferenceDAO(BaseDAO[MessageFileReference]):
 
 
 class MessageStatusDAO(BaseDAO[MessageStatus]):
-    """Data Access Object for Message Status operations with specialized methods"""
+    """Data Access Object for Message Status operations with specialized methods.
+    
+    Manages message status tracking (read status, action required, release flags).
+    
+    Inherits from:
+        BaseDAO[MessageStatus]: Base DAO with generic CRUD operations
+    """
     
     def __init__(self, db_connection: DatabaseConnection):
+        """Initialize MessageStatusDAO.
+        
+        Args:
+            db_connection (DatabaseConnection): Database connection manager
+        """
         super().__init__(db_connection, MessageStatus)
     
     def get_by_message_id(self, message_id: str) -> Optional[MessageStatus]:
-        """Get status by message_id"""
+        """Get status by message_id.
+        
+        Args:
+            message_id (str): Message identifier
+        
+        Returns:
+            Optional[MessageStatus]: Status instance if found, None otherwise
+        """
         return self.get_by_id(message_id, 'message_id')
     
     def create_or_update(self, status: MessageStatus) -> bool:
-        """Create or update message status with retry logic"""
+        """Create or update message status with retry logic.
+        
+        If a status record already exists for the message, updates it.
+        Otherwise creates a new status record. Includes exponential backoff
+        retry logic for connection failures.
+        
+        Args:
+            status (MessageStatus): Status instance to create or update
+        
+        Returns:
+            bool: True if operation succeeded, False otherwise
+        """
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -384,10 +577,38 @@ class MessageStatusDAO(BaseDAO[MessageStatus]):
 
 
 class DataAccessLayer:
-    """Main data access facade that provides all messaging database operations"""
+    """Main data access facade that provides all messaging database operations.
+    
+    This class serves as the primary interface for all database operations
+    related to the messaging system. It provides a unified API and manages
+    specialized DAO instances for different entity types.
+    
+    Attributes:
+        db_connection (DatabaseConnection): Database connection manager
+        messages (MessageDAO): DAO for message operations
+        file_references (FileReferenceDAO): DAO for file reference operations
+        status (MessageStatusDAO): DAO for status operations
+    
+    Example:
+        >>> db_config = {
+        ...     'host': 'localhost',
+        ...     'port': 3306,
+        ...     'database': 'messaging',
+        ...     'username': 'user',
+        ...     'password': 'pass'
+        ... }
+        >>> dal = DataAccessLayer(db_config)
+        >>> message = MessageInfo(message_id='MSG001', ...)
+        >>> dal.create_message(message)
+        True
+    """
     
     def __init__(self, db_config: Dict):
-        """Initialize data access layer with database configuration"""
+        """Initialize data access layer with database configuration.
+        
+        Args:
+            db_config (Dict): Database configuration dictionary
+        """
         self.db_connection = DatabaseConnection(db_config)
         
         # Initialize DAOs
@@ -396,11 +617,19 @@ class DataAccessLayer:
         self.status = MessageStatusDAO(self.db_connection)
     
     def create_tables(self):
-        """Create all database tables"""
+        """Create all database tables.
+        
+        Delegates to DatabaseConnection.create_tables() to create all
+        messaging-related tables.
+        """
         self.db_connection.create_tables()
     
     def close(self):
-        """Close database connections"""
+        """Close database connections.
+        
+        Note: Since shared engine is used, this only clears session factory.
+        The connection pool remains active for other instances.
+        """
         self.db_connection.close()
     
     def __del__(self):
@@ -412,21 +641,56 @@ class DataAccessLayer:
     
     # Convenience methods for common operations
     def create_message(self, message: MessageInfo) -> bool:
-        """Create a new message"""
+        """Create a new message.
+        
+        Args:
+            message (MessageInfo): Message instance to create
+        
+        Returns:
+            bool: True if creation succeeded, False otherwise
+        """
         return self.messages.create(message)
     
     def get_message_by_id(self, message_id: str) -> Optional[MessageInfo]:
-        """Get message by ID"""
+        """Get message by ID.
+        
+        Args:
+            message_id (str): Unique message identifier
+        
+        Returns:
+            Optional[MessageInfo]: Message instance if found, None otherwise
+        """
         return self.messages.get_by_message_id(message_id)
     
     def get_deposition_messages(self, deposition_id: str) -> List[MessageInfo]:
-        """Get all messages for a deposition"""
+        """Get all messages for a deposition.
+        
+        Args:
+            deposition_id (str): Deposition dataset ID (e.g., 'D_1000000001')
+        
+        Returns:
+            List[MessageInfo]: List of messages, empty list if none found
+        """
         return self.messages.get_by_deposition(deposition_id)
     
     def create_file_reference(self, file_ref: MessageFileReference) -> bool:
-        """Create a new file reference"""
+        """Create a new file reference.
+        
+        Args:
+            file_ref (MessageFileReference): File reference instance to create
+        
+        Returns:
+            bool: True if creation succeeded, False otherwise
+        """
         return self.file_references.create(file_ref)
     
     def create_or_update_status(self, status: MessageStatus) -> bool:
-        """Create or update message status"""
+        """Create or update message status.
+        
+        Args:
+            status (MessageStatus): Status instance to create or update
+        
+        Returns:
+            bool: True if operation succeeded, False otherwise
+        """
         return self.status.create_or_update(status)

@@ -26,13 +26,24 @@ from wwpdb.io.locator.PathInfo import PathInfo
 logger = logging.getLogger(__name__)
 
 def _parse_context_from_path(file_path: str) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Extract deposition id and content_type from file path using PathInfo.splitFileName.
+    """Extract deposition ID and content type from file path.
     
-    For database-backed operation, we handle multiple path formats:
-    1. Workflow dummy paths: /dummy/messaging/D_1000000001/D_1000000001_messages-to-depositor_P1.cif.V1
-    2. Legacy hardcoded paths: /net/wwpdb_da/.../messages-to-depositor.cif
-    3. Any other format: try to extract deposition ID from context or return None for "all messages"
+    Handles multiple path formats for backward compatibility with both workflow-mode
+    dummy paths and legacy hardcoded file paths. Uses PathInfo.splitFileName for
+    standardized parsing.
+    
+    Args:
+        file_path: File path to parse. Supported formats:
+            - Workflow dummy: /dummy/messaging/D_1000000001/D_1000000001_messages-to-depositor_P1.cif.V1
+            - Legacy hardcoded: /net/wwpdb_da/.../messages-to-depositor.cif
+    
+    Returns:
+        Tuple of (deposition_id, content_type). Either may be None if not parseable.
+        Valid content types: messages-from-depositor, messages-to-depositor, notes-from-annotator
+    
+    Note:
+        For database-backed operation, this provides the filtering context for queries.
+        Legacy paths without deposition IDs will filter by content type only.
     """
     # Handle legacy hardcoded file paths (non-workflow mode)
     if not file_path.startswith("/dummy"):
@@ -77,6 +88,14 @@ def _parse_context_from_path(file_path: str) -> Tuple[Optional[str], Optional[st
     return None, None
 
 def _fmt_ts(ts) -> str:
+    """Format timestamp to string representation.
+    
+    Args:
+        ts: Timestamp as datetime object or string
+    
+    Returns:
+        Formatted timestamp string in "%Y-%m-%d %H:%M:%S" format, or empty string if invalid
+    """
     if isinstance(ts, datetime):
         return ts.strftime("%Y-%m-%d %H:%M:%S")
     if isinstance(ts, str):
@@ -84,6 +103,19 @@ def _fmt_ts(ts) -> str:
     return ""
 
 def _parse_ts(ts_str: Optional[str]) -> datetime:
+    """Parse timestamp string to datetime object.
+    
+    Attempts multiple common timestamp formats. Returns current UTC time if parsing fails.
+    
+    Args:
+        ts_str: Timestamp string or datetime object
+    
+    Returns:
+        Parsed datetime object, or current UTC time if parsing fails
+    
+    Note:
+        Supported formats: "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y %H:%M:%S", "%d-%b-%Y"
+    """
     if isinstance(ts_str, datetime):
         return ts_str
     if not ts_str:
@@ -97,11 +129,38 @@ def _parse_ts(ts_str: Optional[str]) -> datetime:
 
 
 class PdbxMessageIo:
-    """
-    DB-backed drop-in for mmcif_utils.message.PdbxMessageIo.
-
-    read(filePath) becomes a context selector (deposition_id + content_type).
-    write(filePath) commits pending rows to DB.
+    """Database-backed drop-in replacement for mmcif_utils.message.PdbxMessageIo.
+    
+    Provides the same API interface as the original PdbxMessageIo class but stores
+    message data in a MySQL database instead of CIF files. Maintains full backward
+    compatibility with existing code that uses the CIF-based interface.
+    
+    The class operates on a context-based model where read() selects a deposition ID
+    and content type, and all subsequent operations (get*/append*) work within that
+    context. The write() method commits pending changes to the database.
+    
+    Args:
+        site_id: WWPDB site identifier (required). Used to load database configuration
+            from ConfigInfo settings (SITE_MESSAGE_DB_HOST_NAME, etc.)
+        verbose: Enable verbose logging output (default: True)
+        log: File handle for log output (default: sys.stderr)
+        db_config: Optional explicit database configuration dict. If not provided,
+            configuration is loaded from ConfigInfo using site_id. Dict should contain:
+            host, port, database, username, password, charset, and optionally unix_socket.
+    
+    Raises:
+        ValueError: If site_id is not provided or database configuration is invalid
+    
+    Example:
+        >>> with PdbxMessageIo(site_id="WWPDB_DEPLOY_TEST") as msg_io:
+        ...     msg_io.read("/dummy/messaging/D_1000000001/D_1000000001_messages-to-depositor_P1.cif.V1")
+        ...     messages = msg_io.getMessageInfo()
+        ...     msg_io.appendMessage({"message_id": "msg_001", "message_text": "Hello"})
+        ...     msg_io.write("/dummy/path")
+    
+    Note:
+        This class should be used as a context manager (with statement) to ensure
+        proper cleanup of database connections. Alternatively, call close() explicitly.
     """
 
     def __init__(self, site_id: str, verbose=True, log=sys.stderr, db_config: Optional[Dict] = None):
@@ -195,37 +254,67 @@ class PdbxMessageIo:
         self._block_id: Optional[str] = None
 
     def close(self):
-        """Explicitly close database connections. Should be called when done with this instance."""
+        """Close database connections and clean up resources.
+        
+        Should be called when done with this instance to ensure proper cleanup.
+        Automatically called when using context manager (with statement).
+        """
         if self._dal:
             self._dal.close()
             if self.__verbose:
                 self.__lfh.write("PdbxMessageIo: Database connections closed\n")
     
     def __del__(self):
-        """Ensure database connections are closed when object is garbage collected"""
+        """Destructor - ensures database connections are closed when object is garbage collected."""
         try:
             self.close()
         except Exception:
             pass  # Ignore errors during cleanup
     
     def __enter__(self):
-        """Context manager entry - allows usage with 'with' statement"""
+        """Context manager entry - allows usage with 'with' statement.
+        
+        Returns:
+            self: This PdbxMessageIo instance
+        """
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - ensures connections are closed"""
+        """Context manager exit - ensures connections are closed.
+        
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred  
+            exc_tb: Exception traceback if an exception occurred
+        
+        Returns:
+            False to propagate any exceptions that occurred
+        """
         self.close()
         return False  # Don't suppress exceptions
 
     # --------- Query (read) API ---------
 
     def read(self, filePath: str, logtag: str = "", deposition_id: str = None) -> bool:
-        """Select deposition_id and content_type context; load existing rows from DB.
+        """Select deposition context and load existing messages from database.
+        
+        Sets the current deposition ID and content type context by parsing the file path,
+        then loads all matching messages, file references, and status records from the
+        database. Subsequent get* and append* operations work within this context.
         
         Args:
-            filePath: File path to parse for context (workflow) or content type (legacy)
-            logtag: Optional logging tag
-            deposition_id: Optional explicit deposition ID (overrides path parsing)
+            filePath: File path to parse for context. Supported formats:
+                - Workflow dummy path: /dummy/messaging/D_1000000001/D_1000000001_messages-to-depositor_P1.cif.V1
+                - Legacy hardcoded path: /net/wwpdb_da/.../messages-to-depositor.cif
+            logtag: Optional logging tag for debugging (default: "")
+            deposition_id: Optional explicit deposition ID that overrides path parsing (default: None)
+        
+        Returns:
+            True on success, False on failure
+        
+        Note:
+            The file path is used only for context parsing - no actual file I/O occurs.
+            All data is loaded from the database based on the parsed deposition ID and content type.
         """
         dep_id, content_type = _parse_context_from_path(filePath)
         
@@ -248,6 +337,20 @@ class PdbxMessageIo:
         return True
 
     def getCategory(self, catName: str = "pdbx_deposition_message_info") -> List[Dict]:
+        """Get all rows for a specific mmCIF category.
+        
+        Provides unified access to different message data categories using mmCIF category names.
+        
+        Args:
+            catName: Category name. Valid values:
+                - "pdbx_deposition_message_info" (default): Message data
+                - "pdbx_deposition_message_file_reference": File attachment metadata
+                - "pdbx_deposition_message_origcomm_reference": Original communication references
+                - "pdbx_deposition_message_status": Message status flags
+        
+        Returns:
+            List of dictionaries containing category data, or empty list if category unknown
+        """
         if catName == "pdbx_deposition_message_info":
             return self.getMessageInfo()
         if catName == "pdbx_deposition_message_file_reference":
@@ -259,26 +362,67 @@ class PdbxMessageIo:
         return []
 
     def getMessageInfo(self) -> List[Dict]:
+        """Get all message info rows loaded from database for current context.
+        
+        Returns:
+            List of message dictionaries with keys: ordinal_id, message_id, deposition_data_set_id,
+            timestamp, sender, context_type, context_value, parent_message_id, message_subject,
+            message_text, message_type, send_status, content_type
+        """
         return list(self._loaded_messages)
 
     def getFileReferenceInfo(self) -> List[Dict]:
+        """Get all file reference rows loaded from database for current context.
+        
+        Returns:
+            List of file reference dictionaries with keys: ordinal_id, message_id, 
+            deposition_data_set_id, content_type, content_format, partition_number,
+            version_id, storage_type, upload_file_name
+        """
         return list(self._loaded_file_refs)
 
     def getOrigCommReferenceInfo(self) -> List[Dict]:
-        # Not persisted in current DB schema; return what was appended in-session.
+        """Get original communication reference data (in-memory only, not persisted to database).
+        
+        Returns:
+            List of original communication reference dictionaries. Note: This data is maintained
+            in-memory for API compatibility but is not persisted to the database in the current schema.
+        """
         return list(self._loaded_origcomm_refs)
 
     def getMsgStatusInfo(self) -> List[Dict]:
+        """Get all message status rows loaded from database for current context.
+        
+        Returns:
+            List of status dictionaries with keys: message_id, deposition_data_set_id,
+            read_status, action_reqd, for_release
+        """
         return list(self._loaded_statuses)
 
     # --------- Mutation API (append/update) ---------
 
     def update(self, catName: str, attributeName: str, value, iRow: int = 0) -> bool:
-        """Update attribute in loaded row and move to pending for DB write.
+        """Update an attribute in a loaded row and mark for database write.
         
-        For database-backed storage, we need to:
-        1. Update the loaded row (what the caller indexed into)
-        2. Add/update the corresponding pending row for write()
+        Updates the specified attribute in the loaded data and ensures the change
+        is tracked for writing to the database on the next write() call.
+        
+        Args:
+            catName: Category name to update. Valid values:
+                - "pdbx_deposition_message_info"
+                - "pdbx_deposition_message_file_reference"
+                - "pdbx_deposition_message_status"
+                - "pdbx_deposition_message_origcomm_reference"
+            attributeName: Name of the attribute/column to update
+            value: New value to set
+            iRow: Row index to update (default: 0)
+        
+        Returns:
+            True on success, False if category unknown or row index invalid
+        
+        Note:
+            For status updates, automatically ensures the row is added to pending
+            writes even if it wasn't originally in the pending list.
         """
         loaded_target = None
         pending_target = None
@@ -325,27 +469,85 @@ class PdbxMessageIo:
         return True
 
     def appendMessage(self, rowAttribDict: Dict) -> bool:
+        """Append a new message to pending writes.
+        
+        Args:
+            rowAttribDict: Dictionary of message attributes. Should include at minimum:
+                message_id, message_subject, message_text. Other fields are auto-populated
+                with defaults if not provided.
+        
+        Returns:
+            True on success
+        
+        Note:
+            Message is added to pending list and will be written to database on next write() call.
+        """
         self._ensure_defaults(rowAttribDict, kind="message")
         self._pending_messages.append(dict(rowAttribDict))
         return True
 
     def appendFileReference(self, rowAttribDict: Dict) -> bool:
+        """Append a new file reference to pending writes.
+        
+        Args:
+            rowAttribDict: Dictionary of file reference attributes. Should include:
+                message_id, and optionally content_type, content_format, partition_number,
+                version_id, storage_type, upload_file_name
+        
+        Returns:
+            True on success
+        """
         self._ensure_defaults(rowAttribDict, kind="file_ref")
         self._pending_file_refs.append(dict(rowAttribDict))
         return True
 
     def appendOrigCommReference(self, rowAttribDict: Dict) -> bool:
-        # In-memory only; not persisted (no table)
+        """Append original communication reference (in-memory only, not persisted).
+        
+        Args:
+            rowAttribDict: Dictionary of original communication reference attributes
+        
+        Returns:
+            True on success
+        
+        Note:
+            This data is maintained in-memory for API compatibility but is not
+            persisted to the database in the current schema.
+        """
         self._pending_origcomm_refs.append(dict(rowAttribDict))
         return True
 
     def appendMsgReadStatus(self, rowAttribDict: Dict) -> bool:
+        """Append a new message status to pending writes.
+        
+        Args:
+            rowAttribDict: Dictionary of status attributes. Should include message_id,
+                and optionally read_status, action_reqd, for_release (default: "N" for each)
+        
+        Returns:
+            True on success
+        """
         self._ensure_defaults(rowAttribDict, kind="status")
         self._pending_statuses.append(dict(rowAttribDict))
         return True
 
     def write(self, filePath: str) -> bool:
-        """Commit pending rows to DB. filePath is ignored (retained for API compatibility)."""
+        """Commit all pending changes to the database.
+        
+        Writes all pending messages, file references, and status records to the database
+        using the DataAccessLayer. On success, clears pending lists and reloads data
+        from database to refresh the current context.
+        
+        Args:
+            filePath: File path (retained for API compatibility but ignored - no file I/O occurs)
+        
+        Returns:
+            True if all database operations succeeded, False if any failed
+        
+        Note:
+            If any database operation fails, pending data is retained for potential retry
+            and loaded data is not refreshed. Check logs for specific error details.
+        """
         if self.__verbose:
             logger.info("DB MessageIo write() pending: msgs=%d files=%d statuses=%d",
                         len(self._pending_messages), len(self._pending_file_refs), len(self._pending_statuses))
@@ -430,36 +632,88 @@ class PdbxMessageIo:
     # --------- Style/container compatibility (no-ops for DB) ---------
 
     def complyStyle(self) -> bool:
+        """Comply with mmCIF style requirements (no-op for database backend).
+        
+        Returns:
+            True (always succeeds - retained for API compatibility)
+        """
         return True
 
     def setBlock(self, blockId: str) -> bool:
+        """Set current block ID (no-op for database backend, retained for API compatibility).
+        
+        Args:
+            blockId: Block identifier
+        
+        Returns:
+            True (always succeeds)
+        """
         self._block_id = blockId
         return True
 
     def newBlock(self, blockId: str) -> None:
+        """Create new block (no-op for database backend, retained for API compatibility).
+        
+        Args:
+            blockId: Block identifier
+        """
         self._block_id = blockId
 
     # --------- Ordinal helpers (kept for API compatibility) ---------
 
     def nextMessageOrdinal(self) -> int:
+        """Get next available ordinal ID for a message.
+        
+        Returns:
+            Next ordinal ID (count of loaded + pending messages + 1)
+        """
         return len(self._loaded_messages) + len(self._pending_messages) + 1
 
     def nextFileReferenceOrdinal(self) -> int:
+        """Get next available ordinal ID for a file reference.
+        
+        Returns:
+            Next ordinal ID (count of loaded + pending file references + 1)
+        """
         return len(self._loaded_file_refs) + len(self._pending_file_refs) + 1
 
     def nextOrigCommReferenceOrdinal(self) -> int:
+        """Get next available ordinal ID for an original communication reference.
+        
+        Returns:
+            Next ordinal ID (count of loaded + pending origcomm references + 1)
+        """
         return len(self._loaded_origcomm_refs) + len(self._pending_origcomm_refs) + 1
 
     # --------- Internal helpers ---------
 
     def _ensure_defaults(self, row: Dict, kind: str) -> None:
+        """Ensure default values are set for required fields.
+        
+        Auto-populates deposition_data_set_id and content_type from current context
+        if not already present in the row dictionary.
+        
+        Args:
+            row: Dictionary to populate with defaults (modified in-place)
+            kind: Type of row - "message", "file_ref", or "status"
+        """
         if kind in ("message", "file_ref", "status"):
             row.setdefault("deposition_data_set_id", self._deposition_id)
             if self._content_type and kind in ("message", "file_ref"):
                 row.setdefault("content_type", self._content_type)
 
     def _load_from_db(self) -> None:
-        """Load current context from DB into dict lists compatible with CIF backend."""
+        """Load message data from database for current deposition context.
+        
+        Queries the database for all messages, file references, and status records
+        matching the current deposition ID and content type. Converts ORM objects
+        to dictionaries compatible with the CIF backend interface.
+        
+        Note:
+            Clears existing loaded data before loading. Status records are loaded for
+            the entire deposition regardless of content_type filter, matching legacy
+            CIF behavior where all statuses are stored in messages-to-depositor.
+        """
         self._loaded_messages.clear()
         self._loaded_file_refs.clear()
         self._loaded_statuses.clear()

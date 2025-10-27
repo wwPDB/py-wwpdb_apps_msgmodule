@@ -1,11 +1,15 @@
 """
 SQLAlchemy models that exactly mirror the mmCIF messaging categories.
 
-This provides direct database mapping for the messaging system that matches
-the CIF structure:
-- pdbx_deposition_message_info
-- pdbx_deposition_message_file_reference  
-- pdbx_deposition_message_status
+This module provides direct database mapping for the messaging system that matches
+the CIF structure used by the PDBx/mmCIF format:
+
+- **pdbx_deposition_message_info** - Core message data
+- **pdbx_deposition_message_file_reference** - File attachment metadata
+- **pdbx_deposition_message_status** - Message status tracking
+
+The models use SQLAlchemy ORM to provide a Pythonic interface while maintaining
+exact correspondence with the mmCIF category definitions.
 """
 
 from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey, CHAR, Enum, BigInteger, UniqueConstraint
@@ -19,7 +23,38 @@ Base = declarative_base()
 
 
 class MessageInfo(Base):
-    """SQLAlchemy model mapping to _pdbx_deposition_message_info mmCIF category"""
+    """SQLAlchemy model mapping to _pdbx_deposition_message_info mmCIF category.
+    
+    Represents the core message data including content, metadata, and relationships.
+    Each message has a unique message_id and belongs to a specific deposition.
+    
+    Attributes:
+        ordinal_id (BigInteger): Auto-incrementing primary key
+        message_id (String): Unique message identifier (indexed, unique)
+        deposition_data_set_id (String): Deposition ID this message belongs to (indexed)
+        timestamp (DateTime): When the message was created (indexed)
+        sender (String): Email or identifier of message sender (indexed)
+        context_type (String): Type of context (e.g., 'EM', 'validation') (indexed)
+        context_value (String): Context-specific value
+        parent_message_id (String): ID of parent message for threading (indexed, FK)
+        message_subject (Text): Message subject line
+        message_text (LONGTEXT): Full message body text
+        message_type (String): Message format type (default: 'text')
+        send_status (CHAR): Send status flag ('Y'/'N', default: 'Y')
+        content_type (Enum): Message category (indexed). One of:
+            - 'messages-to-depositor': Annotator to depositor messages
+            - 'messages-from-depositor': Depositor to annotator messages
+            - 'notes-from-annotator': Internal annotator notes
+        created_at (DateTime): Record creation timestamp (indexed)
+        updated_at (DateTime): Record last update timestamp
+    
+    Relationships:
+        status: One-to-one relationship with MessageStatus
+        file_references: One-to-many relationship with MessageFileReference
+    
+    Table:
+        pdbx_deposition_message_info
+    """
     __tablename__ = 'pdbx_deposition_message_info'
     
     # Database columns - exactly matching mmCIF attributes
@@ -45,7 +80,34 @@ class MessageInfo(Base):
 
 
 class MessageFileReference(Base):
-    """SQLAlchemy model mapping to _pdbx_deposition_message_file_reference mmCIF category"""
+    """SQLAlchemy model mapping to _pdbx_deposition_message_file_reference mmCIF category.
+    
+    Stores metadata about file attachments referenced in messages. This table
+    controls the attachment download links displayed to depositors and ensures
+    a complete audit trail of what files were sent and when.
+    
+    Attributes:
+        ordinal_id (BigInteger): Auto-incrementing primary key
+        message_id (String): ID of parent message (indexed, FK to MessageInfo)
+        deposition_data_set_id (String): Deposition ID (indexed)
+        content_type (String): File content type (e.g., 'model', 'sf') (indexed)
+        content_format (String): File format (e.g., 'pdbx', 'pdf')
+        partition_number (Integer): Partition number for versioning (default: 1)
+        version_id (Integer): Version identifier (default: 1)
+        storage_type (String): Storage location type (indexed, default: 'archive')
+        upload_file_name (String): Original uploaded filename
+        created_at (DateTime): Record creation timestamp
+    
+    Relationships:
+        message: Many-to-one relationship with MessageInfo
+    
+    Constraints:
+        Unique constraint on (message_id, content_type, version_id, partition_number)
+        to ensure idempotent inserts
+    
+    Table:
+        pdbx_deposition_message_file_reference
+    """
     __tablename__ = 'pdbx_deposition_message_file_reference'
     
     # Database columns - exactly matching mmCIF attributes
@@ -71,7 +133,32 @@ class MessageFileReference(Base):
 
 
 class MessageStatus(Base):
-    """SQLAlchemy model mapping to _pdbx_deposition_message_status mmCIF category"""
+    """SQLAlchemy model mapping to _pdbx_deposition_message_status mmCIF category.
+    
+    Tracks the lifecycle status of messages including read state, action requirements,
+    and release flags. One status record per message.
+    
+    Attributes:
+        message_id (String): Message identifier (primary key, FK to MessageInfo)
+        deposition_data_set_id (String): Deposition ID (indexed)
+        read_status (CHAR): Whether message has been read (indexed). Values:
+            - 'Y': Message has been read
+            - 'N': Message is unread (default)
+        action_reqd (CHAR): Whether action is required (indexed). Values:
+            - 'Y': Action required
+            - 'N': No action required (default)
+        for_release (CHAR): Whether message is flagged for release (indexed). Values:
+            - 'Y': Flagged for release
+            - 'N': Not for release (default)
+        created_at (DateTime): Record creation timestamp
+        updated_at (DateTime): Record last update timestamp
+    
+    Relationships:
+        message: One-to-one relationship with MessageInfo
+    
+    Table:
+        pdbx_deposition_message_status
+    """
     __tablename__ = 'pdbx_deposition_message_status'
     
     # Database columns - exactly matching mmCIF attributes
