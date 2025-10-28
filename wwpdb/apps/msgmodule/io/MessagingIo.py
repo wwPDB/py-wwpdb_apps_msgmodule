@@ -3155,7 +3155,8 @@ class MessagingIo(object):
             contentFormat = rcrd["content_format"]
             partitionNum = rcrd["partition_number"]
             versionId = rcrd["version_id"]
-            uploadFlName = rcrd["upload_file_name"]
+            # Normalize upload_file_name to prevent None/null values (DAOTHER-10245)
+            uploadFlName = (rcrd.get("upload_file_name") or "").strip()
 
             #
             if msgId not in rtrnDict:
