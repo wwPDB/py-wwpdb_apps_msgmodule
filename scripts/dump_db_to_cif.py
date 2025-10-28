@@ -32,6 +32,7 @@ from pathlib import Path
 
 try:
     import gemmi
+    from gemmi.cif import Style, WriteOptions
 except ImportError as e:
     sys.stderr.write("Error: gemmi library is required but not installed.\n")
     sys.stderr.write("Please install it with: pip install gemmi\n")
@@ -633,7 +634,8 @@ class DbToCifExporter:
             
             # Write CIF file - use as_string() to avoid alignment issues with write_file()
             # gemmi's write_file() with align_loops causes spacing issues that break parsing
-            cif_content = doc.as_string()
+            opts = WriteOptions(Style.Pdbx)
+            cif_content = doc.as_string(opts)
             with open(file_path, 'w') as f:
                 f.write(cif_content)
             
