@@ -296,7 +296,7 @@ class LockFile:
             self.acquire()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type, value, traceback):  # pylint: disable=redefined-builtin
         """Exit context manager - release lock.
         
         Args:

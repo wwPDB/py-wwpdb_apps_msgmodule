@@ -46,7 +46,7 @@ class MessagingDataImport(object):
         # Set up instance variables to match original interface
         self.__setup()
 
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # noqa: disable=redefined-builtin,unused-argument
         """Get dummy file path containing deposition ID and content type for database context.
         
         Returns a path that looks like a real file path for compatibility with existing
@@ -101,7 +101,7 @@ class MessagingDataImport(object):
             logger.error("Error in MessagingDataImport.getFilePath: %s", e)
             raise
 
-    def checkFilePathExists(self, filePath):
+    def checkFilePathExists(self, filePath):  # noqa: disable=unused-argument
         """Check if file path exists (always returns True for database backend).
         
         Args:
@@ -112,7 +112,7 @@ class MessagingDataImport(object):
         """
         return True
 
-    def getFileReference(self, **kwargs):
+    def getFileReference(self, **kwargs):  # noqa: disable=unused-argument
         """Get file reference (stub method returning None for database backend).
         
         Args:
@@ -159,7 +159,7 @@ class MessagingDataImport(object):
             logger.exception("Error in __setup: %s", e)
             raise ValueError(f"Failed to initialize MessagingDataImport: {e}") from e
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # noqa: disable=refined-builtin,unused-argument
         """Get dummy milestone file paths for deposit and archive versions.
         
         Returns a dictionary with dummy paths that the database backend can parse for
@@ -212,7 +212,7 @@ class MessagingDataImport(object):
             logger.error("Error in getMileStoneFilePaths: %s", e)
             raise
 
-    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):
+    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):    # noqa: disable=unused-argument
         """Get workflow file path (internal method for original interface compatibility).
         
         Args:

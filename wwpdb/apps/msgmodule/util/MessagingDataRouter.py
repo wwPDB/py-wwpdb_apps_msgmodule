@@ -160,7 +160,7 @@ class MessagingDataExport(object):
             self._io_impl = IoMessagingDataExport(self._reqObj, self._verbose, self._log)
         return self._io_impl
     
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin
         """Get file path, routing to appropriate backend based on content type.
         
         Args:

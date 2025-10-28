@@ -501,7 +501,7 @@ class MessagingIo(object):
                             )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     finally:
                         if not self.__legacycomm:
-                            pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections
+                            pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
                 if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
@@ -514,7 +514,7 @@ class MessagingIo(object):
                             )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     finally:
                         if not self.__legacycomm:
-                            pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections
+                            pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
@@ -537,7 +537,7 @@ class MessagingIo(object):
                                 recordSetLst.extend(onlyArchvdCommsLst)
                     finally:
                         if not self.__legacycomm:
-                            pdbxMsgIo_notes.close()  # Explicitly close to release database connections
+                            pdbxMsgIo_notes.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
             for record in recordSetLst:
 

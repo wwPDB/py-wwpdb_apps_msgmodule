@@ -531,7 +531,7 @@ class PdbxMessageIo:
         self._pending_statuses.append(dict(rowAttribDict))
         return True
 
-    def write(self, filePath: str) -> bool:
+    def write(self, filePath: str) -> bool:  # pylint: disable=unused-argument
         """Commit all pending changes to the database.
         
         Writes all pending messages, file references, and status records to the database

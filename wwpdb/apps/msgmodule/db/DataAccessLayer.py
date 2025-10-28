@@ -88,7 +88,7 @@ def _get_or_create_engine(db_config: Dict):
                     conn.execute(text("SET SESSION max_allowed_packet=67108864"))
                     logger.info("Set SESSION max_allowed_packet to 64MB for large messages")
                 except Exception as e:
-                    logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")
+                    logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")  # pylint: disable=logging-fstring-interpolation
                 
                 logger.info("Database connection test successful")
             
@@ -281,7 +281,7 @@ class BaseDAO(Generic[ModelType]):
                         )
                         time.sleep(wait_time)
                         # Force connection pool refresh
-                        self.db_connection._engine.dispose()
+                        self.db_connection._engine.dispose()  # pylint:  disable=protected-access
                         continue
                     else:
                         logger.error(
@@ -559,7 +559,7 @@ class MessageStatusDAO(BaseDAO[MessageStatus]):
                             attempt + 1, max_retries, wait_time
                         )
                         time.sleep(wait_time)
-                        self.db_connection._engine.dispose()
+                        self.db_connection._engine.dispose()  # pylint:  disable=protected-access
                         continue
                     else:
                         logger.error(
