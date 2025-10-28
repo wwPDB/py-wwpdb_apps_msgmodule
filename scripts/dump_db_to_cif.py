@@ -622,8 +622,9 @@ class DbToCifExporter:
             if file_refs:
                 self._add_file_reference_category(block, file_refs)
             
-            # Add status category if we have statuses
-            if statuses:
+            # Add status category only for messages-to-depositor (not messages-from-depositor)
+            # to maintain compatibility with existing infrastructure
+            if statuses and content_type == "messages-to-depositor":
                 self._add_status_category(block, statuses)
             
             log_event("cif_structure_created", deposition_id=deposition_id,
