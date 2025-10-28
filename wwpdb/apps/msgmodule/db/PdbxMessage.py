@@ -456,14 +456,16 @@ class PdbxMessageFileReference(_BasePdbxMessage):
         return self._row_dict.get("storage_type", "archive")
 
     def setUploadFileName(self, v: Optional[str]):
+        # Convert None to empty string to prevent NULL in database (which causes JavaScript crash)
+        v = v or ""
         if self._model:
             self._model.upload_file_name = v
         self._row_dict["upload_file_name"] = v
 
-    def getUploadFileName(self) -> Optional[str]:
+    def getUploadFileName(self) -> str:
         if self._model:
-            return self._model.upload_file_name
-        return self._row_dict.get("upload_file_name")
+            return self._model.upload_file_name or ""
+        return self._row_dict.get("upload_file_name") or ""
 
 
 class PdbxMessageOrigCommReference(_BasePdbxMessage):

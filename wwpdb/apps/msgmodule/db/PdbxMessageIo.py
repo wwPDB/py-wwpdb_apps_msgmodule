@@ -595,7 +595,7 @@ class PdbxMessageIo:
                 partition_number=int(fr.get("partition_number", 1)),
                 version_id=int(fr.get("version_id", 1)),
                 storage_type=fr.get("storage_type", "archive"),
-                upload_file_name=fr.get("upload_file_name"),
+                upload_file_name=fr.get("upload_file_name") or "",
             )
             if not self._dal.create_file_reference(ref):
                 logger.error("Failed to create file reference for message ID: %s", fr['message_id'])
@@ -787,7 +787,7 @@ class PdbxMessageIo:
                     "partition_number": fr.partition_number,
                     "version_id": fr.version_id,
                     "storage_type": fr.storage_type,
-                    "upload_file_name": fr.upload_file_name,
+                    "upload_file_name": fr.upload_file_name or "",
                 }
                 for fr in file_refs
             ]
