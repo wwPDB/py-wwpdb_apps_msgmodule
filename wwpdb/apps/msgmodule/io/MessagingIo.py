@@ -154,8 +154,14 @@ from datetime import datetime, date, timedelta
 from dateutil import tz
 
 #
-from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
-from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
+from mmcif_utils.message.PdbxMessage import PdbxMessageInfo as PdbxMessageInfoLegacy, PdbxMessageFileReference as PdbxMessageFileReferenceLegacy, \
+    PdbxMessageOrigCommReference as PdbxMessageOrigCommReferenceLegacy, PdbxMessageStatus as PdbxMessageStatusLegacy
+from wwpdb.apps.msgmodule.io.CompatIo import PdbxMessageIo, LockFile, FileSizeLogger
+# Database-backed message classes (instead of CIF-based)
+from wwpdb.apps.msgmodule.db.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+# from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo as PdbxMessageIoDb
+# from mmcif_utils.message.PdbxMessage import PdbxMessageInfo, PdbxMessageFileReference, PdbxMessageOrigCommReference, PdbxMessageStatus
+# from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 from mmcif_utils.style.PdbxMessageCategoryStyle import PdbxMessageCategoryStyle
 
 #
@@ -163,9 +169,10 @@ from mmcif.io.PdbxReader import PdbxReader
 
 #
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppEm
-from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
-from wwpdb.apps.msgmodule.io.MessagingDataExport import MessagingDataExport
+# Use routing wrapper that selectively chooses between db and file implementations
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport, MessagingDataExport
 from wwpdb.utils.wf.dbapi.StatusDbApi import StatusDbApi
 from wwpdb.apps.msgmodule.depict.MessagingTemplates import MessagingTemplates
 from wwpdb.apps.msgmodule.models.Message import AutoMessage, AutoNote
@@ -179,7 +186,8 @@ from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility
 
 #
 from mmcif_utils.persist.PdbxPersist import PdbxPersist
-from mmcif_utils.persist.LockFile import LockFile
+# from wwpdb.apps.msgmodule.db.LockFile import LockFile as LockFileDb
+# from wwpdb.apps.msgmodule.db.LockFile import FileSizeLogger as FileSizeLoggerDb
 from mmcif.io.IoAdapterCore import IoAdapterCore
 from mmcif_utils.trans.InstanceMapper import InstanceMapper
 from oslo_concurrency import lockutils
@@ -196,6 +204,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+###########################
 class MessagingIo(object):
     # List of categories to parse from model file
     ctgrsReqrdFrmModelFile = [
@@ -233,7 +242,6 @@ class MessagingIo(object):
         self.__skipCopyIfSame = True
         #
         self.__reqObj = reqObj
-
         #
         # Added by ZF
         #
@@ -248,6 +256,7 @@ class MessagingIo(object):
         # self.__emDeposition = True if ("ELECTRON MICROSCOPY" in self.__expMethodList or "ELECTRON CRYSTALLOGRAPHY" in self.__expMethodList) else False
         #
         self.__siteId = str(self.__reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(self.__siteId).get_msgdb_support()
         self.__cI = ConfigInfo(self.__siteId)
         self.__cIA = ConfigInfoAppEm(self.__siteId)
         self.__emdDialectMappingFile = self.__cIA.get_emd_mapping_file_path()
@@ -480,38 +489,55 @@ class MessagingIo(object):
                 logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
-                    if ok:
-                        recordSetLst = (
-                            pdbxMsgIo_frmDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                # For database-backed storage (dummy paths), skip file existence checks
+                if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    try:
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath, deposition_id=depId)
+                        if ok:
+                            recordSetLst = (
+                                pdbxMsgIo_frmDpstr.getMessageInfo()
+                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    finally:
+                        if not self.__legacycomm:
+                            pdbxMsgIo_frmDpstr.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
-                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
-                    if ok:
-                        recordSetLst.extend(
-                            pdbxMsgIo_toDpstr.getMessageInfo()
-                        )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    try:
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath, deposition_id=depId)
+                        if ok:
+                            recordSetLst.extend(
+                                pdbxMsgIo_toDpstr.getMessageInfo()
+                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                    finally:
+                        if not self.__legacycomm:
+                            pdbxMsgIo_toDpstr.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+                # For database-backed storage (dummy paths), skip file existence checks
+                if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
+                    pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    try:
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
-                    if ok:
-                        if contentType == "notes":
-                            recordSetLst = (
-                                pdbxMsgIo_notes.getMessageInfo()
-                            )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
-                        elif bCommHstryRqstd:
-                            fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
-                            onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
-                            recordSetLst.extend(onlyArchvdCommsLst)
+                        if ok:
+                            if contentType == "notes":
+                                recordSetLst = (
+                                    pdbxMsgIo_notes.getMessageInfo()
+                                )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
+                            elif bCommHstryRqstd:
+                                fullNotesLst = pdbxMsgIo_notes.getMessageInfo()
+                                onlyArchvdCommsLst = [record for record in fullNotesLst if ("archive" in record["message_type"])]
+                                recordSetLst.extend(onlyArchvdCommsLst)
+                    finally:
+                        if not self.__legacycomm:
+                            pdbxMsgIo_notes.close()  # Explicitly close to release database connections  # pylint: disable=no-member
 
             for record in recordSetLst:
 
@@ -594,9 +620,11 @@ class MessagingIo(object):
                 logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-                if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
+                # For database-backed storage (dummy paths), skip file existence checks
+                if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
+                    pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath, deposition_id=depId)
                     if ok:
                         recordSetLst = (
                             pdbxMsgIo_frmDpstr.getMessageInfo()
@@ -605,9 +633,10 @@ class MessagingIo(object):
                         if bCommHstryRqstd:
                             origCommsLst.extend(pdbxMsgIo_frmDpstr.getOrigCommReferenceInfo())
 
-                if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                    pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
+                if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
+                    pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath, deposition_id=depId)
                     if ok:
                         msgsToDpstrLst = pdbxMsgIo_toDpstr.getMessageInfo()
                         rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = len(msgsToDpstrLst)
@@ -628,9 +657,11 @@ class MessagingIo(object):
             if contentType == "notes" or bCommHstryRqstd:
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-                if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                    pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+                # For database-backed storage (dummy paths), skip file existence checks
+                if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
+                    pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
                     if ok:
                         if contentType == "notes":
@@ -792,7 +823,7 @@ class MessagingIo(object):
                     if fPath is not None and os.access(fPath, os.R_OK):
                         rtrnList.append(token)
             else:
-                rtrnList = fileCheckCatalog.keys()
+                rtrnList = list(fileCheckCatalog.keys())
             #
         except:  # noqa: E722 pylint: disable=bare-except
             logger.exception("In getting available list")
@@ -837,25 +868,29 @@ class MessagingIo(object):
                 logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-            if self.__msgsFrmDpstrFilePath is not None and os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
                     pid = os.getpid()
-                    ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-            if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
+                mIIo2 = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst.extend(mIIo2.getFileReferenceInfo())  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
             #
@@ -914,15 +949,17 @@ class MessagingIo(object):
                 self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-            if os.access(self.__notesFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__notesFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__notesFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 #
@@ -962,7 +999,10 @@ class MessagingIo(object):
             if self.__verbose and self.__debug:
                 logger.info("p_msgObj.isLive is: %r", p_msgObj.isLive)
             if p_msgObj.isLive:  # if this a livemsg as opposed to draft then need to instantiate new PdbxMessageInfo object/acquire the new message data
-                mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
+                if self.__legacycomm:
+                    mI = PdbxMessageInfoLegacy(verbose=self.__verbose, log=self.__lfh)
+                else:
+                    mI = PdbxMessageInfo(verbose=self.__verbose, log=self.__lfh)
                 mI.set(p_msgObj.getMsgDict())
                 if self.__verbose and self.__debug:
                     logger.info("p_msgObj.getMsgDict() is: %r", p_msgObj.getMsgDict())
@@ -979,23 +1019,28 @@ class MessagingIo(object):
                 if self.__verbose:
                     logger.info("depUiMsgsToDpstrFilePath is: %s", depUiMsgsToDpstrFilePath)
 
-            if not os.access(outputFilePth, os.F_OK):
-                logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
-                try:
-                    # file may not exist b/c it is the first time that an
-                    # annotator is sending a message in which case we create a new file
-                    f = open(outputFilePth, "w")
-                    f.close()
-                except IOError:
-                    logger.error("problem creating messaging output file at: %s", outputFilePth)
+            # Skip file operations for database-backed storage (dummy paths)
+            if not outputFilePth.startswith("/dummy"):
+                if not os.access(outputFilePth, os.F_OK):
+                    logger.info("messaging output file not found at: %s, so instantiating a copy.", outputFilePth)
+                    try:
+                        # file may not exist b/c it is the first time that an
+                        # annotator is sending a message in which case we create a new file
+                        f = open(outputFilePth, "w")
+                        f.close()
+                    except IOError:
+                        logger.error("problem creating messaging output file at: %s", outputFilePth)
+            else:
+                logger.info("Using database storage - skipping file operations for: %s", outputFilePth)
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             with LockFile(outputFilePth, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh) as _lf, FileSizeLogger(
                 outputFilePth, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
+                depId = str(self.__reqObj.getValue("identifier"))
                 bGotContent = mIIo.read(
-                    outputFilePth, "msgingmod" + str(pid)
+                    outputFilePth, "msgingmod" + str(pid), deposition_id=depId
                 )  # may return False if there was a file but the file had no content yet (i.e. no annotator messages yet)
 
             if self._sanityCheck(p_msgObj.contentType, bGotContent, mIIo, outputFilePth):
@@ -1130,14 +1175,17 @@ class MessagingIo(object):
                 except IOError:
                     logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth + srcVrsn)
 
-        if os.access(outputFilePth, os.F_OK):
-            try:
-                shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
-            except IOError:
-                logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
-
+        # Skip file backup operations for database-backed storage (dummy paths)
+        if not outputFilePth.startswith("/dummy"):
+            if os.access(outputFilePth, os.F_OK):
+                try:
+                    shutil.copyfile(outputFilePth, outputFilePth + ".PREV0")
+                except IOError:
+                    logger.error("Problem making backup of preupdate messaging file at: %s", outputFilePth)
+            else:
+                logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
         else:
-            logger.error("WARNING could NOT access messages-to-depositor file at: %s", outputFilePth)
+            logger.info("Using database storage - skipping file backup operations for: %s", outputFilePth)
 
         if self.__verbose:
             logger.info("COMPLETED")
@@ -1241,7 +1289,10 @@ class MessagingIo(object):
         origRecipientAsAscii = self.__encodeUtf8ToCif(origRecipient)
         origSubjectAsAscii = self.__encodeUtf8ToCif(origSubject)
 
-        msgOrigCommRef = PdbxMessageOrigCommReference(verbose=self.__verbose, log=self.__lfh)
+        if self.__legacycomm:
+            msgOrigCommRef = PdbxMessageOrigCommReferenceLegacy(verbose=self.__verbose, log=self.__lfh)
+        else:
+            msgOrigCommRef = PdbxMessageOrigCommReference(verbose=self.__verbose, log=self.__lfh)
         msgOrigCommRef.setMessageId(p_msgObj.messageId)
         msgOrigCommRef.setDepositionId(p_msgObj.depositionId)
         msgOrigCommRef.setOrigSender(origSenderAsAscii)
@@ -1592,14 +1643,15 @@ class MessagingIo(object):
         msgDI = MessagingDataImport(self.__reqObj, verbose=self.__verbose, log=self.__lfh)
         self.__msgsFrmDpstrFilePath = msgDI.getFilePath(contentType="messages-from-depositor", format="pdbx")
         logger.info("self.__msgsFromDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
-        mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+        mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
         with LockFile(
             self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
         ) as _lf, FileSizeLogger(  # noqa: F841
             self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh
         ) as _fsl:  # noqa: F841
             pid = os.getpid()
-            ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+            depId = str(self.__reqObj.getValue("identifier"))
+            ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 message_list = mIIo.getMessageInfo()
 
@@ -1638,7 +1690,10 @@ class MessagingIo(object):
         bOk = False
         #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
+            if self.__legacycomm:
+                mS = PdbxMessageStatusLegacy(verbose=self.__verbose, log=self.__lfh)
+            else:
+                mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
             mS.set(p_msgStatusDict)
             msgId = mS.getMessageId()
             #
@@ -1651,7 +1706,8 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             #
-            if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
+            # For database-backed storage (dummy paths), skip file creation checks
+            if not self.__msgsToDpstrFilePath.startswith("/dummy") and not os.access(self.__msgsToDpstrFilePath, os.F_OK):
                 try:
                     f = open(self.__msgsToDpstrFilePath, "w")  # noqa: F841
                     f.close()
@@ -1659,14 +1715,15 @@ class MessagingIo(object):
                 except IOError:
                     pass
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             with LockFile(
                 self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
             ) as _lf, FileSizeLogger(
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                depId = str(self.__reqObj.getValue("identifier"))
+                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 msgAlreadySeen = False
@@ -1695,7 +1752,8 @@ class MessagingIo(object):
 
             else:
                 # OR if there was no container list BUT the file is accessible-->indicates no content yet b/c no messages sent to depositor yet
-                if os.access(self.__msgsToDpstrFilePath, os.W_OK):
+                # For database-backed storage (dummy paths), skip write access checks
+                if self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.W_OK):
                     mIIo.newBlock("messages")
                     mIIo.appendMsgReadStatus(mS.get())
                     with LockFile(
@@ -1779,9 +1837,11 @@ class MessagingIo(object):
                 self.__notesFilePath = msgDI.getFilePath(contentType="notes-from-annotator", format="pdbx")
                 logger.info("self.__notesFilePath is: %s", self.__notesFilePath)
 
-            if self.__notesFilePath is not None and os.access(self.__notesFilePath, os.R_OK):
-                pdbxMsgIo_notes = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-                bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
+                pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+                depId = str(self.__reqObj.getValue("identifier"))
+                bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
                 if bGotContent:
                     recordSetLst = (
@@ -1832,7 +1892,10 @@ class MessagingIo(object):
         bOk = False
         #
         try:
-            mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
+            if self.__legacycomm:
+                mS = PdbxMessageStatusLegacy(verbose=self.__verbose, log=self.__lfh)
+            else:
+                mS = PdbxMessageStatus(verbose=self.__verbose, log=self.__lfh)
             mS.set(p_msgStatusDict)
             msgId = mS.getMessageId()
             #
@@ -1844,7 +1907,8 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
             #
-            if not os.access(self.__msgsToDpstrFilePath, os.F_OK):
+            # For database-backed storage (dummy paths), skip file creation checks
+            if not self.__msgsToDpstrFilePath.startswith("/dummy") and not os.access(self.__msgsToDpstrFilePath, os.F_OK):
                 try:
                     f = open(self.__msgsToDpstrFilePath, "w")
                     f.close()
@@ -1852,7 +1916,7 @@ class MessagingIo(object):
                 except IOError:
                     pass
             #
-            mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+            mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
             msgAlreadySeen = False
             with LockFile(
                 self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
@@ -1860,7 +1924,8 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                depId = str(self.__reqObj.getValue("identifier"))
+                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 # i.e. get here if mIIo successfully read/obtained container list,
 
@@ -1886,7 +1951,8 @@ class MessagingIo(object):
 
             else:
                 # OR if there was no container list BUT the file is accessible-->indicates no content yet b/c no messages sent to depositor yet
-                if os.access(self.__msgsToDpstrFilePath, os.W_OK):
+                # For database-backed storage (dummy paths), skip write access checks
+                if self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.W_OK):
                     mIIo.newBlock("messages")
                     mIIo.appendMsgReadStatus(mS.get())
                     with LockFile(
@@ -1925,8 +1991,8 @@ class MessagingIo(object):
         msgsFrmDpstrLst = []
         msgStatusLst = []
         fileSizeToDpstr = 0
-        mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
-        mIIo2 = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+        mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
+        mIIo2 = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
         try:
             # GET LIST OF IDS OF MSGS FROM DEPOSITOR
@@ -1937,8 +2003,9 @@ class MessagingIo(object):
                 logger.info("self.__msgsFrmDpstrFilePath is: %s", self.__msgsFrmDpstrFilePath)
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-            if os.access(self.__msgsFrmDpstrFilePath, os.R_OK):
-                fileSizeBytes = self.__getFileSizeBytes(self.__msgsFrmDpstrFilePath)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__msgsFrmDpstrFilePath and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
+                fileSizeBytes = self.__getFileSizeBytes(self.__msgsFrmDpstrFilePath) if not self.__msgsFrmDpstrFilePath.startswith("/dummy") else 1
                 if fileSizeBytes > 0:
                     with LockFile(
                         self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
@@ -1946,12 +2013,14 @@ class MessagingIo(object):
                         self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         msgsFrmDpstrLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-            if os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__msgsToDpstrFilePath and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
+                fileSizeToDpstr = self.__getFileSizeBytes(self.__msgsToDpstrFilePath) if not self.__msgsToDpstrFilePath.startswith("/dummy") else 1
                 if fileSizeToDpstr > 0:
                     with LockFile(
                         self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
@@ -1959,7 +2028,8 @@ class MessagingIo(object):
                         self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         msgStatusLst = mIIo2.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -1983,7 +2053,8 @@ class MessagingIo(object):
 
             if p_statusToCheck == "for_release":  # for this status check we have to check messages authored by annotators as well for "for_release" flags
 
-                if os.access(self.__msgsToDpstrFilePath, os.R_OK) and fileSizeToDpstr > 0:
+                # For database-backed storage (dummy paths), skip file existence checks
+                if (self.__msgsToDpstrFilePath.startswith("/dummy") or (os.access(self.__msgsToDpstrFilePath, os.R_OK) and fileSizeToDpstr > 0)):
 
                     annotatorMsgsLst = mIIo2.getMessageInfo()
 
@@ -2066,17 +2137,19 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath = msgDI.getFilePath(contentType="messages-to-depositor", format="pdbx")
                 logger.info("-- self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
-            if os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                fileSizeBytes = self.__getFileSizeBytes(self.__msgsToDpstrFilePath)
+            # For database-backed storage (dummy paths), skip file existence checks
+            if self.__msgsToDpstrFilePath and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
+                fileSizeBytes = self.__getFileSizeBytes(self.__msgsToDpstrFilePath) if not self.__msgsToDpstrFilePath.startswith("/dummy") else 1
                 if fileSizeBytes > 0:
-                    mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                    mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     with LockFile(
                         self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                     ) as _lf, FileSizeLogger(  # noqa: F841
                         self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     #
@@ -2826,7 +2899,10 @@ class MessagingIo(object):
 
     def __createMsgFileReference(self, p_msgId, p_depId, p_contentType, p_contentFormat, p_annotPartitionNum, p_annotVersionNum, p_upldFileName=None, p_storageType="archive"):
 
-        mfr = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
+        if self.__legacycomm:
+            mfr = PdbxMessageFileReferenceLegacy(verbose=self.__verbose, log=self.__lfh)
+        else:
+            mfr = PdbxMessageFileReference(verbose=self.__verbose, log=self.__lfh)
         mfr.setMessageId(p_msgId)
         mfr.setDepositionId(p_depId)
         mfr.setStorageType(p_storageType)
@@ -2906,14 +2982,15 @@ class MessagingIo(object):
                 logger.info("self.__msgsToDpstrFilePath is: %s", self.__msgsToDpstrFilePath)
 
             if self.__msgsToDpstrFilePath is not None and os.access(self.__msgsToDpstrFilePath, os.R_OK):
-                mIIo = PdbxMessageIo(verbose=self.__verbose, log=self.__lfh)
+                mIIo = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                 with LockFile(
                     self.__msgsToDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(  # noqa: F841
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -3101,7 +3178,8 @@ class MessagingIo(object):
             contentFormat = rcrd["content_format"]
             partitionNum = rcrd["partition_number"]
             versionId = rcrd["version_id"]
-            uploadFlName = rcrd["upload_file_name"]
+            # Normalize upload_file_name to prevent None/null values (DAOTHER-10245)
+            uploadFlName = (rcrd.get("upload_file_name") or "").strip()
 
             #
             if msgId not in rtrnDict:
@@ -5148,27 +5226,3 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             logger.info("following email address found to be invalid: %s\n", email)
         return False
 
-
-class FileSizeLogger(object):
-    """Simple class to support trace logging for file size before and after a given action"""
-
-    def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
-        """Prepare the file size logger. Specify the file to report on"""
-        self.__filePath = filePath
-        #
-        # self.__lfh = log
-        self.__verbose = verbose
-        self.__debug = True
-        #
-
-    def __enter__(self):
-        filesize = os.stat(self.__filePath).st_size
-        if self.__verbose and self.__debug:
-            logger.debug("+%s -- filesize for %s before call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)
-
-        return self
-
-    def __exit__(self, exc_type, value, tb):
-        filesize = os.stat(self.__filePath).st_size
-        if self.__verbose and self.__debug:
-            logger.debug("+%s -- filesize for %s after call: %s bytes.", self.__class__.__name__, self.__filePath, filesize)

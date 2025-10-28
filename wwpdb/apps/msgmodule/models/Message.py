@@ -20,7 +20,8 @@ __version__ = "V0.001"
 import sys
 import logging
 
-from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport
+# Use database-backed stub instead of file-based implementation
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 
 logger = logging.getLogger(__name__)
 

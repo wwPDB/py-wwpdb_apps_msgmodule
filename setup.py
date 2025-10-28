@@ -44,7 +44,7 @@ setup(
     install_requires=[
         "oslo.concurrency",
         "wwpdb.io",
-        "wwpdb.utils.config ~= 0.39",
+        'wwpdb.utils.config >= 0.52',
         "wwpdb.utils.db",
         "wwpdb.utils.session",
         "wwpdb.utils.wf >= 0.8",
@@ -54,6 +54,8 @@ setup(
         "wwpdb.utils.emdb >= 0.17",
         "wwpdb.apps.wf_engine",
         "wwpdb.utils.nmr",
+        "pymysql",
+        "gemmi >= 0.6.0",
     ],
     packages=find_packages(exclude=["wwpdb.apps.tests-msgmodule", "mock-data"]),
     # Enables Manifest to be used
