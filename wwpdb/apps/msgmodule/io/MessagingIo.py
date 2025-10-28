@@ -493,7 +493,8 @@ class MessagingIo(object):
                 if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     try:
-                        ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath, deposition_id=depId)
                         if ok:
                             recordSetLst = (
                                 pdbxMsgIo_frmDpstr.getMessageInfo()
@@ -505,7 +506,8 @@ class MessagingIo(object):
                 if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     try:
-                        ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath, deposition_id=depId)
                         if ok:
                             recordSetLst.extend(
                                 pdbxMsgIo_toDpstr.getMessageInfo()
@@ -521,7 +523,8 @@ class MessagingIo(object):
                 if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
                     pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
                     try:
-                        ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
                         if ok:
                             if contentType == "notes":
@@ -620,7 +623,8 @@ class MessagingIo(object):
                 # For database-backed storage (dummy paths), skip file existence checks
                 if self.__msgsFrmDpstrFilePath is not None and (self.__msgsFrmDpstrFilePath.startswith("/dummy") or os.access(self.__msgsFrmDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_frmDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_frmDpstr.read(self.__msgsFrmDpstrFilePath, deposition_id=depId)
                     if ok:
                         recordSetLst = (
                             pdbxMsgIo_frmDpstr.getMessageInfo()
@@ -631,7 +635,8 @@ class MessagingIo(object):
 
                 if self.__msgsToDpstrFilePath is not None and (self.__msgsToDpstrFilePath.startswith("/dummy") or os.access(self.__msgsToDpstrFilePath, os.R_OK)):
                     pdbxMsgIo_toDpstr = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_toDpstr.read(self.__msgsToDpstrFilePath, deposition_id=depId)
                     if ok:
                         msgsToDpstrLst = pdbxMsgIo_toDpstr.getMessageInfo()
                         rtrnDict["CURRENT_NUM_MSGS_TO_DPSTR"] = len(msgsToDpstrLst)
@@ -655,7 +660,8 @@ class MessagingIo(object):
                 # For database-backed storage (dummy paths), skip file existence checks
                 if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
                     pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                    ok = pdbxMsgIo_notes.read(self.__notesFilePath)
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
                     if ok:
                         if contentType == "notes":
@@ -869,7 +875,8 @@ class MessagingIo(object):
                     self.__msgsFrmDpstrFilePath, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__lfh
                 ) as _lf, FileSizeLogger(self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh) as _fsl:
                     pid = os.getpid()
-                    ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -882,7 +889,8 @@ class MessagingIo(object):
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst.extend(mIIo2.getFileReferenceInfo())  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
             #
@@ -950,7 +958,8 @@ class MessagingIo(object):
                     self.__notesFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__notesFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 #
@@ -1029,8 +1038,9 @@ class MessagingIo(object):
                 outputFilePth, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
+                depId = str(self.__reqObj.getValue("identifier"))
                 bGotContent = mIIo.read(
-                    outputFilePth, "msgingmod" + str(pid)
+                    outputFilePth, "msgingmod" + str(pid), deposition_id=depId
                 )  # may return False if there was a file but the file had no content yet (i.e. no annotator messages yet)
 
             if self._sanityCheck(p_msgObj.contentType, bGotContent, mIIo, outputFilePth):
@@ -1640,7 +1650,8 @@ class MessagingIo(object):
             self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh
         ) as _fsl:  # noqa: F841
             pid = os.getpid()
-            ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+            depId = str(self.__reqObj.getValue("identifier"))
+            ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 message_list = mIIo.getMessageInfo()
 
@@ -1711,7 +1722,8 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                depId = str(self.__reqObj.getValue("identifier"))
+                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                 msgAlreadySeen = False
@@ -1828,7 +1840,8 @@ class MessagingIo(object):
             # For database-backed storage (dummy paths), skip file existence checks
             if self.__notesFilePath is not None and (self.__notesFilePath.startswith("/dummy") or os.access(self.__notesFilePath, os.R_OK)):
                 pdbxMsgIo_notes = PdbxMessageIo(self.__siteId, verbose=self.__verbose, log=self.__lfh)
-                bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath)
+                depId = str(self.__reqObj.getValue("identifier"))
+                bGotContent = pdbxMsgIo_notes.read(self.__notesFilePath, deposition_id=depId)
 
                 if bGotContent:
                     recordSetLst = (
@@ -1911,7 +1924,8 @@ class MessagingIo(object):
                 self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
             ) as _fsl:  # noqa: F841
                 pid = os.getpid()
-                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                depId = str(self.__reqObj.getValue("identifier"))
+                ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
             if ok:
                 # i.e. get here if mIIo successfully read/obtained container list,
 
@@ -1999,7 +2013,8 @@ class MessagingIo(object):
                         self.__msgsFrmDpstrFilePath, verbose=self.__verbose, log=self.__lfh  # noqa: F841
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo.read(self.__msgsFrmDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         msgsFrmDpstrLst = mIIo.getMessageInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -2013,7 +2028,8 @@ class MessagingIo(object):
                         self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo2.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         msgStatusLst = mIIo2.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -2132,7 +2148,8 @@ class MessagingIo(object):
                         self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                     ) as _fsl:  # noqa: F841
                         pid = os.getpid()
-                        ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                        depId = str(self.__reqObj.getValue("identifier"))
+                        ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                     if ok:
                         recordSetLst = mIIo.getMsgStatusInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
                     #
@@ -2972,7 +2989,8 @@ class MessagingIo(object):
                     self.__msgsToDpstrFilePath, verbose=self.__verbose, log=self.__lfh
                 ) as _fsl:  # noqa: F841
                     pid = os.getpid()
-                    ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid))
+                    depId = str(self.__reqObj.getValue("identifier"))
+                    ok = mIIo.read(self.__msgsToDpstrFilePath, "msgingmod" + str(pid), deposition_id=depId)
                 if ok:
                     recordSetLst = mIIo.getFileReferenceInfo()  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
@@ -3160,7 +3178,8 @@ class MessagingIo(object):
             contentFormat = rcrd["content_format"]
             partitionNum = rcrd["partition_number"]
             versionId = rcrd["version_id"]
-            uploadFlName = rcrd["upload_file_name"]
+            # Normalize upload_file_name to prevent None/null values (DAOTHER-10245)
+            uploadFlName = (rcrd.get("upload_file_name") or "").strip()
 
             #
             if msgId not in rtrnDict:

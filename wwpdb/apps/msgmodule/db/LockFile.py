@@ -18,11 +18,19 @@ class LockFileTimeoutException(Exception):
 
 
 class FileSizeLogger:
-    """
-    Drop-in replacement for MessagingIo's FileSizeLogger.
+    """Drop-in replacement for MessagingIo's FileSizeLogger with dummy path detection.
     
-    Automatically detects dummy paths returned by database adaptors and uses
-    no-op operations for them, while preserving real file size logging for actual paths.
+    Automatically detects dummy paths returned by database adaptors and uses no-op
+    operations for them, while preserving real file size logging for actual file paths.
+    
+    Args:
+        filePath: Path to file to log size for
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Note:
+        Dummy paths (containing '/dummy/' or '\\dummy\\') are detected automatically
+        and logging is skipped for compatibility with database backend.
     """
     
     def __init__(self, filePath, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
@@ -40,8 +48,13 @@ class FileSizeLogger:
         self._is_dummy = self._is_dummy_path(filePath)
         
     def _is_dummy_path(self, file_path):
-        """
-        Check if a file path is a dummy path returned by database adaptors.
+        """Check if a file path is a dummy path returned by database adaptors.
+        
+        Args:
+            file_path: File path to check
+        
+        Returns:
+            True if path contains dummy indicators ('/dummy/' or '\\dummy\\'), False otherwise
         """
         if not file_path:
             return False
@@ -55,8 +68,10 @@ class FileSizeLogger:
         return any(indicator in normalized for indicator in dummy_indicators)
     
     def __enter__(self):
-        """
-        Enter the file size logger context.
+        """Enter context manager - log file size if not a dummy path.
+        
+        Returns:
+            self: This FileSizeLogger instance
         """
         if self._is_dummy:
             # No-op for dummy paths
@@ -86,8 +101,12 @@ class FileSizeLogger:
             return self
 
     def __exit__(self, exc_type, value, tb):
-        """
-        Exit the file size logger context.
+        """Exit context manager - log file size if not a dummy path.
+        
+        Args:
+            exc_type: Exception type if an exception occurred
+            value: Exception value if an exception occurred
+            tb: Exception traceback if an exception occurred
         """
         if self._is_dummy:
             # No-op for dummy paths
@@ -115,11 +134,27 @@ class FileSizeLogger:
 
 
 class LockFile:
-    """
-    Drop-in replacement for mmcif_utils.persist.LockFile.
+    """Drop-in replacement for mmcif_utils.persist.LockFile with dummy path detection.
     
-    Automatically detects dummy paths returned by database adaptors and uses
-    no-op operations for them, while preserving real file locking for actual paths.
+    Automatically detects dummy paths returned by database adaptors and uses no-op
+    locking operations for them, while preserving real file locking for actual file paths.
+    
+    Args:
+        filePath: Path to file to lock
+        timeoutSeconds: Lock timeout in seconds (default: 15)
+        retrySeconds: Retry interval in seconds (default: 0.2)
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Example:
+        >>> with LockFile("/path/to/file.txt") as lock:
+        ...     # File is locked for exclusive access
+        ...     pass
+        >>> # Lock is automatically released
+    
+    Note:
+        Dummy paths (containing '/dummy/' or '\\dummy\\') are detected automatically
+        and locking is skipped for compatibility with database backend.
     """
     
     def __init__(self, filePath, timeoutSeconds=15, retrySeconds=.2, verbose=False, log=sys.stderr):
@@ -146,8 +181,13 @@ class LockFile:
         self._original_lock = None
         
     def _is_dummy_path(self, file_path):
-        """
-        Check if a file path is a dummy path returned by database adaptors.
+        """Check if a file path is a dummy path returned by database adaptors.
+        
+        Args:
+            file_path: File path to check
+        
+        Returns:
+            True if path contains dummy indicators ('/dummy/' or '\\dummy\\'), False otherwise
         """
         if not file_path:
             return False
@@ -161,12 +201,19 @@ class LockFile:
         return any(indicator in normalized for indicator in dummy_indicators)
 
     def acquire(self):
-        """
-        Create the lock if no lock file exists.  If a lockfile exists then
-        repeat the test every retrySeconds.
-
-        If the lock cannot be acquired within  'timeoutSeconds' then
-        throw an exception.
+        """Acquire the file lock (no-op for dummy paths).
+        
+        Creates a lock file if none exists. If a lock file already exists, retries
+        at retrySeconds intervals until the lock is acquired or timeoutSeconds expires.
+        
+        For dummy paths, this is a no-op that always succeeds immediately.
+        
+        Raises:
+            LockFileTimeoutException: If lock cannot be acquired within timeoutSeconds
+        
+        Note:
+            For real file paths, attempts to use mmcif_utils.persist.LockFile if available,
+            otherwise falls back to local os.open() implementation.
         """
         if self._is_dummy:
             # No-op for dummy paths
@@ -208,8 +255,9 @@ class LockFile:
             self.__isLocked = True
 
     def release(self):
-        """
-        Remove an existing lock file.
+        """Release the file lock (no-op for dummy paths).
+        
+        Removes an existing lock file. For dummy paths, this is a no-op.
         """
         if not self.__isLocked:
             return
@@ -236,24 +284,34 @@ class LockFile:
         self.__isLocked = False
 
     def __enter__(self):
-        """
-        Internal method for Context-management support.  Invoked at the beginning of a 'with' clause.
+        """Enter context manager - acquire lock.
+        
+        Returns:
+            self: This LockFile instance
+        
+        Note:
+            Automatically called at the beginning of a 'with' clause.
         """
         if not self.__isLocked:
             self.acquire()
         return self
 
-    def __exit__(self, exc_type, value, traceback):
-        """
-        Internal method for Context-management support.  Invoked at the end of a 'with' clause.
+    def __exit__(self, type, value, traceback):
+        """Exit context manager - release lock.
+        
+        Args:
+            type: Exception type if an exception occurred
+            value: Exception value if an exception occurred
+            traceback: Exception traceback if an exception occurred
+        
+        Note:
+            Automatically called at the end of a 'with' clause.
         """
         if self.__isLocked:
             self.release()
 
     def __del__(self):
-        """
-        Internal method to cleanup any lingering lock file.
-        """
+        """Destructor - cleanup any lingering lock file."""
         self.release()
 
 

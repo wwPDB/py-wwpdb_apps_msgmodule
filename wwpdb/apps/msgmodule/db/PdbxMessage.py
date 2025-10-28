@@ -20,7 +20,14 @@ from wwpdb.apps.msgmodule.db.Models import MessageInfo, MessageFileReference, Me
 
 
 def _fmt_timestamp(ts) -> str:
-    """Format timestamp for compatibility with CIF backend"""
+    """Format timestamp to string for CIF backend compatibility.
+    
+    Args:
+        ts: Timestamp as datetime object or string
+    
+    Returns:
+        Formatted timestamp string in "%Y-%m-%d %H:%M:%S" format, or empty string if None
+    """
     if isinstance(ts, datetime):
         return ts.strftime("%Y-%m-%d %H:%M:%S")
     if isinstance(ts, str):
@@ -29,7 +36,19 @@ def _fmt_timestamp(ts) -> str:
 
 
 def _parse_timestamp(ts_str) -> datetime:
-    """Parse timestamp string to datetime"""
+    """Parse timestamp string to datetime object.
+    
+    Attempts multiple common timestamp formats. Falls back to current UTC time if parsing fails.
+    
+    Args:
+        ts_str: Timestamp string or datetime object
+    
+    Returns:
+        Parsed datetime object, or current UTC time if parsing fails
+    
+    Note:
+        Supported formats: "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y %H:%M:%S", "%d-%b-%Y"
+    """
     if isinstance(ts_str, datetime):
         return ts_str
     if not ts_str:
@@ -43,7 +62,21 @@ def _parse_timestamp(ts_str) -> datetime:
 
 
 class _BasePdbxMessage:
-    """Base class that wraps SQLAlchemy models with CIF-compatible interface"""
+    """Base class that wraps SQLAlchemy ORM models with CIF-compatible dict interface.
+    
+    Provides a unified interface layer between the database ORM models (from Models.py)
+    and the legacy CIF-based API. Maintains both an ORM model instance and a dict
+    representation for backward compatibility with code expecting dict-based access.
+    
+    Args:
+        model_instance: SQLAlchemy model instance to wrap (or None for in-memory only)
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Note:
+        Changes to the model instance are reflected in the dict representation and vice versa.
+        The get() method returns a dict suitable for CIF backend compatibility.
+    """
     
     def __init__(self, model_instance=None, verbose: bool = False, log=sys.stderr):
         self._verbose = verbose
@@ -82,7 +115,12 @@ class _BasePdbxMessage:
         return self._row_dict.get("deposition_data_set_id", "")
 
     def get(self) -> Dict:
-        """Return dict representation compatible with CIF backend"""
+        """Get dict representation of message data compatible with CIF backend.
+        
+        Returns:
+            Dictionary containing all model attributes and additional row_dict values.
+            Datetime objects are formatted as strings for CIF compatibility.
+        """
         if self._model:
             # Convert SQLAlchemy model to dict
             result = {}
@@ -100,7 +138,12 @@ class _BasePdbxMessage:
         return dict(self._row_dict)
 
     def set(self, rowDict: Dict):
-        """Set values from dict (for compatibility)"""
+        """Set values from dictionary, updating both model and dict representation.
+        
+        Args:
+            rowDict: Dictionary of attribute names and values to set.
+                Timestamp strings are automatically parsed to datetime objects.
+        """
         self._row_dict.update(rowDict)
         if self._model:
             for key, value in rowDict.items():
@@ -111,12 +154,36 @@ class _BasePdbxMessage:
                         setattr(self._model, key, value)
 
     def get_model(self):
-        """Get the underlying SQLAlchemy model instance"""
+        """Get the underlying SQLAlchemy ORM model instance.
+        
+        Returns:
+            The wrapped SQLAlchemy model instance, or None for in-memory only classes
+        """
         return self._model
 
 
 class PdbxMessageInfo(_BasePdbxMessage):
-    """Drop-in helper that wraps MessageInfo SQLAlchemy model"""
+    """Database-backed drop-in replacement for mmcif_utils.message.PdbxMessageInfo.
+    
+    Wraps the MessageInfo SQLAlchemy ORM model with the same API as the original
+    CIF-based PdbxMessageInfo class. Automatically initializes required defaults
+    (message_id, timestamp, etc.) for new messages.
+    
+    Args:
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Example:
+        >>> msg = PdbxMessageInfo()
+        >>> msg.setDepositionId("D_1000000001")
+        >>> msg.setMessageSubject("Test Message")
+        >>> msg.setMessageText("This is a test")
+        >>> msg_dict = msg.get()
+    
+    Note:
+        Automatically generates UUID-based message_id if not provided.
+        Normalizes common field aliases (msg_id -> message_id, identifier -> deposition_data_set_id).
+    """
 
     def __init__(self, verbose: bool = False, log=sys.stderr):
         model = MessageInfo()
@@ -125,7 +192,15 @@ class PdbxMessageInfo(_BasePdbxMessage):
         self._backfill_missing_defaults()
 
     def set(self, rowDict: Dict):
-        """Set values from dict with alias normalization"""
+        """Set values from dictionary with field alias normalization.
+        
+        Args:
+            rowDict: Dictionary of attribute values. Common aliases are automatically
+                normalized (msg_id -> message_id, identifier -> deposition_data_set_id).
+        
+        Returns:
+            Dictionary representation of the updated message (from get())
+        """
         rd = dict(rowDict or {})
         
         # Normalize common aliases used by upstream code
@@ -152,7 +227,16 @@ class PdbxMessageInfo(_BasePdbxMessage):
         return self.get()
 
     def _backfill_missing_defaults(self):
-        """Backfill only missing required defaults without overwriting existing values"""
+        """Populate missing required fields with default values.
+        
+        Only sets defaults for fields that are truly missing, does not overwrite
+        explicitly provided values. Generates:
+        - message_id: UUID if not set
+        - parent_message_id: Same as message_id if not set
+        - timestamp: Current GMT time if not set
+        - message_type: "text" if not set
+        - send_status: "N" if not set
+        """
         # Only generate message_id if truly missing
         if not self._row_dict.get("message_id") and not (self._model and getattr(self._model, "message_id", None)):
             msg_id = str(uuid.uuid4())
@@ -294,7 +378,18 @@ class PdbxMessageInfo(_BasePdbxMessage):
 
 
 class PdbxMessageFileReference(_BasePdbxMessage):
-    """Drop-in helper that wraps MessageFileReference SQLAlchemy model"""
+    """Database-backed drop-in replacement for mmcif_utils.message.PdbxMessageFileReference.
+    
+    Wraps the MessageFileReference SQLAlchemy ORM model to track file attachments
+    associated with messages. Provides the same API as the original CIF-based class.
+    
+    Args:
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Note:
+        Handles both version_id and version_number field naming for compatibility.
+    """
 
     def __init__(self, verbose: bool = False, log=sys.stderr):
         model = MessageFileReference()
@@ -361,18 +456,33 @@ class PdbxMessageFileReference(_BasePdbxMessage):
         return self._row_dict.get("storage_type", "archive")
 
     def setUploadFileName(self, v: Optional[str]):
+        # Convert None to empty string to prevent NULL in database (which causes JavaScript crash)
+        v = v or ""
         if self._model:
             self._model.upload_file_name = v
         self._row_dict["upload_file_name"] = v
 
-    def getUploadFileName(self) -> Optional[str]:
+    def getUploadFileName(self) -> str:
         if self._model:
-            return self._model.upload_file_name
-        return self._row_dict.get("upload_file_name")
+            return self._model.upload_file_name or ""
+        return self._row_dict.get("upload_file_name") or ""
 
 
 class PdbxMessageOrigCommReference(_BasePdbxMessage):
-    """In-memory only class for API compatibility (no database persistence)"""
+    """In-memory original communication reference tracker (not persisted to database).
+    
+    Provides API compatibility with mmcif_utils.message.PdbxMessageOrigCommReference
+    but stores data only in memory. This data is not persisted to the database as
+    the current schema doesn't include a table for original communication references.
+    
+    Args:
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Note:
+        Data set via this class is maintained in-memory only and will be lost
+        unless explicitly persisted through other means.
+    """
 
     def __init__(self, verbose: bool = False, log=sys.stderr):
         super().__init__(None, verbose, log)  # No model - in-memory only
@@ -415,7 +525,18 @@ class PdbxMessageOrigCommReference(_BasePdbxMessage):
 
 
 class PdbxMessageStatus(_BasePdbxMessage):
-    """Drop-in helper that wraps MessageStatus SQLAlchemy model"""
+    """Database-backed drop-in replacement for mmcif_utils.message.PdbxMessageStatus.
+    
+    Wraps the MessageStatus SQLAlchemy ORM model to track message lifecycle status flags.
+    Provides the same API as the original CIF-based class.
+    
+    Args:
+        verbose: Enable verbose logging (default: False)
+        log: File handle for logging output (default: sys.stderr)
+    
+    Note:
+        Status flags (read_status, action_reqd, for_release) default to "N" (No).
+    """
 
     def __init__(self, verbose: bool = False, log=sys.stderr):
         model = MessageStatus()

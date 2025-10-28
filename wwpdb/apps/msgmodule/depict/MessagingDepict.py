@@ -470,7 +470,9 @@ class MessagingDepict(object):
             for fileRef in p_msgDict["files_referenced"]:
                 filePathSplitArr = fileRef["relative_file_url"].split("/")
                 fileName = filePathSplitArr[len(filePathSplitArr) - 1]
-                displayUploadFlName = " (" + fileRef["upload_file_name"] + ")" if len(fileRef["upload_file_name"]) > 1 else ""
+                # Normalize upload_file_name to prevent None/null crashes (DAOTHER-10245)
+                uploadName = (fileRef.get("upload_file_name") or "").strip()
+                displayUploadFlName = f" ({uploadName})" if len(uploadName) > 1 else ""
                 htmlStr += '<p><span class=""><a href="' + fileRef["relative_file_url"] + '" target="_blank">' + fileName + displayUploadFlName + "</a></span></p>"
 
             myD["files_rfrncd_dsply"] = ""
