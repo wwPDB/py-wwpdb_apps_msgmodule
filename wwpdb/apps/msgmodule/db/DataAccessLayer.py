@@ -154,23 +154,6 @@ class DatabaseConnection:
                         self.db_config.get('host'), self.db_config.get('port'),
                         self.db_config.get('database'), self.db_config.get('username'))
             raise
-            
-            # Create session factory with explicit configuration to avoid stale reads
-            self._session_factory = sessionmaker(
-                bind=self._engine,
-                autoflush=True,
-                expire_on_commit=True  # Ensure objects are refreshed after commit
-            )
-            
-            self._is_open = True  # Mark connection as open
-            logger.info("Database connection initialized successfully")
-            
-        except Exception as e:
-            logger.error("Failed to setup database: %s", e)
-            logger.error("Database config: host=%s, port=%s, database=%s, username=%s",
-                        self.db_config.get('host'), self.db_config.get('port'),
-                        self.db_config.get('database'), self.db_config.get('username'))
-            raise
     
     def get_session(self) -> Session:
         """Get a new database session.
