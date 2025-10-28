@@ -13,6 +13,7 @@ Uses database-backed implementation for: messages-from-depositor, messages-to-de
 Uses original file-based implementation for: everything else
 """
 
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 from wwpdb.apps.msgmodule.db.MessagingDataImport import MessagingDataImport as DbMessagingDataImport
 from wwpdb.apps.msgmodule.db.MessagingDataExport import MessagingDataExport as DbMessagingDataExport
 from wwpdb.apps.msgmodule.io.MessagingDataImport import MessagingDataImport as IoMessagingDataImport
@@ -56,6 +57,8 @@ class MessagingDataImport(object):
         self._log = log
         self._db_impl = None
         self._io_impl = None
+        siteId = str(self._reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(siteId).get_msgdb_support()
     
     def _get_db_impl(self):
         """Lazy initialization of database-backed MessagingDataImport.
@@ -88,7 +91,7 @@ class MessagingDataImport(object):
         Returns:
             File path string (dummy path for database backend, real path for file backend)
         """
-        if contentType in self.DB_BACKED_CONTENT_TYPES:
+        if (not self.__legacycomm) and contentType in self.DB_BACKED_CONTENT_TYPES:
             return self._get_db_impl().getFilePath(contentType, format, **kwargs)
         else:
             return self._get_io_impl().getFilePath(contentType, format, **kwargs)
@@ -139,6 +142,8 @@ class MessagingDataExport(object):
         self._log = log
         self._db_impl = None
         self._io_impl = None
+        siteId = str(self._reqObj.getValue("WWPDB_SITE_ID"))
+        self.__legacycomm = not ConfigInfoAppMessaging(siteId).get_msgdb_support()
     
     def _get_db_impl(self):
         """Lazy initialization of database-backed MessagingDataExport.
@@ -171,7 +176,7 @@ class MessagingDataExport(object):
         Returns:
             File path string (dummy path for database backend, real path for file backend)
         """
-        if contentType in self.DB_BACKED_CONTENT_TYPES:
+        if (not self.__legacycomm) and contentType in self.DB_BACKED_CONTENT_TYPES:
             return self._get_db_impl().getFilePath(contentType, format, **kwargs)
         else:
             return self._get_io_impl().getFilePath(contentType, format, **kwargs)
