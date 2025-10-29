@@ -686,9 +686,9 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Step 5: Verify the write was reported as successful
             if not write_success:
-                print(f"⚠ Write operation reported failure - checking database anyway...")
+                print("⚠ Write operation reported failure - checking database anyway...")
             else:
-                print(f"✓ Write operation reported SUCCESS!")
+                print("✓ Write operation reported SUCCESS!")
             
             # Step 6: Read messages back using a NEW MessagingIo instance with correct content_type
             read_req_obj = MockRequestObject(identifier=test_dataset_id, content_type="msgs")
@@ -825,7 +825,6 @@ class DatabaseIntegrationTests(unittest.TestCase):
             
             # Enable detailed logging
             logging.basicConfig(level=logging.DEBUG)
-            logger = logging.getLogger()
             
             site_id = os.getenv("WWPDB_SITE_ID")
             print(f"✓ Testing direct database write with site_id: {site_id}")
