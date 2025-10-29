@@ -601,8 +601,8 @@ class ExtractMessage(object):
         dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
         bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
 
-        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
-        ok = pdbxMsgIo_frmDpstr.read(dep_fpath)
+        pdbxMsgIo_frmDpstr = PdbxMessageIo(site_id=self.__siteId, verbose=self.__verbose, log=self.__log)
+        ok = pdbxMsgIo_frmDpstr.read(dep_fpath, deposition_id=depid)
         if not ok:
             return []
 
@@ -610,8 +610,8 @@ class ExtractMessage(object):
             pdbxMsgIo_frmDpstr.getMessageInfo()
         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
-        ok = pdbxMsgIo_toDpstr.read(bio_fpath)
+        pdbxMsgIo_toDpstr = PdbxMessageIo(site_id=self.__siteId, verbose=self.__verbose, log=self.__log)
+        ok = pdbxMsgIo_toDpstr.read(bio_fpath, deposition_id=depid)
         if not ok:
             # Assume all messages unacknowledged
             return depRecordSetLst
