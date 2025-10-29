@@ -84,6 +84,9 @@ class PdbxMessageIo:
     def nextOrigCommReferenceOrdinal(self) -> int:
         return self.__impl.nextOrigCommReferenceOrdinal()
 
+    def close(self):
+        return self.__impl.close()
+    
 
 class LockFile(object):
     """ A simple wrapper for file locking
