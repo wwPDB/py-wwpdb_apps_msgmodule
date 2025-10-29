@@ -37,16 +37,16 @@ class MessagingDataImport(object):
         from the database, and file paths are used only for context parsing.
     """
 
-    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
-        self.__lfh = log
+        # self.__lfh = log
         self.__reqObj = reqObj
-        self.__debug = False
+        # self.__debug = False
         
         # Set up instance variables to match original interface
         self.__setup()
 
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # noqa: disable=redefined-builtin,unused-argument
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin,unused-argument
         """Get dummy file path containing deposition ID and content type for database context.
         
         Returns a path that looks like a real file path for compatibility with existing
@@ -101,7 +101,7 @@ class MessagingDataImport(object):
             logger.error("Error in MessagingDataImport.getFilePath: %s", e)
             raise
 
-    def checkFilePathExists(self, filePath):  # noqa: disable=unused-argument
+    def checkFilePathExists(self, filePath):  # pylint: disable=unused-argument
         """Check if file path exists (always returns True for database backend).
         
         Args:
@@ -112,7 +112,7 @@ class MessagingDataImport(object):
         """
         return True
 
-    def getFileReference(self, **kwargs):  # noqa: disable=unused-argument
+    def getFileReference(self, **kwargs):  # pylint: disable=unused-argument
         """Get file reference (stub method returning None for database backend).
         
         Args:
@@ -146,10 +146,10 @@ class MessagingDataImport(object):
             siteId = self.__reqObj.getValue("WWPDB_SITE_ID")
             if not siteId:
                 raise ValueError("WWPDB_SITE_ID is required")
-            self.__siteId = str(siteId)
+            # self.__siteId = str(siteId)
             
             self.__groupId = str(self.__reqObj.getValue("groupid") or "").upper()
-            self.__fileSource = "archive"  # Default file source
+            # self.__fileSource = "archive"  # Default file source
                 
             if self.__verbose:
                 logger.debug("Database stub initialized - identifier: %s, instance: %s", 
@@ -159,7 +159,7 @@ class MessagingDataImport(object):
             logger.exception("Error in __setup: %s", e)
             raise ValueError(f"Failed to initialize MessagingDataImport: {e}") from e
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # noqa: disable=refined-builtin,unused-argument
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=redefined-builtin,unused-argument
         """Get dummy milestone file paths for deposit and archive versions.
         
         Returns a dictionary with dummy paths that the database backend can parse for
@@ -212,18 +212,18 @@ class MessagingDataImport(object):
             logger.error("Error in getMileStoneFilePaths: %s", e)
             raise
 
-    def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):    # noqa: disable=unused-argument
-        """Get workflow file path (internal method for original interface compatibility).
+    # def __getWfFilePath(self, contentType, fmt="pdbx", fileSource="archive", version="latest", createAsNeeded=False, partitionNum=None):    # pylint: disable=unused-argument
+    #     """Get workflow file path (internal method for original interface compatibility).
         
-        Args:
-            contentType: Type of content
-            fmt: File format (default: "pdbx")
-            fileSource: File source location (default: "archive", ignored)
-            version: Version selector (default: "latest", ignored)
-            createAsNeeded: Whether to create file if needed (default: False, ignored)
-            partitionNum: Partition number (ignored)
+    #     Args:
+    #         contentType: Type of content
+    #         fmt: File format (default: "pdbx")
+    #         fileSource: File source location (default: "archive", ignored)
+    #         version: Version selector (default: "latest", ignored)
+    #         createAsNeeded: Whether to create file if needed (default: False, ignored)
+    #         partitionNum: Partition number (ignored)
         
-        Returns:
-            Dummy file path for database backend compatibility
-        """
-        return self.getFilePath(contentType=contentType, format=fmt)
+    #     Returns:
+    #         Dummy file path for database backend compatibility
+    #     """
+    #     return self.getFilePath(contentType=contentType, format=fmt)

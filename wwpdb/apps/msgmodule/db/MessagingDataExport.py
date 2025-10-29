@@ -34,13 +34,13 @@ class MessagingDataExport(object):
         in the database, and file paths are used only for context parsing.
     """
 
-    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):
+    def __init__(self, reqObj=None, verbose=False, log=sys.stderr):  # pylint: disable=unused-argument
         self.__verbose = verbose
-        self.__lfh = log
+        # self.__lfh = log
         self.__reqObj = reqObj
-        self.__debug = False
+        # self.__debug = False
 
-    def getFilePath(self, contentType="model", format="pdbx", **kwargs):
+    def getFilePath(self, contentType="model", format="pdbx", **kwargs):  # pylint: disable=redefined-builtin,unused-argument
         """Get dummy file path containing deposition ID and content type for database context.
         
         Returns a path that looks like a real file path for compatibility with existing
@@ -107,7 +107,7 @@ class MessagingDataExport(object):
         path = self.getFilePath(**kwargs)
         return path, path
 
-    def exportFile(self, **kwargs):
+    def exportFile(self, **kwargs):  # pylint: disable=unused-argument
         """Stub method for file export compatibility (no-op for database backend).
         
         Args:
@@ -118,7 +118,7 @@ class MessagingDataExport(object):
         """
         return True
 
-    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=unused-argument
+    def getMileStoneFilePaths(self, contentType, format, version="latest", partitionNum=None):  # pylint: disable=unused-argument,redefined-builtin
         """Get dummy milestone file paths for deposit and archive versions.
         
         Returns a dictionary with dummy paths that the database backend can parse for
