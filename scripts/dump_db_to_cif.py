@@ -654,7 +654,16 @@ class DbToCifExporter:
             return False
 
     def _add_message_info_category(self, block: gemmi.cif.Block, messages: List[MessageInfo]):
-        """Add _pdbx_deposition_message_info category to CIF block"""
+        """Add _pdbx_deposition_message_info category to CIF block
+        
+        Note: This implementation manually distinguishes between pairs (single item) and 
+        loops (multiple items). A better approach for future refactoring would be to use 
+        gemmi's block.find_or_add() which handles this automatically:
+            table = block.find_or_add(prefix, tags)
+            table.append_row(values)
+        This would let gemmi decide whether to write as pairs or loops, and handle quoting
+        automatically. See: https://gemmi.readthedocs.io/en/latest/cif.html#pairs-and-loops
+        """
         # Define the columns we want to include
         columns = [
             "ordinal_id",
@@ -693,7 +702,11 @@ class DbToCifExporter:
                 block.set_pair(f"_pdbx_deposition_message_info.{col}", formatted_value)
 
     def _add_file_reference_category(self, block: gemmi.cif.Block, file_refs: List[MessageFileReference]):
-        """Add _pdbx_deposition_message_file_reference category to CIF block"""
+        """Add _pdbx_deposition_message_file_reference category to CIF block
+        
+        Note: See _add_message_info_category() for recommended refactoring approach using
+        gemmi's find_or_add() to avoid manual pair/loop branching.
+        """
         columns = [
             "ordinal_id",
             "message_id",
@@ -723,7 +736,11 @@ class DbToCifExporter:
                 block.set_pair(f"_pdbx_deposition_message_file_reference.{col}", formatted_value)
 
     def _add_status_category(self, block: gemmi.cif.Block, statuses: List[MessageStatus]):
-        """Add _pdbx_deposition_message_status category to CIF block"""
+        """Add _pdbx_deposition_message_status category to CIF block
+        
+        Note: See _add_message_info_category() for recommended refactoring approach using
+        gemmi's find_or_add() to avoid manual pair/loop branching.
+        """
         columns = [
             "message_id",
             "deposition_data_set_id",
