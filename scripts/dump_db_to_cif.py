@@ -32,7 +32,6 @@ from pathlib import Path
 
 try:
     import gemmi
-    from gemmi.cif import Style, WriteOptions
 except ImportError as e:
     sys.stderr.write("Error: gemmi library is required but not installed.\n")
     sys.stderr.write("Please install it with: pip install gemmi\n")
@@ -336,9 +335,10 @@ def format_cif_loop_value(value: Any, allow_multiline: bool = False) -> str:
         pass
     
     # For multiline text in loops, use semicolon format to preserve newlines
+    # Need newline after close
     if allow_multiline and "\n" in str_value:
         escaped = escape_non_ascii(str_value, preserve_newlines=True)
-        return f"\n;{escaped}\n;"
+        return f"\n;{escaped}\n;\n"
     
     # For single-line values, escape and flatten
     escaped = escape_non_ascii(str_value, preserve_newlines=False)
@@ -633,12 +633,7 @@ class DbToCifExporter:
             # Ensure output directory exists
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
-            # Write CIF file - use as_string() to avoid alignment issues with write_file()
-            # gemmi's write_file() with align_loops causes spacing issues that break parsing
-            opts = WriteOptions(Style.Pdbx)
-            cif_content = doc.as_string(opts)
-            with open(file_path, 'w') as f:
-                f.write(cif_content)
+            doc.write_file(file_path)
             
             log_event("file_exported", deposition_id=deposition_id, file_path=file_path,
                      content_type=content_type, messages=len(messages))
