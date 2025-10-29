@@ -27,10 +27,10 @@ import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from mmcif.io.PdbxReader import PdbxReader
 # from mmcif_utils.persist.LockFile import LockFile
-from wwpdb.apps.msgmodule.db.LockFile import LockFile
+from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo
 from wwpdb.io.locator.PathInfo import PathInfo
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
-from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+# from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
 
 logger = logging.getLogger(__name__)
 
