@@ -12,6 +12,7 @@ from wwpdb.apps.msgmodule.db.Models import (
     MessageInfo,
     MessageFileReference,
     MessageStatus,
+    MessageOrigCommReference,
 )
 
 # Import database services
@@ -41,6 +42,7 @@ __all__ = [
     "MessageInfo",
     "MessageFileReference", 
     "MessageStatus",
+    "MessageOrigCommReference",
     # Database Services
     "DataAccessLayer",
     # Database-backed message I/O classes
