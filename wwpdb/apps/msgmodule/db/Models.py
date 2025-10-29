@@ -172,3 +172,52 @@ class MessageStatus(Base):
     
     # Relationships
     message = relationship("MessageInfo", back_populates="status")
+
+
+class MessageOrigCommReference(Base):
+    """SQLAlchemy model mapping to _pdbx_deposition_message_origcomm_reference mmCIF category.
+    
+    Stores original email communication metadata for archived/forwarded messages.
+    This preserves the original email headers before the message was transformed
+    into a system note or forwarded message.
+    
+    Attributes:
+        ordinal_id (BigInteger): Auto-incrementing primary key
+        message_id (String): Message identifier (indexed, FK to MessageInfo)
+        deposition_data_set_id (String): Deposition ID (indexed)
+        orig_message_id (String): Original email message ID
+        orig_deposition_data_set_id (String): Original deposition ID if applicable
+        orig_timestamp (DateTime): When the original email was sent (indexed)
+        orig_sender (String): Original email sender (indexed)
+        orig_recipient (String): Original email recipient
+        orig_message_subject (Text): Original email subject line
+        orig_attachments (Text): Original attachment information
+        created_at (DateTime): Record creation timestamp
+    
+    Relationships:
+        message: Many-to-one relationship with MessageInfo
+    
+    Table:
+        pdbx_deposition_message_origcomm_reference
+    
+    Note:
+        This category only appears in notes-from-annotator files for messages
+        of type "archive" or "forward" (excluding "archive_auto_noorig").
+    """
+    __tablename__ = 'pdbx_deposition_message_origcomm_reference'
+    
+    # Database columns - exactly matching mmCIF attributes
+    ordinal_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=False, index=True)
+    deposition_data_set_id = Column(String(50), nullable=False, index=True)
+    orig_message_id = Column(String(255), nullable=True)
+    orig_deposition_data_set_id = Column(String(50), nullable=True)
+    orig_timestamp = Column(DateTime, nullable=True, index=True)
+    orig_sender = Column(String(255), nullable=True, index=True)
+    orig_recipient = Column(String(255), nullable=True)
+    orig_message_subject = Column(Text, nullable=True)
+    orig_attachments = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
+    
+    # Relationships
+    message = relationship("MessageInfo", backref="origcomm_references")

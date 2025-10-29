@@ -25,6 +25,7 @@ from wwpdb.apps.msgmodule.db import (
     MessageInfo,
     MessageFileReference,
     MessageStatus,
+    MessageOrigCommReference,
 )
 from wwpdb.io.locator.PathInfo import PathInfo
 
@@ -335,9 +336,11 @@ class CifToDbMigrator:
             messages = self._convert_messages(msg_io.getMessageInfo(), message_type)
             file_refs = self._convert_file_refs(msg_io.getFileReferenceInfo())
             statuses = self._convert_statuses(msg_io.getMsgStatusInfo())
+            origcomm_refs = self._convert_origcomm(msg_io.getOrigCommReferenceInfo())
 
             log_event("parse_ok", deposition_id=deposition_id, filename=filename,
-                     messages=len(messages), file_refs=len(file_refs), statuses=len(statuses))
+                     messages=len(messages), file_refs=len(file_refs), statuses=len(statuses),
+                     origcomm_refs=len(origcomm_refs))
 
             if not messages:
                 log_event("no_messages", deposition_id=deposition_id, filename=filename,
@@ -346,7 +349,7 @@ class CifToDbMigrator:
 
             # Store messages and file refs immediately, but defer statuses
             if not dry_run:
-                success = self._store_data(messages, file_refs, [])  # Empty list for statuses
+                success = self._store_data(messages, file_refs, [], origcomm_refs)  # Empty list for statuses
                 if success:
                     self.stats["migrated"] += len(messages)
                     # Collect statuses to be inserted later
@@ -455,8 +458,39 @@ class CifToDbMigrator:
             for status in statuses
         ]
 
+    def _convert_origcomm(self, origcomm_refs: List[Dict]) -> List[MessageOrigCommReference]:
+        """Convert original communication references"""
+        converted = []
+        
+        for oc in origcomm_refs:
+            # Parse timestamp if present
+            timestamp = None
+            timestamp_str = oc.get("orig_timestamp", "")
+            if timestamp_str:
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y %H:%M:%S", "%d-%b-%Y"]:
+                    try:
+                        timestamp = datetime.strptime(timestamp_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+            
+            origcomm = MessageOrigCommReference(
+                message_id=oc.get("message_id", ""),
+                deposition_data_set_id=oc.get("deposition_data_set_id", ""),
+                orig_message_id=oc.get("orig_message_id"),
+                orig_deposition_data_set_id=oc.get("orig_deposition_data_set_id"),
+                orig_timestamp=timestamp,
+                orig_sender=oc.get("orig_sender"),
+                orig_recipient=oc.get("orig_recipient"),
+                orig_message_subject=unescape_non_ascii(oc.get("orig_message_subject", "")),
+                orig_attachments=oc.get("orig_attachments"),
+            )
+            converted.append(origcomm)
+        
+        return converted
+
     def _store_data(self, messages: List[MessageInfo], file_refs: List[MessageFileReference], 
-                    statuses: List[MessageStatus]) -> bool:
+                    statuses: List[MessageStatus], origcomm_refs: List[MessageOrigCommReference] = None) -> bool:
         """Store data in database"""
         deposition_id = messages[0].deposition_data_set_id if messages else "unknown"
         
@@ -484,10 +518,18 @@ class CifToDbMigrator:
             
             for status in statuses:
                 self.data_access.create_or_update_status(status)
+            
+            # Store origcomm references
+            origcomm_stored = 0
+            if origcomm_refs:
+                for origcomm in origcomm_refs:
+                    if self.data_access.origcomm_references.create(origcomm):
+                        origcomm_stored += 1
 
             log_event("store_complete", deposition_id=deposition_id,
                      messages_stored=stored_count, duplicates_skipped=duplicate_count,
-                     file_refs_stored=len(file_refs), statuses_stored=len(statuses))
+                     file_refs_stored=len(file_refs), statuses_stored=len(statuses),
+                     origcomm_stored=origcomm_stored)
             return True
             
         except Exception as e:

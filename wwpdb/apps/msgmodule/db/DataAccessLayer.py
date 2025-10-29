@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
-from wwpdb.apps.msgmodule.db.Models import Base, MessageInfo, MessageFileReference, MessageStatus
+from wwpdb.apps.msgmodule.db.Models import Base, MessageInfo, MessageFileReference, MessageStatus, MessageOrigCommReference
 
 logger = logging.getLogger(__name__)
 
@@ -559,6 +559,86 @@ class MessageStatusDAO(BaseDAO[MessageStatus]):
         return False
 
 
+class OrigCommReferenceDAO(BaseDAO[MessageOrigCommReference]):
+    """Data Access Object for Original Communication Reference operations.
+    
+    Manages original communication metadata for archived/forwarded messages,
+    storing information about the original email being referenced.
+    
+    Inherits from:
+        BaseDAO[MessageOrigCommReference]: Base DAO with generic CRUD operations
+    """
+    
+    def __init__(self, db_connection: DatabaseConnection):
+        """Initialize OrigCommReferenceDAO.
+        
+        Args:
+            db_connection (DatabaseConnection): Database connection manager
+        """
+        super().__init__(db_connection, MessageOrigCommReference)
+    
+    def get_by_message_id(self, message_id: str) -> List[MessageOrigCommReference]:
+        """Get all original communication references for a message.
+        
+        A message may have multiple origcomm references if it archives/forwards
+        multiple original emails.
+        
+        Args:
+            message_id (str): Message identifier
+        
+        Returns:
+            List[MessageOrigCommReference]: List of origcomm references, empty if none
+        """
+        try:
+            with self.db_connection.get_session() as session:
+                return session.query(MessageOrigCommReference).filter(
+                    MessageOrigCommReference.message_id == message_id
+                ).all()
+        except SQLAlchemyError as e:
+            logger.error("Error getting origcomm references for message %s: %s", message_id, e)
+            return []
+    
+    def get_by_deposition(self, deposition_data_set_id: str) -> List[MessageOrigCommReference]:
+        """Get all original communication references for a deposition.
+        
+        Args:
+            deposition_data_set_id (str): Deposition identifier
+        
+        Returns:
+            List[MessageOrigCommReference]: List of origcomm references, empty if none
+        """
+        try:
+            with self.db_connection.get_session() as session:
+                return session.query(MessageOrigCommReference).filter(
+                    MessageOrigCommReference.deposition_data_set_id == deposition_data_set_id
+                ).all()
+        except SQLAlchemyError as e:
+            logger.error("Error getting origcomm references for deposition %s: %s", deposition_data_set_id, e)
+            return []
+    
+    def create_bulk(self, origcomm_refs: List[MessageOrigCommReference]) -> bool:
+        """Create multiple origcomm references in a single transaction.
+        
+        Args:
+            origcomm_refs (List[MessageOrigCommReference]): List of origcomm references to create
+        
+        Returns:
+            bool: True if all created successfully, False otherwise
+        """
+        if not origcomm_refs:
+            return True
+            
+        try:
+            with self.db_connection.get_session() as session:
+                session.bulk_save_objects(origcomm_refs)
+                session.commit()
+                logger.info("Created %d origcomm references", len(origcomm_refs))
+                return True
+        except SQLAlchemyError as e:
+            logger.error("Error creating bulk origcomm references: %s", e)
+            return False
+
+
 class DataAccessLayer:
     """Main data access facade that provides all messaging database operations.
     
@@ -571,6 +651,7 @@ class DataAccessLayer:
         messages (MessageDAO): DAO for message operations
         file_references (FileReferenceDAO): DAO for file reference operations
         status (MessageStatusDAO): DAO for status operations
+        origcomm_references (OrigCommReferenceDAO): DAO for original communication reference operations
     
     Example:
         >>> db_config = {
@@ -598,6 +679,7 @@ class DataAccessLayer:
         self.messages = MessageDAO(self.db_connection)
         self.file_references = FileReferenceDAO(self.db_connection)
         self.status = MessageStatusDAO(self.db_connection)
+        self.origcomm_references = OrigCommReferenceDAO(self.db_connection)
     
     def create_tables(self):
         """Create all database tables.

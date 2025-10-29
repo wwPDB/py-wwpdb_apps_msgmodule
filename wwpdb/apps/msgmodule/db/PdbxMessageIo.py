@@ -614,8 +614,28 @@ class PdbxMessageIo:
                 logger.error("Failed to create/update status for message ID: %s", st['message_id'])
                 success = False
 
-        # merge in-memory origcomm refs (not persisted)
-        self._loaded_origcomm_refs.extend(self._pending_origcomm_refs)
+        # Original communication references
+        if self._pending_origcomm_refs:
+            from wwpdb.apps.msgmodule.db.Models import MessageOrigCommReference as ORMOrigComm
+            
+            origcomm_objs = []
+            for oc in self._pending_origcomm_refs:
+                origcomm = ORMOrigComm(
+                    message_id=oc.get("message_id"),
+                    deposition_data_set_id=oc.get("deposition_data_set_id", self._deposition_id),
+                    orig_message_id=oc.get("orig_message_id"),
+                    orig_deposition_data_set_id=oc.get("orig_deposition_data_set_id"),
+                    orig_timestamp=_parse_ts(oc.get("orig_timestamp")) if oc.get("orig_timestamp") else None,
+                    orig_sender=oc.get("orig_sender"),
+                    orig_recipient=oc.get("orig_recipient"),
+                    orig_message_subject=oc.get("orig_message_subject"),
+                    orig_attachments=oc.get("orig_attachments"),
+                )
+                origcomm_objs.append(origcomm)
+            
+            if not self._dal.origcomm_references.create_bulk(origcomm_objs):
+                logger.error("Failed to create origcomm references")
+                success = False
 
         # clear pendings and refresh loaded view only if all operations succeeded
         if success:
@@ -818,4 +838,27 @@ class PdbxMessageIo:
             ]
         except Exception:
             logger.error("DB _load_from_db: FATAL - Failed to load status records for deposition %s", self._deposition_id, exc_info=True)
+            raise
+
+        # Original communication references for deposition
+        try:
+            origcomm_refs = self._dal.origcomm_references.get_by_deposition(self._deposition_id)
+            
+            self._loaded_origcomm_refs = [
+                {
+                    "ordinal_id": oc.ordinal_id,
+                    "message_id": oc.message_id,
+                    "deposition_data_set_id": oc.deposition_data_set_id,
+                    "orig_message_id": oc.orig_message_id,
+                    "orig_deposition_data_set_id": oc.orig_deposition_data_set_id,
+                    "orig_timestamp": _fmt_ts(oc.orig_timestamp) if oc.orig_timestamp else None,
+                    "orig_sender": oc.orig_sender,
+                    "orig_recipient": oc.orig_recipient,
+                    "orig_message_subject": oc.orig_message_subject,
+                    "orig_attachments": oc.orig_attachments,
+                }
+                for oc in origcomm_refs
+            ]
+        except Exception:
+            logger.error("DB _load_from_db: FATAL - Failed to load origcomm references for deposition %s", self._deposition_id, exc_info=True)
             raise

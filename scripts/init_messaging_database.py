@@ -8,6 +8,7 @@ exactly mirrors the mmCIF categories:
 - pdbx_deposition_message_info
 - pdbx_deposition_message_file_reference  
 - pdbx_deposition_message_status
+- pdbx_deposition_message_origcomm_reference
 
 The content_type field differentiates between:
 - messages-to-depositor
@@ -154,6 +155,33 @@ def get_create_table_statements():
     """
     )
 
+    # Original communication reference table - maps to _pdbx_deposition_message_origcomm_reference category
+    # This stores metadata about the original email being replied to or archived
+    statements.append(
+        """
+        CREATE TABLE IF NOT EXISTS pdbx_deposition_message_origcomm_reference (
+            ordinal_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            message_id VARCHAR(64) NOT NULL,
+            deposition_data_set_id VARCHAR(50) NOT NULL,
+            orig_message_id VARCHAR(64),
+            orig_deposition_data_set_id VARCHAR(50),
+            orig_timestamp DATETIME,
+            orig_sender VARCHAR(150),
+            orig_recipient VARCHAR(150),
+            orig_message_subject TEXT,
+            orig_attachments TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            
+            INDEX idx_message_id (message_id),
+            INDEX idx_deposition_id (deposition_data_set_id),
+            INDEX idx_orig_timestamp (orig_timestamp),
+            INDEX idx_ordinal_id (ordinal_id),
+            
+            FOREIGN KEY (message_id) REFERENCES pdbx_deposition_message_info(message_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    """
+    )
+
     # Message file references table - maps to _pdbx_deposition_message_file_reference category
     statements.append(
         """
@@ -240,6 +268,7 @@ def verify_tables(config):
             "pdbx_deposition_message_info",
             "pdbx_deposition_message_file_reference",
             "pdbx_deposition_message_status",
+            "pdbx_deposition_message_origcomm_reference",
         ]
 
         cursor.execute("SHOW TABLES")

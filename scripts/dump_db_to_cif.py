@@ -627,8 +627,18 @@ class DbToCifExporter:
             if statuses and content_type == "messages-to-depositor":
                 self._add_status_category(block, statuses)
             
+            # Get and add origcomm references (typically only in notes-from-annotator)
+            origcomm_refs = []
+            for message in messages:
+                msg_origcomm_refs = self.data_access.origcomm_references.get_by_message_id(message.message_id)
+                origcomm_refs.extend(msg_origcomm_refs)
+            
+            if origcomm_refs:
+                self._add_origcomm_category(block, origcomm_refs)
+            
             log_event("cif_structure_created", deposition_id=deposition_id,
-                     messages=len(messages), file_refs=len(file_refs), statuses=len(statuses))
+                     messages=len(messages), file_refs=len(file_refs), statuses=len(statuses),
+                     origcomm_refs=len(origcomm_refs))
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -765,6 +775,44 @@ class DbToCifExporter:
                 formatted_value = format_cif_value(value)
                 block.set_pair(f"_pdbx_deposition_message_status.{col}", formatted_value)
 
+    def _add_origcomm_category(self, block: gemmi.cif.Block, origcomm_refs):
+        """Add _pdbx_deposition_message_origcomm_reference category to CIF block
+        
+        Note: See _add_message_info_category() for recommended refactoring approach using
+        gemmi's find_or_add() to avoid manual pair/loop branching.
+        """
+        columns = [
+            "ordinal_id",
+            "message_id",
+            "deposition_data_set_id",
+            "orig_message_id",
+            "orig_deposition_data_set_id",
+            "orig_timestamp",
+            "orig_sender",
+            "orig_recipient",
+            "orig_message_subject",
+            "orig_attachments"
+        ]
+        
+        if len(origcomm_refs) > 1:
+            loop = block.init_loop("_pdbx_deposition_message_origcomm_reference.", columns)
+            
+            for origcomm in origcomm_refs:
+                row_values = []
+                for col in columns:
+                    value = self._get_origcomm_attribute_value(origcomm, col)
+                    # Allow multiline for orig_message_subject similar to message_subject
+                    allow_multiline = col == "orig_message_subject"
+                    row_values.append(format_cif_loop_value(value, allow_multiline=allow_multiline))
+                loop.add_row(row_values)
+        else:
+            origcomm = origcomm_refs[0]
+            for col in columns:
+                value = self._get_origcomm_attribute_value(origcomm, col)
+                is_multiline = col == "orig_message_subject"
+                formatted_value = format_cif_value(value, is_multiline)
+                block.set_pair(f"_pdbx_deposition_message_origcomm_reference.{col}", formatted_value)
+
     def _get_message_attribute_value(self, message: MessageInfo, attribute: str):
         """Get attribute value from MessageInfo object"""
         if attribute == "timestamp":
@@ -778,6 +826,14 @@ class DbToCifExporter:
     def _get_status_attribute_value(self, status: MessageStatus, attribute: str):
         """Get attribute value from MessageStatus object"""
         return getattr(status, attribute, None)
+
+    def _get_origcomm_attribute_value(self, origcomm, attribute: str):
+        """Get attribute value from MessageOrigCommReference object"""
+        if attribute == "orig_timestamp":
+            # Format timestamp if present
+            ts = getattr(origcomm, attribute, None)
+            return ts.strftime("%Y-%m-%d %H:%M:%S") if ts else None
+        return getattr(origcomm, attribute, None)
 
     def print_stats(self):
         """Print export statistics summary"""

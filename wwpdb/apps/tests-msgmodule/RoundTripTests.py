@@ -112,12 +112,13 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         doc = gemmi.cif.read_file(file_path)
         block = doc[0]
         
-        result = {"messages": [], "file_refs": [], "statuses": []}
+        result = {"messages": [], "file_refs": [], "statuses": [], "origcomm_refs": []}
         
         # Track single-value items for each category
         msg_items = {}
         ref_items = {}
         status_items = {}
+        origcomm_items = {}
         
         # Iterate through block items to find both loops and key-value pairs
         for item in block:
@@ -151,6 +152,15 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
                             field_name = tag.split('.')[-1]
                             status_dict[field_name] = loop[i, col_idx]
                         result["statuses"].append(status_dict)
+                
+                # Check if this is an origcomm reference loop
+                elif any(tag.startswith("_pdbx_deposition_message_origcomm_reference.") for tag in tags):
+                    for i in range(loop.length()):
+                        origcomm_dict = {}
+                        for col_idx, tag in enumerate(tags):
+                            field_name = tag.split('.')[-1]
+                            origcomm_dict[field_name] = loop[i, col_idx]
+                        result["origcomm_refs"].append(origcomm_dict)
             
             elif item.pair:
                 # Handle key-value pairs (single message format)
@@ -165,6 +175,9 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
                 elif key.startswith("_pdbx_deposition_message_status."):
                     field_name = key.split('.')[-1]
                     status_items[field_name] = value
+                elif key.startswith("_pdbx_deposition_message_origcomm_reference."):
+                    field_name = key.split('.')[-1]
+                    origcomm_items[field_name] = value
         
         # Add single-value items as messages (if any were found)
         if msg_items:
@@ -173,6 +186,8 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
             result["file_refs"].append(ref_items)
         if status_items:
             result["statuses"].append(status_items)
+        if origcomm_items:
+            result["origcomm_refs"].append(origcomm_items)
         
         return result
 
@@ -213,6 +228,27 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         return differences
 
+    def _compare_origcomm_refs(self, original: Dict, exported: Dict) -> List[str]:
+        """Compare two origcomm reference dictionaries and return list of differences"""
+        differences = []
+        
+        # Compare key fields that must match exactly
+        key_fields = [
+            "message_id",
+            "deposition_data_set_id", 
+            "orig_message_id",
+            "orig_sender",
+            "orig_recipient",
+            "orig_message_subject"
+        ]
+        for field in key_fields:
+            orig_val = original.get(field, "?")
+            exp_val = exported.get(field, "?")
+            if orig_val != exp_val:
+                differences.append(f"{field}: '{orig_val}' != '{exp_val}'")
+        
+        return differences
+
     def _validate_round_trip(self, original_data: Dict, exported_data: Dict, content_type: str):
         """Validate that round-trip preserved data integrity"""
         
@@ -229,13 +265,33 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
             if diffs:
                 all_differences.append(f"Message {idx + 1}: " + ", ".join(diffs))
         
+        # Check origcomm reference counts
+        orig_origcomm_count = len(original_data.get("origcomm_refs", []))
+        exp_origcomm_count = len(exported_data.get("origcomm_refs", []))
+        
+        if orig_origcomm_count != exp_origcomm_count:
+            all_differences.append(
+                f"Origcomm reference count mismatch: {orig_origcomm_count} original vs {exp_origcomm_count} exported"
+            )
+        else:
+            # Compare each origcomm reference
+            for idx, (orig_oc, exp_oc) in enumerate(zip(
+                original_data.get("origcomm_refs", []),
+                exported_data.get("origcomm_refs", [])
+            )):
+                diffs = self._compare_origcomm_refs(orig_oc, exp_oc)
+                if diffs:
+                    all_differences.append(f"Origcomm ref {idx + 1}: " + ", ".join(diffs))
+        
         if all_differences:
             self.fail(f"Data integrity issues found in {content_type}:\n" + "\n".join(all_differences))
         
-        print(f"   ✅ Round-trip validation successful ({orig_count} messages)")
+        print(f"   ✅ Round-trip validation successful ({orig_count} messages, {orig_origcomm_count} origcomm refs)")
         print(f"      - All message_ids preserved")
         print(f"      - All subjects preserved")
         print(f"      - All message text preserved")
+        if orig_origcomm_count > 0:
+            print(f"      - All origcomm references preserved")
 
     # ---- Round-trip tests ----
 
