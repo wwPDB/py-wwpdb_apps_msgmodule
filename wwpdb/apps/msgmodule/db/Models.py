@@ -214,7 +214,7 @@ class MessageOrigCommReference(Base):
     orig_deposition_data_set_id = Column(String(50), nullable=True)
     orig_timestamp = Column(DateTime, nullable=True, index=True)
     orig_sender = Column(String(255), nullable=True, index=True)
-    orig_recipient = Column(String(255), nullable=True)
+    orig_recipient = Column(String(500), nullable=True)
     orig_message_subject = Column(Text, nullable=True)
     orig_attachments = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
