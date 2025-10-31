@@ -894,6 +894,17 @@ class MessagingIo(object):
                 if ok:
                     recordSetLst.extend(mIIo2.getFileReferenceInfo())  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
             #
+            # Filter out duplicate dictionaries based on 'ordinal_id'
+            unique_ordinal_ids = set()
+            filtered_recordSetLst = []
+            for record in recordSetLst:
+                ordinal_id = record.get('ordinal_id')  # Extract 'ordinal_id' from the dictionary
+                if ordinal_id not in unique_ordinal_ids:
+                    unique_ordinal_ids.add(ordinal_id)  # Add to the set of seen 'ordinal_id'
+                    filtered_recordSetLst.append(record)  # Add the dictionary to the filtered list
+
+            recordSetLst = filtered_recordSetLst  # Replace the original list with the filtered list
+
             if self.__verbose and self.__debug and self.__debugLvl2:
                 for idx, row in enumerate(recordSetLst):
                     logger.info("row[%s]: %r", idx, row)
