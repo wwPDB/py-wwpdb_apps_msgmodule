@@ -8,6 +8,7 @@ inheritance and polymorphism for clean, maintainable code.
 import logging
 import time
 import threading
+from datetime import datetime
 from typing import Dict, List, Optional, Type, TypeVar, Generic
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -452,6 +453,77 @@ class MessageDAO(BaseDAO[MessageInfo]):
         except SQLAlchemyError as e:
             logger.error("Error getting messages for deposition %s, content type %s: %s", 
                         deposition_id, content_type, e)
+            return []
+
+    def get_by_date_range(self, start_date, end_date = None,
+                         deposition_ids: List[str] = None, content_types: List[str] = None,
+                         sender: str = None, keywords: List[str] = None) -> List[MessageInfo]:
+        """Get messages within a date range with optional filters.
+        
+        Args:
+            start_date (datetime): Start of date range (inclusive)
+            end_date (datetime): End of date range (inclusive, defaults to now)
+            deposition_ids (List[str]): Optional list of deposition IDs to filter by
+            content_types (List[str]): Optional list of content types to filter by
+            sender (str): Optional sender email/identifier to filter by
+            keywords (List[str]): Optional keywords to search in subject and text
+        
+        Returns:
+            List[MessageInfo]: List of messages matching the criteria, ordered by timestamp descending
+        """
+        try:
+            from datetime import datetime
+            with self.db_connection.get_session() as session:
+                from sqlalchemy.orm import joinedload
+                
+                # Build base query with date range and eager load relationships
+                query = session.query(MessageInfo).options(
+                    joinedload(MessageInfo.file_references),
+                    joinedload(MessageInfo.status)
+                ).filter(
+                    MessageInfo.timestamp >= start_date
+                )
+                
+                # Add end date filter if provided
+                if end_date:
+                    query = query.filter(MessageInfo.timestamp <= end_date)
+                
+                # Add optional filters
+                if deposition_ids:
+                    query = query.filter(MessageInfo.deposition_data_set_id.in_(deposition_ids))
+                
+                if content_types:
+                    query = query.filter(MessageInfo.content_type.in_(content_types))
+                
+                if sender:
+                    query = query.filter(MessageInfo.sender.like(f"%{sender}%"))
+                
+                # Add keyword search if provided (search in subject and text)
+                if keywords:
+                    from sqlalchemy import or_, and_
+                    keyword_filters = []
+                    for keyword in keywords:
+                        keyword_filter = or_(
+                            MessageInfo.message_subject.like(f"%{keyword}%"),
+                            MessageInfo.message_text.like(f"%{keyword}%")
+                        )
+                        keyword_filters.append(keyword_filter)
+                    # AND all keyword filters together (all keywords must match)
+                    if keyword_filters:
+                        query = query.filter(and_(*keyword_filters))
+                
+                # Order by timestamp descending (most recent first)
+                query = query.order_by(MessageInfo.timestamp.desc())
+                
+                # Execute query and expunge objects from session to avoid DetachedInstanceError
+                results = query.all()
+                for result in results:
+                    session.expunge(result)
+                
+                return results
+                
+        except SQLAlchemyError as e:
+            logger.error("Error getting messages by date range: %s", e)
             return []
 
 

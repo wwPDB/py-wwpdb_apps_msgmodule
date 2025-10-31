@@ -192,6 +192,97 @@ python dump_db_to_cif.py --site-id RCSB --deposition D_123456 --overwrite
 - Bulk export with progress reporting
 - File organization by content type
 
+### Query Recent Messages: `list_recent_messages.py`
+
+Lists communications within a specified time period with filtering options. **Used by WFM** for parsing messages and loading into test databases.
+
+````bash
+# List all messages from last 7 days (JSON output for WFM, uses current site)
+python list_recent_messages.py --days 7
+
+# List all messages from last 7 days with explicit site ID
+python list_recent_messages.py --site-id WWPDB_DEPLOY_TEST --days 7
+
+# List messages for specific depositions in last 30 days
+python list_recent_messages.py --site-id RCSB --days 30 \
+    --depositions D_1000000001 D_1000000002
+
+# Filter by content type and keywords, output as CSV
+python list_recent_messages.py --site-id PDBe --days 14 \
+    --content-type messages-to-depositor \
+    --keywords "validation" "error" \
+    --format csv --output results.csv
+
+# Filter by sender with human-readable output (uses current site)
+python list_recent_messages.py --days 30 \
+    --sender "annotator@example.com" \
+    --format text
+
+# Custom date range with compact JSON output
+python list_recent_messages.py --site-id RCSB \
+    --start-date 2025-10-01 --end-date 2025-10-31 \
+    --format json --compact --output october.json
+
+# Complex query with multiple filters and logging (uses current site)
+python list_recent_messages.py --days 60 \
+    --content-type messages-to-depositor messages-from-depositor \
+    --keywords "coordinate" "validation" \
+    --json-log query.log --log-level DEBUG
+````
+
+**Key features:**
+
+- Date range queries using indexed `timestamp` field for performance
+- Multiple output formats: **JSON** (default, WFM-compatible), **CSV** (spreadsheet analysis), **plain text** (human-readable)
+- Filter by: deposition ID(s), content type, sender, keywords (AND logic)
+- Includes message metadata: `message_id`, `deposition_data_set_id`, `timestamp`, `sender`, `message_subject`, `message_type`
+- File attachments and status flags (`read_status`, `action_reqd`, `for_release`)
+- Structured JSON logging for audit trails
+- No flat file dependency - queries database directly
+- Efficient pagination/streaming for large result sets
+
+**Output formats:**
+
+- **JSON** (default): Machine-readable format for WFM consumption
+  ```json
+  {
+    "count": 42,
+    "messages": [
+      {
+        "message_id": "MSG_001",
+        "deposition_data_set_id": "D_1000000001",
+        "timestamp": "2025-10-15T14:30:00",
+        "sender": "annotator@example.com",
+        "message_subject": "Validation Report",
+        "content_type": "messages-to-depositor",
+        "file_attachments": [...],
+        "read_status": "N",
+        "action_reqd": "Y"
+      }
+    ]
+  }
+  ```
+
+- **CSV**: Spreadsheet-compatible format for analysis
+  ```csv
+  message_id,deposition_data_set_id,timestamp,sender,message_subject,...
+  MSG_001,D_1000000001,2025-10-15T14:30:00,annotator@example.com,Validation Report,...
+  ```
+
+- **Text**: Human-readable format for quick review
+  ```
+  Found 42 message(s)
+  ================================================================================
+  
+  Message 1:
+    ID: MSG_001
+    Deposition: D_1000000001
+    Timestamp: 2025-10-15T14:30:00
+    Sender: annotator@example.com
+    Subject: Validation Report
+    ...
+  ```
+
 ---
 
 ## 7. Timeline Visualization
