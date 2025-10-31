@@ -452,8 +452,13 @@ class MessageDAO(BaseDAO[MessageInfo]):
         """
         try:
             with self.db_connection.get_session() as session:
-                # Build base query with date range
-                query = session.query(MessageInfo).filter(
+                from sqlalchemy.orm import joinedload
+                
+                # Build base query with date range and eager load relationships
+                query = session.query(MessageInfo).options(
+                    joinedload(MessageInfo.file_references),
+                    joinedload(MessageInfo.status)
+                ).filter(
                     MessageInfo.timestamp >= start_date
                 )
                 
@@ -488,7 +493,12 @@ class MessageDAO(BaseDAO[MessageInfo]):
                 # Order by timestamp descending (most recent first)
                 query = query.order_by(MessageInfo.timestamp.desc())
                 
-                return query.all()
+                # Execute query and expunge objects from session to avoid DetachedInstanceError
+                results = query.all()
+                for result in results:
+                    session.expunge(result)
+                
+                return results
                 
         except SQLAlchemyError as e:
             logger.error("Error getting messages by date range: %s", e)
