@@ -15,7 +15,10 @@ Features:
     - Support for multi-site deployment
 
 Examples:
-    # List all messages from last 7 days as JSON
+    # List all messages from last 7 days as JSON (uses current site)
+    python list_recent_messages.py --days 7
+    
+    # List all messages from last 7 days with explicit site ID
     python list_recent_messages.py --site-id WWPDB_DEPLOY_TEST --days 7
     
     # List messages for specific depositions in last 30 days
@@ -28,8 +31,8 @@ Examples:
         --keywords "validation" "error" \\
         --format csv --output results.csv
     
-    # Filter by sender with human-readable output
-    python list_recent_messages.py --site-id WWPDB_DEPLOY_TEST --days 30 \\
+    # Filter by sender with human-readable output (uses current site)
+    python list_recent_messages.py --days 30 \\
         --sender "annotator@example.com" \\
         --format text
     
@@ -50,7 +53,7 @@ from typing import List, Dict, Optional, Any
 from pathlib import Path
 
 # Initialize ConfigInfo to get database configuration
-from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfo import ConfigInfo, getSiteId
 
 # Database imports
 from wwpdb.apps.msgmodule.db import DataAccessLayer, MessageInfo
@@ -560,7 +563,10 @@ def create_argument_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # List all messages from last 7 days
+  # List all messages from last 7 days (uses current site)
+  %(prog)s --days 7
+  
+  # List all messages from last 7 days with explicit site ID
   %(prog)s --site-id WWPDB_DEPLOY_TEST --days 7
   
   # List messages for specific depositions in last 30 days
@@ -572,18 +578,16 @@ Examples:
       --keywords "validation" "error" \\
       --format csv --output results.csv
   
-  # Custom date range with text output
-  %(prog)s --site-id WWPDB_DEPLOY_TEST \\
-      --start-date 2025-10-01 --end-date 2025-10-31 \\
-      --format text
+  # Custom date range with text output (uses current site)
+  %(prog)s --start-date 2025-10-01 --end-date 2025-10-31 --format text
         """
     )
     
-    # Required site configuration
+    # Site configuration (optional - defaults to current site)
     parser.add_argument(
         "--site-id",
-        required=True,
-        help="Site ID (e.g., WWPDB_DEPLOY_TEST, RCSB, PDBe, PDBj, BMRB)"
+        help="Site ID (e.g., WWPDB_DEPLOY_TEST, RCSB, PDBe, PDBj, BMRB). "
+             "If not specified, uses the current site from configuration"
     )
     
     # Date range options (mutually exclusive with custom dates)
@@ -695,8 +699,20 @@ def main():
                 logger.error(str(e))
                 sys.exit(1)
         
+        # Determine site ID (use provided or default to current site)
+        site_id = args.site_id
+        if not site_id:
+            try:
+                site_id = getSiteId()
+                logger.info(f"Using current site: {site_id}")
+            except Exception as e:
+                log_event("site_id_resolution_failed", error=str(e))
+                logger.error(f"Failed to determine site ID: {e}")
+                logger.error("Please specify --site-id explicitly")
+                sys.exit(1)
+        
         # Execute query
-        with MessageQueryService(args.site_id) as service:
+        with MessageQueryService(site_id) as service:
             messages = service.query_messages(
                 days=args.days,
                 start_date=start_date,

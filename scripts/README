@@ -197,7 +197,10 @@ python dump_db_to_cif.py --site-id RCSB --deposition D_123456 --overwrite
 Lists communications within a specified time period with filtering options. **Used by WFM** for parsing messages and loading into test databases.
 
 ````bash
-# List all messages from last 7 days (JSON output for WFM)
+# List all messages from last 7 days (JSON output for WFM, uses current site)
+python list_recent_messages.py --days 7
+
+# List all messages from last 7 days with explicit site ID
 python list_recent_messages.py --site-id WWPDB_DEPLOY_TEST --days 7
 
 # List messages for specific depositions in last 30 days
@@ -210,8 +213,8 @@ python list_recent_messages.py --site-id PDBe --days 14 \
     --keywords "validation" "error" \
     --format csv --output results.csv
 
-# Filter by sender with human-readable output
-python list_recent_messages.py --site-id WWPDB_DEPLOY_TEST --days 30 \
+# Filter by sender with human-readable output (uses current site)
+python list_recent_messages.py --days 30 \
     --sender "annotator@example.com" \
     --format text
 
@@ -220,8 +223,8 @@ python list_recent_messages.py --site-id RCSB \
     --start-date 2025-10-01 --end-date 2025-10-31 \
     --format json --compact --output october.json
 
-# Complex query with multiple filters and logging
-python list_recent_messages.py --site-id RCSB --days 60 \
+# Complex query with multiple filters and logging (uses current site)
+python list_recent_messages.py --days 60 \
     --content-type messages-to-depositor messages-from-depositor \
     --keywords "coordinate" "validation" \
     --json-log query.log --log-level DEBUG
