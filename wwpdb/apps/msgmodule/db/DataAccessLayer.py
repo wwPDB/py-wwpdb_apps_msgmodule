@@ -434,7 +434,28 @@ class MessageDAO(BaseDAO[MessageInfo]):
             logger.error("Error getting messages by content type %s: %s", content_type, e)
             return []
     
-    def get_by_date_range(self, start_date: datetime, end_date: datetime = None,
+    def get_by_deposition_and_content_type(self, deposition_id: str, content_type: str) -> List[MessageInfo]:
+        """Get messages for a deposition filtered by content type.
+        
+        Args:
+            deposition_id (str): Deposition dataset ID (e.g., 'D_1000000001')
+            content_type (str): Message content type
+        
+        Returns:
+            List[MessageInfo]: List of messages, ordered by timestamp ASC
+        """
+        try:
+            with self.db_connection.get_session() as session:
+                return session.query(MessageInfo).filter(
+                    MessageInfo.deposition_data_set_id == deposition_id,
+                    MessageInfo.content_type == content_type
+                ).order_by(MessageInfo.timestamp.asc()).all()
+        except SQLAlchemyError as e:
+            logger.error("Error getting messages for deposition %s, content type %s: %s", 
+                        deposition_id, content_type, e)
+            return []
+
+    def get_by_date_range(self, start_date, end_date = None,
                          deposition_ids: List[str] = None, content_types: List[str] = None,
                          sender: str = None, keywords: List[str] = None) -> List[MessageInfo]:
         """Get messages within a date range with optional filters.
@@ -451,6 +472,7 @@ class MessageDAO(BaseDAO[MessageInfo]):
             List[MessageInfo]: List of messages matching the criteria, ordered by timestamp descending
         """
         try:
+            from datetime import datetime
             with self.db_connection.get_session() as session:
                 from sqlalchemy.orm import joinedload
                 
@@ -726,6 +748,29 @@ class DataAccessLayer:
             List[MessageInfo]: List of messages, empty list if none found
         """
         return self.messages.get_by_deposition(deposition_id)
+    
+    def get_deposition_messages_by_content_type(self, deposition_id: str, content_type: str) -> List[MessageInfo]:
+        """Get messages for a deposition filtered by content type.
+        
+        Args:
+            deposition_id (str): Deposition dataset ID
+            content_type (str): Message content type
+        
+        Returns:
+            List[MessageInfo]: List of messages, ordered by timestamp
+        """
+        return self.messages.get_by_deposition_and_content_type(deposition_id, content_type)
+    
+    def get_file_references_for_message(self, message_id: str) -> List[MessageFileReference]:
+        """Get file references for a message.
+        
+        Args:
+            message_id (str): Message identifier
+        
+        Returns:
+            List[MessageFileReference]: List of file references
+        """
+        return self.file_references.get_by_message_id(message_id)
     
     def create_file_reference(self, file_ref: MessageFileReference) -> bool:
         """Create a new file reference.

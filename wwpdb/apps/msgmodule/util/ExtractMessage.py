@@ -25,10 +25,10 @@ import datetime
 import logging
 import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
-from mmcif.io.PdbxReader import PdbxReader
 # from mmcif_utils.persist.LockFile import LockFile
-from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo
+from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo, getSiteId
 from wwpdb.io.locator.PathInfo import PathInfo
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 # from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
 
@@ -62,13 +62,41 @@ class ExtractMessage(object):
             logger.info("look for message file for %s in author-provided folder %s", depid, test_folder)
             filename_msg = depid + '_' + contentType + '_P1.cif.V1'
             filepath_msg = os.path.join(test_folder, filename_msg)
+            
+            if not os.path.exists(filepath_msg):
+                logger.warning("cannot find message file for %s", depid)
+                return None
         else:
             logger.info("look for message file for %s in the archive", depid)
-            filepath_msg = self.__pI.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
-
-        if not os.path.exists(filepath_msg):
-            logger.warning("cannot find message file for %s", depid)
-            return None
+            
+            # Create minimal request object for MessagingDataRouter
+            class SimpleReqObj:
+                def __init__(self, site_id, identifier, instance="P1"):
+                    self._site_id = site_id
+                    self._identifier = identifier 
+                    self._instance = instance
+                    
+                def getValue(self, key):
+                    if key == "WWPDB_SITE_ID":
+                        return self._site_id
+                    elif key == "identifier":
+                        return self._identifier
+                    elif key == "instance":
+                        return self._instance
+                    return None
+                    
+                def getSessionObj(self):
+                    return None
+            
+            # Get actual site ID
+            actual_site_id = self.__siteId if self.__siteId is not None else getSiteId()
+            
+            # Create request object and use MessagingDataRouter
+            req_obj = SimpleReqObj(actual_site_id, depid)
+            msgDI = MessagingDataImport(req_obj, verbose=self.__verbose, log=self.__log)
+            filepath_msg = msgDI.getFilePath(contentType=contentType, format="pdbx")
+            
+            # Don't check file existence - PdbxMessageIo handles database vs file mode automatically
 
         return filepath_msg
 
@@ -90,12 +118,42 @@ class ExtractMessage(object):
             logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
+                pdbxMsgIo = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
                 with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__log):
-                    with open(filepath_msg, 'r') as file:
-                        cif_parser = PdbxReader(file)
-                        cif_parser.read(self.__lc)
-            except FileExistsError as e:
-                logger.info("%s filelock exists, skip with error %s", filepath_msg, e)
+                    ok = pdbxMsgIo.read(filepath_msg, deposition_id=depid)
+                    if ok:
+                        # Store the messages data directly - no conversion needed
+                        messages = pdbxMsgIo.getMessageInfo()
+                        if messages:
+                            # Create a simple container-like structure for compatibility
+                            class SimpleContainer:
+                                def __init__(self, data):
+                                    self._data = data
+                                
+                                def getObj(self, category_name):
+                                    if category_name == "pdbx_deposition_message_info":
+                                        return SimpleCategory(self._data)
+                                    return None
+                            
+                            class SimpleCategory:
+                                def __init__(self, messages):
+                                    self._messages = messages
+                                    self._attributes = list(messages[0].keys()) if messages else []
+                                
+                                def getItemNameList(self):
+                                    return [f"_pdbx_deposition_message_info.{attr}" for attr in self._attributes]
+                                
+                                def getRowList(self):
+                                    return [[str(msg.get(attr, "")) for attr in self._attributes] for msg in self._messages]
+                            
+                            container = SimpleContainer(messages)
+                            self.__lc = [container]
+                        else:
+                            self.__lc = []
+                    else:
+                        self.__lc = []
+            except Exception as e:
+                logger.warning("Error reading message file for %s: %s", depid, e)
                 self.__lc = []
 
             self.__depid = depid
@@ -601,7 +659,7 @@ class ExtractMessage(object):
         dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
         bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
 
-        pdbxMsgIo_frmDpstr = PdbxMessageIo(site_id=self.__siteId, verbose=self.__verbose, log=self.__log)
+        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_frmDpstr.read(dep_fpath, deposition_id=depid)
         if not ok:
             return []
@@ -610,7 +668,7 @@ class ExtractMessage(object):
             pdbxMsgIo_frmDpstr.getMessageInfo()
         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-        pdbxMsgIo_toDpstr = PdbxMessageIo(site_id=self.__siteId, verbose=self.__verbose, log=self.__log)
+        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_toDpstr.read(bio_fpath, deposition_id=depid)
         if not ok:
             # Assume all messages unacknowledged
