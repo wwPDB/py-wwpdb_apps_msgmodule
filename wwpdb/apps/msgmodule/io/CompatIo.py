@@ -98,7 +98,14 @@ class LockFile(object):
     def __init__(self, filePath, timeoutSeconds=15, retrySeconds=.2, verbose=False, log=sys.stderr, site_id=None):
         # Use provided site_id or auto-detect - consistent with PdbxMessageIo
         actual_site_id = site_id if site_id is not None else getSiteId()
-        self.__legacycomm = not ConfigInfoAppMessaging(actual_site_id).get_msgdb_support()
+        msgdb_support = ConfigInfoAppMessaging(actual_site_id).get_msgdb_support()
+        self.__legacycomm = not msgdb_support
+        
+        # Debug logging to understand routing decisions
+        if verbose:
+            log.write(f"LockFile: Using site_id: '{actual_site_id}'\n")
+            log.write(f"LockFile: msgdb_support={msgdb_support}, legacycomm={self.__legacycomm}\n")
+            log.write(f"LockFile: Will use {'Legacy' if self.__legacycomm else 'Database'} implementation\n")
             
         if self.__legacycomm:
             self.__limpl = LockFileLegacy(filePath, timeoutSeconds, retrySeconds, verbose, log)
