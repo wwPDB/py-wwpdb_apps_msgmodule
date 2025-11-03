@@ -4,7 +4,7 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfo import getSiteId
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 
 from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo as PdbxMessageIoLegacy
@@ -95,7 +95,7 @@ class LockFile(object):
 
     def __init__(self, filePath, timeoutSeconds=15, retrySeconds=.2, verbose=False, log=sys.stderr):
         # Get the site ID automatically and use it for routing decision - same logic as PdbxMessageIo
-        site_id = ConfigInfo().getSiteId()
+        site_id = getSiteId()
         self.__legacycomm = not ConfigInfoAppMessaging(site_id).get_msgdb_support()
             
         if self.__legacycomm:
