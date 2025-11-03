@@ -28,6 +28,7 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 # from mmcif_utils.persist.LockFile import LockFile
 from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo
 from wwpdb.io.locator.PathInfo import PathInfo
+from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 # from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
 
@@ -61,13 +62,19 @@ class ExtractMessage(object):
             logger.info("look for message file for %s in author-provided folder %s", depid, test_folder)
             filename_msg = depid + '_' + contentType + '_P1.cif.V1'
             filepath_msg = os.path.join(test_folder, filename_msg)
+            
+            if not os.path.exists(filepath_msg):
+                logger.warning("cannot find message file for %s", depid)
+                return None
         else:
             logger.info("look for message file for %s in the archive", depid)
-            filepath_msg = self.__pI.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
-
-        if not os.path.exists(filepath_msg):
-            logger.warning("cannot find message file for %s", depid)
-            return None
+            # Use database-aware routing wrapper that selects between db and file implementations
+            mdi = MessagingDataImport(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
+            filepath_msg = mdi.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
+            
+            if not filepath_msg:
+                logger.warning("cannot find message file for %s", depid)
+                return None
 
         return filepath_msg
 
