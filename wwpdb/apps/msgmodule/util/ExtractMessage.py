@@ -123,7 +123,6 @@ class ExtractMessage(object):
                             self.__lc = []
                     else:
                         self.__lc = []
-                pdbxMsgIo.close()
             except Exception as e:
                 logger.warning("Error reading message file for %s: %s", depid, e)
                 self.__lc = []
