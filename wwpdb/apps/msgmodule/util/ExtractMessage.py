@@ -25,7 +25,6 @@ import datetime
 import logging
 import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
-from mmcif.io.PdbxReader import PdbxReader
 # from mmcif_utils.persist.LockFile import LockFile
 from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo
 from wwpdb.io.locator.PathInfo import PathInfo
@@ -90,12 +89,43 @@ class ExtractMessage(object):
             logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
+                pdbxMsgIo = PdbxMessageIo(site_id=self.__siteId, verbose=self.__verbose, log=self.__log)
                 with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__log):
-                    with open(filepath_msg, 'r') as file:
-                        cif_parser = PdbxReader(file)
-                        cif_parser.read(self.__lc)
-            except FileExistsError as e:
-                logger.info("%s filelock exists, skip with error %s", filepath_msg, e)
+                    ok = pdbxMsgIo.read(filepath_msg, deposition_id=depid)
+                    if ok:
+                        # Store the messages data directly - no conversion needed
+                        messages = pdbxMsgIo.getMessageInfo()
+                        if messages:
+                            # Create a simple container-like structure for compatibility
+                            class SimpleContainer:
+                                def __init__(self, data):
+                                    self._data = data
+                                
+                                def getObj(self, category_name):
+                                    if category_name == "pdbx_deposition_message_info":
+                                        return SimpleCategory(self._data)
+                                    return None
+                            
+                            class SimpleCategory:
+                                def __init__(self, messages):
+                                    self._messages = messages
+                                    self._attributes = list(messages[0].keys()) if messages else []
+                                
+                                def getItemNameList(self):
+                                    return [f"_pdbx_deposition_message_info.{attr}" for attr in self._attributes]
+                                
+                                def getRowList(self):
+                                    return [[str(msg.get(attr, "")) for attr in self._attributes] for msg in self._messages]
+                            
+                            container = SimpleContainer(messages)
+                            self.__lc = [container]
+                        else:
+                            self.__lc = []
+                    else:
+                        self.__lc = []
+                pdbxMsgIo.close()
+            except Exception as e:
+                logger.warning("Error reading message file for %s: %s", depid, e)
                 self.__lc = []
 
             self.__depid = depid
