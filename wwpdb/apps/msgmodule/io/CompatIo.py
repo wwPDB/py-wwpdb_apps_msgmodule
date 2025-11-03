@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 
 class PdbxMessageIo:
     """Wrapper between file and DB implementation"""
-    def __init__(self, site_id: str, verbose=True, log=sys.stderr, db_config: Optional[Dict] = None):
-        self.__legacycomm = not ConfigInfoAppMessaging(site_id).get_msgdb_support()
+    def __init__(self, site_id: str = None, verbose=True, log=sys.stderr, db_config: Optional[Dict] = None):
+        # Use provided site_id or auto-detect - consistent with LockFile
+        actual_site_id = site_id if site_id is not None else getSiteId()
+        self.__legacycomm = not ConfigInfoAppMessaging(actual_site_id).get_msgdb_support()
         if self.__legacycomm:
             self.__impl = PdbxMessageIoLegacy(verbose, log)
         else:
-            self.__impl = PdbxMessageIoDb(site_id, verbose, log, db_config)
+            self.__impl = PdbxMessageIoDb(actual_site_id, verbose, log, db_config)
 
     def read(self, filePath: str, logtag: str = "", deposition_id: str = None) -> bool:
         if self.__legacycomm:
@@ -93,10 +95,10 @@ class LockFile(object):
     """ A simple wrapper for file locking
     """
 
-    def __init__(self, filePath, timeoutSeconds=15, retrySeconds=.2, verbose=False, log=sys.stderr):
-        # Get the site ID automatically and use it for routing decision - same logic as PdbxMessageIo
-        site_id = getSiteId()
-        self.__legacycomm = not ConfigInfoAppMessaging(site_id).get_msgdb_support()
+    def __init__(self, filePath, timeoutSeconds=15, retrySeconds=.2, verbose=False, log=sys.stderr, site_id=None):
+        # Use provided site_id or auto-detect - consistent with PdbxMessageIo
+        actual_site_id = site_id if site_id is not None else getSiteId()
+        self.__legacycomm = not ConfigInfoAppMessaging(actual_site_id).get_msgdb_support()
             
         if self.__legacycomm:
             self.__limpl = LockFileLegacy(filePath, timeoutSeconds, retrySeconds, verbose, log)
