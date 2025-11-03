@@ -26,7 +26,7 @@ import logging
 import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 # from mmcif_utils.persist.LockFile import LockFile
-from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo
+from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo, getSiteId
 from wwpdb.io.locator.PathInfo import PathInfo
 from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
@@ -68,13 +68,37 @@ class ExtractMessage(object):
                 return None
         else:
             logger.info("look for message file for %s in the archive", depid)
-            # Use database-aware routing wrapper that selects between db and file implementations
-            mdi = MessagingDataImport(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
-            filepath_msg = mdi.getFilePath(depid, contentType=contentType, formatType="pdbx", fileSource="archive", versionId="1")
             
-            if not filepath_msg:
-                logger.warning("cannot find message file for %s", depid)
-                return None
+            # Create minimal request object for MessagingDataRouter
+            class SimpleReqObj:
+                def __init__(self, site_id, identifier, instance="P1"):
+                    self._site_id = site_id
+                    self._identifier = identifier 
+                    self._instance = instance
+                    
+                def getValue(self, key):
+                    if key == "WWPDB_SITE_ID":
+                        return self._site_id
+                    elif key == "identifier":
+                        return self._identifier
+                    elif key == "instance":
+                        return self._instance
+                    return None
+                    
+                def getSessionObj(self):
+                    return None
+            
+            # Get actual site ID
+            actual_site_id = self.__siteId if self.__siteId is not None else getSiteId()
+            
+            # Create request object and use MessagingDataRouter
+            req_obj = SimpleReqObj(actual_site_id, depid)
+            msgDI = MessagingDataImport(req_obj, verbose=self.__verbose, log=self.__log)
+            filepath_msg = msgDI.getFilePath(contentType=contentType, format="pdbx")
+            
+            if filepath_msg and not os.path.exists(filepath_msg):
+                    logger.warning("cannot find message file for %s", depid)
+                    return None
 
         return filepath_msg
 
