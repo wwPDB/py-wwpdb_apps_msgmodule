@@ -42,16 +42,21 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # Default dataset id (override with WWPDB_TEST_DEP_ID)
         cls.dep_id = os.getenv("WWPDB_TEST_DEP_ID", "D_1000000001")
 
-        print(f"\n🏗️  Test Configuration:")
+        print("\n🏗️  Test Configuration:")
         print(f"   Site ID: {cls.site_id}")
         print(f"   Dataset ID: {cls.dep_id}")
 
     # ---- Minimal session/request shims ----
 
     class _Sess:
-        def getId(self): return "persist_test_session"
-        def getPath(self): return "/tmp/persist_test_session"
-        def getRelativePath(self): return "persist_test_session"
+        def getId(self):
+            return "persist_test_session"
+
+        def getPath(self):
+            return "/tmp/persist_test_session"
+
+        def getRelativePath(self):
+            return "persist_test_session"
 
     class _Req:
         def __init__(
@@ -86,12 +91,23 @@ class TestMessagingIoPersistence(unittest.TestCase):
             if extra:
                 self._vals.update(extra)
 
-        def getValue(self, k): return self._vals.get(k, "")
-        def getRawValue(self, k): return self._vals.get(k, "")
-        def getValueList(self, k): return []  # pylint: disable=unused-argument
-        def setValue(self, k, v): self._vals[k] = v
-        def newSessionObj(self): return TestMessagingIoPersistence._Sess()  # pylint: disable=protected-access
-        def getSessionObj(self): return TestMessagingIoPersistence._Sess()  # pylint: disable=protected-access
+        def getValue(self, k):
+            return self._vals.get(k, "")
+
+        def getRawValue(self, k):
+            return self._vals.get(k, "")
+
+        def getValueList(self, k):  # pylint: disable=unused-argument
+            return []
+
+        def setValue(self, k, v):
+            self._vals[k] = v
+
+        def newSessionObj(self):
+            return TestMessagingIoPersistence._Sess()  # pylint: disable=protected-access
+
+        def getSessionObj(self):
+            return TestMessagingIoPersistence._Sess()  # pylint: disable=protected-access
 
     # ---- Helper methods ----
 
@@ -111,12 +127,12 @@ class TestMessagingIoPersistence(unittest.TestCase):
         io = self._new_io(content_type="msgs")  # Use "msgs" content_type for reading
         # Get all messages for this dataset
         result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
-        
+
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])
         else:
             records = result if isinstance(result, list) else []
-        
+
         # Find our message in the records
         for record in records:
             if isinstance(record, dict) and record.get("message_id") == message_id:
@@ -129,17 +145,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
     def _verify_message_status_via_api(self, message_id):
         """Verify message status using MessagingIo API."""
         io = self._new_io()
-        
+
         # Check different status flags
         all_read = io.areAllMsgsRead()
         all_actioned = io.areAllMsgsActioned()
         any_release = io.anyReleaseFlags()
-        
+
         # Get message lists to check if our message appears in filtered lists
         read_list = io.getMsgReadList(self.dep_id)
         no_action_list = io.getMsgNoActionReqdList(self.dep_id)
         release_list = io.getMsgForReleaseList(self.dep_id)
-        
+
         return {
             "all_read": all_read,
             "all_actioned": all_actioned,
@@ -152,17 +168,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
     def _get_recent_messages_via_api(self):
         """Get recent messages using MessagingIo API."""
         io = self._new_io(content_type="msgs")  # Use "msgs" content_type for reading
-        
+
         # Get all messages for this dataset
         result = io.getMsgRowList(p_depDataSetId=self.dep_id, p_colSearchDict={})
-        
+
         if isinstance(result, dict):
             records = result.get("RECORD_LIST", [])
             total = result.get("TOTAL_RECORDS", len(records))
         else:
             records = result if isinstance(result, list) else []
             total = len(records)
-        
+
         # Filter for test messages based on sender or subject
         test_messages = []
         for record in records:
@@ -175,11 +191,11 @@ class TestMessagingIoPersistence(unittest.TestCase):
                 subject = record[8] if len(record) > 8 else ""
             else:
                 continue
-                
+
             if any(test_word in sender.lower() for test_word in ["test", "persist", "cycle", "status"]) or \
                any(test_word in subject.upper() for test_word in ["TEST", "PERSIST", "CYCLE"]):
                 test_messages.append(record)
-        
+
         return {
             "total_messages": total,
             "test_messages": test_messages,
@@ -190,11 +206,11 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
     def test_write_message_and_verify_via_getMsg(self):
         """Write a message and verify getMsg API behavior (typically returns empty dict)."""
-        print(f"\n📝 Testing message persistence and getMsg API behavior...")
-        
+        print("\n📝 Testing message persistence and getMsg API behavior...")
+
         subject = "GET_MSG VERIFICATION TEST"
         body = f"Message created at {datetime.utcnow().isoformat()}Z for getMsg testing"
-        
+
         print(f"   Subject: {subject}")
 
         # Create and process message
@@ -211,34 +227,34 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
 
         self.assertTrue(write_ok, "Message should be written successfully")
-        print(f"   ✅ Message written successfully")
-        
+        print("   ✅ Message written successfully")
+
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
 
         # Test getMsg API behavior - typically returns empty dict for new messages
         api_result = self._verify_message_via_api(message_id)
-        self.assertIsNotNone(api_result, f"getMsg should return a response (even if empty)")
-        
+        self.assertIsNotNone(api_result, "getMsg should return a response (even if empty)")
+
         if api_result == {}:
-            print(f"   ✅ getMsg returned empty dict (normal behavior)")
+            print("   ✅ getMsg returned empty dict (normal behavior)")
         else:
-            print(f"   ✅ getMsg returned populated data (rare but valid)")
+            print("   ✅ getMsg returned populated data (rare but valid)")
             # If it does return data, verify content integrity
             self.assertEqual(api_result.get("message_id"), message_id)
             self.assertEqual(api_result.get("deposition_data_set_id"), self.dep_id)
             self.assertEqual(api_result.get("message_subject"), subject)
-            
-        print(f"   ✅ getMsg API behavior verified")
+
+        print("   ✅ getMsg API behavior verified")
 
     def test_write_message_and_verify_via_list(self):
         """Write a message and verify persistence via available listing APIs."""
-        print(f"\n📝 Testing message persistence via available listing APIs...")
-        
+        print("\n📝 Testing message persistence via available listing APIs...")
+
         subject = "MESSAGE_LIST VERIFICATION TEST"
         body = f"Message created at {datetime.utcnow().isoformat()}Z for list testing"
-        
+
         print(f"   Subject: {subject}")
 
         # Create and process message
@@ -255,8 +271,8 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
 
         self.assertTrue(write_ok, "Message should be written successfully")
-        print(f"   ✅ Message written successfully")
-        
+        print("   ✅ Message written successfully")
+
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
@@ -264,49 +280,49 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # Try multiple ways to verify message persistence
         # Method 1: Try standard message list
         found_in_list = self._find_message_in_list(message_id)
-        
+
         # Method 2: Try getting recent messages
         recent_messages = self._get_recent_messages_via_api()
         found_in_recent = any(
-            record.get("message_id") == message_id if isinstance(record, dict) else 
+            record.get("message_id") == message_id if isinstance(record, dict) else
             (record[1] == message_id if isinstance(record, list) and len(record) > 1 else False)
             for record in recent_messages.get("all_records", [])
         )
-        
+
         # Message should be found by at least one method
         if found_in_list:
-            print(f"   ✅ Message found in standard message list")
+            print("   ✅ Message found in standard message list")
         elif found_in_recent:
-            print(f"   ✅ Message found in recent messages list")
+            print("   ✅ Message found in recent messages list")
         else:
             # As a last resort, just verify that the message was written successfully
             # The write operation succeeded, so persistence is confirmed at that level
             print("   ⚠️  Message not immediately visible in lists, but write succeeded")
-            print(f"   ✅ Persistence verified via successful write operation")
-            
+            print("   ✅ Persistence verified via successful write operation")
+
         # This test passes if the message was written successfully
         # List visibility may be subject to timing, filtering, or other factors
         self.assertTrue(True, "Message persistence verified")  # pylint: disable=redundant-unittest-assert
 
     def test_handle_getMsg_empty_response(self):
         """Test behavior when getMsg returns empty dict for non-existent message."""
-        print(f"\n📝 Testing getMsg empty response handling...")
-        
+        print("\n📝 Testing getMsg empty response handling...")
+
         # Test with definitely non-existent message ID
         non_existent_id = "DEFINITELY_NON_EXISTENT_MESSAGE_12345"
-        
+
         io = self._new_io()
         api_result = io.getMsg(p_msgId=non_existent_id, p_depId=self.dep_id)
-        
+
         # getMsg should return empty dict or None for non-existent messages
-        self.assertTrue(api_result == {} or api_result is None, 
-                       f"getMsg should return empty dict or None for non-existent message, got: {type(api_result)}")
+        self.assertTrue(api_result == {} or api_result is None,
+                        f"getMsg should return empty dict or None for non-existent message, got: {type(api_result)}")
         print(f"   ✅ getMsg correctly returned {type(api_result)} for non-existent message")
 
     def test_write_status_and_verify_persistence(self):
         """Write message status changes and verify they're persisted via API."""
-        print(f"\n📊 Testing message status persistence...")
-        
+        print("\n📊 Testing message status persistence...")
+
         subject = "STATUS PERSISTENCE TEST"
         body = f"Message for status persistence testing: {datetime.utcnow().isoformat()}Z"
 
@@ -352,7 +368,7 @@ class TestMessagingIoPersistence(unittest.TestCase):
 
         # Verify status changes via API
         status_info = self._verify_message_status_via_api(message_id)
-        print(f"   📊 Status verification via API:")
+        print("   📊 Status verification via API:")
         print(f"      All messages read: {status_info['all_read']}")
         print(f"      All messages actioned: {status_info['all_actioned']}")
         print(f"      Any release flags: {status_info['any_release']}")
@@ -364,52 +380,52 @@ class TestMessagingIoPersistence(unittest.TestCase):
         self.assertIsInstance(status_info['all_read'], bool)
         self.assertIsInstance(status_info['all_actioned'], bool)
         self.assertIsInstance(status_info['any_release'], bool)
-        
+
         # More specific assertions - verify the message appears in expected lists
         # After marking as read, it should appear in the read list
-        self.assertTrue(status_info['in_read_list'], 
-                       f"Message {message_id} should appear in read list after being marked as read")
-        
+        self.assertTrue(status_info['in_read_list'],
+                        f"Message {message_id} should appear in read list after being marked as read")
+
         # Verify that the tagMsg operation succeeded this time
-        self.assertTrue(tag_result, f"tagMsg operation should succeed when all required fields are provided")
-        
+        self.assertTrue(tag_result, "tagMsg operation should succeed when all required fields are provided")
+
         # NOTE: We cannot reliably test the no-action list behavior because:
         # The getMsgNoActionReqdList method has special logic that includes ALL annotator messages
         # in the no-action list regardless of their action_reqd status, to prevent To-Do icons
         # from appearing on annotator messages in the UI.
-        
-        print(f"   ✅ Status persistence verified: message correctly appears in read list and tagMsg succeeded")
+
+        print("   ✅ Status persistence verified: message correctly appears in read list and tagMsg succeeded")
 
     def test_list_recent_test_messages(self):
         """List all recent test messages to verify persistence via API."""
-        print(f"\n📋 Listing recent test messages via API...")
-        
+        print("\n📋 Listing recent test messages via API...")
+
         message_data = self._get_recent_messages_via_api()
-        
+
         print(f"   Total messages for dataset {self.dep_id}: {message_data['total_messages']}")
         print(f"   Test messages found: {len(message_data['test_messages'])}")
-        
+
         for i, msg in enumerate(message_data['test_messages'][:5]):  # Show first 5
             if isinstance(msg, dict):
                 print(f"      {i+1}. {msg.get('message_id')} | {msg.get('sender')} | {msg.get('message_subject')}")
             elif isinstance(msg, list) and len(msg) >= 4:
                 print(f"      {i+1}. {msg[1]} | {msg[3]} | {msg[2]}")  # message_id, sender, subject
-        
+
         if len(message_data['test_messages']) > 5:
             print(f"      ... and {len(message_data['test_messages']) - 5} more")
-        
+
         # Verify we can process the data structure
         self.assertIsInstance(message_data['total_messages'], int)
         self.assertIsInstance(message_data['test_messages'], list)
         self.assertIsInstance(message_data['all_records'], list)
-        
+
         if message_data['total_messages'] > 0:
             self.assertGreater(len(message_data['all_records']), 0, "Should have records if total > 0")
 
     def test_comprehensive_read_write_cycle_success_path(self):
         """Test complete end-to-end cycle expecting successful getMsg retrieval."""
-        print(f"\n🔄 Comprehensive cycle test - success path...")
-        
+        print("\n🔄 Comprehensive cycle test - success path...")
+
         subject = "COMPREHENSIVE SUCCESS TEST"
         body = f"Success path test message created at {datetime.utcnow().isoformat()}Z"
 
@@ -426,8 +442,8 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_res = io.processMsg(msg_obj)
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
         self.assertTrue(write_ok)
-        print(f"   ✅ Step 1: Message written")
-        
+        print("   ✅ Step 1: Message written")
+
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
@@ -435,17 +451,17 @@ class TestMessagingIoPersistence(unittest.TestCase):
         # Read back via getMsg API - expect typical behavior (empty dict)
         api_result = self._verify_message_via_api(message_id)
         self.assertIsNotNone(api_result, "getMsg should return a response")
-        
+
         if api_result == {}:
-            print(f"   ✅ Step 2: getMsg returned empty dict (normal behavior)")
+            print("   ✅ Step 2: getMsg returned empty dict (normal behavior)")
         else:
-            print(f"   ✅ Step 2: getMsg returned populated data (rare but valid)")
-            # If it does return data, verify content integrity 
+            print("   ✅ Step 2: getMsg returned populated data (rare but valid)")
+            # If it does return data, verify content integrity
             self.assertEqual(api_result.get('message_subject'), subject, "Subject should match")
             self.assertEqual(api_result.get('message_id'), message_id, "Message ID should match")
             self.assertEqual(api_result.get('sender'), "success@test.com", "Sender should match")
             self.assertEqual(api_result.get('deposition_data_set_id'), self.dep_id, "Dataset ID should match")
-        
+
         # Test status operations (these should work regardless of getMsg behavior)
         status_dict = {
             "deposition_data_set_id": self.dep_id,
@@ -454,14 +470,14 @@ class TestMessagingIoPersistence(unittest.TestCase):
         }
         read_result = io.markMsgAsRead(p_msgStatusDict=status_dict)
         self.assertIsInstance(read_result, bool, "markMsgAsRead should return boolean")
-        print(f"   ✅ Step 3: Status operations tested")
+        print("   ✅ Step 3: Status operations tested")
 
-        print(f"\n🎯 COMPREHENSIVE VERIFICATION COMPLETE")
+        print("\n🎯 COMPREHENSIVE VERIFICATION COMPLETE")
 
     def test_comprehensive_read_write_cycle_fallback_path(self):
         """Test complete end-to-end cycle with realistic getMsg expectations."""
-        print(f"\n🔄 Comprehensive cycle test - fallback path...")
-        
+        print("\n🔄 Comprehensive cycle test - fallback path...")
+
         subject = "COMPREHENSIVE FALLBACK TEST"
         body = f"Fallback path test message created at {datetime.utcnow().isoformat()}Z"
 
@@ -478,25 +494,25 @@ class TestMessagingIoPersistence(unittest.TestCase):
         write_res = io.processMsg(msg_obj)
         write_ok = write_res[0] if isinstance(write_res, tuple) else bool(write_res)
         self.assertTrue(write_ok)
-        print(f"   ✅ Step 1: Message written")
-        
+        print("   ✅ Step 1: Message written")
+
         message_id = msg_obj.messageId
         self.assertIsNotNone(message_id, "Message should have an ID")
         print(f"   🆔 Message ID: {message_id}")
 
         # Read back via getMsg API
         api_result = self._verify_message_via_api(message_id)
-        
+
         # Since getMsg typically returns empty dict, treat this as the normal case
         if api_result == {}:
-            print(f"   ✅ Step 2: getMsg returned empty dict (expected behavior)")
+            print("   ✅ Step 2: getMsg returned empty dict (expected behavior)")
         else:
-            print(f"   ✅ Step 2: getMsg returned populated data (rare but valid)")
-            
-        # Test that message persistence was successful via write operation
-        print(f"   ✅ Step 3: Message persistence verified via successful write")
+            print("   ✅ Step 2: getMsg returned populated data (rare but valid)")
 
-        print(f"\n🎯 FALLBACK PATH VERIFICATION COMPLETE")
+        # Test that message persistence was successful via write operation
+        print("   ✅ Step 3: Message persistence verified via successful write")
+
+        print("\n🎯 FALLBACK PATH VERIFICATION COMPLETE")
 
 
 if __name__ == "__main__":

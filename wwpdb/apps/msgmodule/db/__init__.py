@@ -39,7 +39,7 @@ __all__ = [
     # SQLAlchemy Models
     "Base",
     "MessageInfo",
-    "MessageFileReference", 
+    "MessageFileReference",
     "MessageStatus",
     # Database Services
     "DataAccessLayer",

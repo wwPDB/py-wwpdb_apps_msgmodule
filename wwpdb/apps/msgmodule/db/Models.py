@@ -24,10 +24,10 @@ Base = declarative_base()
 
 class MessageInfo(Base):
     """SQLAlchemy model mapping to _pdbx_deposition_message_info mmCIF category.
-    
+
     Represents the core message data including content, metadata, and relationships.
     Each message has a unique message_id and belongs to a specific deposition.
-    
+
     Attributes:
         ordinal_id (BigInteger): Auto-incrementing primary key
         message_id (String): Unique message identifier (indexed, unique)
@@ -47,16 +47,16 @@ class MessageInfo(Base):
             - 'notes-from-annotator': Internal annotator notes
         created_at (DateTime): Record creation timestamp (indexed)
         updated_at (DateTime): Record last update timestamp
-    
+
     Relationships:
         status: One-to-one relationship with MessageStatus
         file_references: One-to-many relationship with MessageFileReference
-    
+
     Table:
         pdbx_deposition_message_info
     """
     __tablename__ = 'pdbx_deposition_message_info'
-    
+
     # Database columns - exactly matching mmCIF attributes
     ordinal_id = Column(BigInteger, primary_key=True, autoincrement=True)
     message_id = Column(String(64), unique=True, nullable=False, index=True)
@@ -73,7 +73,7 @@ class MessageInfo(Base):
     content_type = Column(Enum('messages-to-depositor', 'messages-from-depositor', 'notes-from-annotator', name='content_type_enum'), nullable=False, index=True)
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp(), index=True)
     updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
-    
+
     # Relationships
     status = relationship("MessageStatus", back_populates="message", uselist=False, cascade="all, delete-orphan")
     file_references = relationship("MessageFileReference", back_populates="message", cascade="all, delete-orphan")
@@ -81,11 +81,11 @@ class MessageInfo(Base):
 
 class MessageFileReference(Base):
     """SQLAlchemy model mapping to _pdbx_deposition_message_file_reference mmCIF category.
-    
+
     Stores metadata about file attachments referenced in messages. This table
     controls the attachment download links displayed to depositors and ensures
     a complete audit trail of what files were sent and when.
-    
+
     Attributes:
         ordinal_id (BigInteger): Auto-incrementing primary key
         message_id (String): ID of parent message (indexed, FK to MessageInfo)
@@ -97,19 +97,19 @@ class MessageFileReference(Base):
         storage_type (String): Storage location type (indexed, default: 'archive')
         upload_file_name (String): Original uploaded filename
         created_at (DateTime): Record creation timestamp
-    
+
     Relationships:
         message: Many-to-one relationship with MessageInfo
-    
+
     Constraints:
         Unique constraint on (message_id, content_type, version_id, partition_number)
         to ensure idempotent inserts
-    
+
     Table:
         pdbx_deposition_message_file_reference
     """
     __tablename__ = 'pdbx_deposition_message_file_reference'
-    
+
     # Database columns - exactly matching mmCIF attributes
     ordinal_id = Column(BigInteger, primary_key=True, autoincrement=True)
     message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), nullable=False, index=True)
@@ -121,23 +121,23 @@ class MessageFileReference(Base):
     storage_type = Column(String(20), nullable=True, default='archive', index=True)
     upload_file_name = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
-    
+
     # Add unique constraint to ensure idempotent inserts
     __table_args__ = (
-        UniqueConstraint('message_id', 'content_type', 'version_id', 'partition_number', 
-                        name='uq_file_ref_message_content_version_partition'),
+        UniqueConstraint('message_id', 'content_type', 'version_id', 'partition_number',
+                         name='uq_file_ref_message_content_version_partition'),
     )
-    
+
     # Relationships
     message = relationship("MessageInfo", back_populates="file_references")
 
 
 class MessageStatus(Base):
     """SQLAlchemy model mapping to _pdbx_deposition_message_status mmCIF category.
-    
+
     Tracks the lifecycle status of messages including read state, action requirements,
     and release flags. One status record per message.
-    
+
     Attributes:
         message_id (String): Message identifier (primary key, FK to MessageInfo)
         deposition_data_set_id (String): Deposition ID (indexed)
@@ -152,15 +152,15 @@ class MessageStatus(Base):
             - 'N': Not for release (default)
         created_at (DateTime): Record creation timestamp
         updated_at (DateTime): Record last update timestamp
-    
+
     Relationships:
         message: One-to-one relationship with MessageInfo
-    
+
     Table:
         pdbx_deposition_message_status
     """
     __tablename__ = 'pdbx_deposition_message_status'
-    
+
     # Database columns - exactly matching mmCIF attributes
     message_id = Column(String(64), ForeignKey('pdbx_deposition_message_info.message_id'), primary_key=True)
     deposition_data_set_id = Column(String(50), nullable=False, index=True)
@@ -169,6 +169,6 @@ class MessageStatus(Base):
     for_release = Column(CHAR(1), nullable=True, default='N', index=True)
     created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
     updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
-    
+
     # Relationships
     message = relationship("MessageInfo", back_populates="status")

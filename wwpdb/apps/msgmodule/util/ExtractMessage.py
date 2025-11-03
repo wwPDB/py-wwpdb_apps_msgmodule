@@ -27,7 +27,7 @@ import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 # from mmcif_utils.persist.LockFile import LockFile
 from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo, getSiteId
-from wwpdb.io.locator.PathInfo import PathInfo
+# from wwpdb.io.locator.PathInfo import PathInfo
 from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 # from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
@@ -42,7 +42,7 @@ class ExtractMessage(object):
         self.__siteId = siteId
         self.__verbose = verbose
         self.__log = log
-        self.__pI = PathInfo(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
+        # self.__pI = PathInfo(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
         # Parameters to tune lock file management --
         self.__timeoutSeconds = 10
         self.__retrySeconds = 0.2
@@ -62,20 +62,20 @@ class ExtractMessage(object):
             logger.info("look for message file for %s in author-provided folder %s", depid, test_folder)
             filename_msg = depid + '_' + contentType + '_P1.cif.V1'
             filepath_msg = os.path.join(test_folder, filename_msg)
-            
+
             if not os.path.exists(filepath_msg):
                 logger.warning("cannot find message file for %s", depid)
                 return None
         else:
             logger.info("look for message file for %s in the archive", depid)
-            
+
             # Create minimal request object for MessagingDataRouter
             class SimpleReqObj:
                 def __init__(self, site_id, identifier, instance="P1"):
                     self._site_id = site_id
-                    self._identifier = identifier 
+                    self._identifier = identifier
                     self._instance = instance
-                    
+
                 def getValue(self, key):
                     if key == "WWPDB_SITE_ID":
                         return self._site_id
@@ -84,18 +84,18 @@ class ExtractMessage(object):
                     elif key == "instance":
                         return self._instance
                     return None
-                    
+
                 def getSessionObj(self):
                     return None
-            
+
             # Get actual site ID
             actual_site_id = self.__siteId if self.__siteId is not None else getSiteId()
-            
+
             # Create request object and use MessagingDataRouter
             req_obj = SimpleReqObj(actual_site_id, depid)
             msgDI = MessagingDataImport(req_obj, verbose=self.__verbose, log=self.__log)
             filepath_msg = msgDI.getFilePath(contentType=contentType, format="pdbx")
-            
+
             # Don't check file existence - PdbxMessageIo handles database vs file mode automatically
 
         return filepath_msg
@@ -129,23 +129,23 @@ class ExtractMessage(object):
                             class SimpleContainer:
                                 def __init__(self, data):
                                     self._data = data
-                                
+
                                 def getObj(self, category_name):
                                     if category_name == "pdbx_deposition_message_info":
                                         return SimpleCategory(self._data)
                                     return None
-                            
+
                             class SimpleCategory:
                                 def __init__(self, messages):
                                     self._messages = messages
                                     self._attributes = list(messages[0].keys()) if messages else []
-                                
+
                                 def getItemNameList(self):
                                     return [f"_pdbx_deposition_message_info.{attr}" for attr in self._attributes]
-                                
+
                                 def getRowList(self):
                                     return [[str(msg.get(attr, "")) for attr in self._attributes] for msg in self._messages]
-                            
+
                             container = SimpleContainer(messages)
                             self.__lc = [container]
                         else:

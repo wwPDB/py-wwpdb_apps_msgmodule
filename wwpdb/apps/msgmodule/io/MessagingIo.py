@@ -5236,4 +5236,3 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
         if self.__verbose:
             logger.info("following email address found to be invalid: %s\n", email)
         return False
-

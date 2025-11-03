@@ -89,7 +89,7 @@ class PdbxMessageIo:
 
     def close(self):
         return self.__impl.close()
-    
+
 
 class LockFile(object):
     """ A simple wrapper for file locking
@@ -100,13 +100,13 @@ class LockFile(object):
         actual_site_id = site_id if site_id is not None else getSiteId()
         msgdb_support = ConfigInfoAppMessaging(actual_site_id).get_msgdb_support()
         self.__legacycomm = not msgdb_support
-        
+
         # Debug logging to understand routing decisions
         if verbose:
             log.write(f"LockFile: Using site_id: '{actual_site_id}'\n")
             log.write(f"LockFile: msgdb_support={msgdb_support}, legacycomm={self.__legacycomm}\n")
             log.write(f"LockFile: Will use {'Legacy' if self.__legacycomm else 'Database'} implementation\n")
-            
+
         if self.__legacycomm:
             self.__limpl = LockFileLegacy(filePath, timeoutSeconds, retrySeconds, verbose, log)
         else:
