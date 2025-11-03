@@ -17,12 +17,11 @@ import tempfile
 import shutil
 from pathlib import Path
 from datetime import datetime
-import time
 
 if __package__ is None or __package__ == "":
     from os import path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT
+    from commonsetup import TESTOUTPUT  # pylint: disable=import-error,unused-import
 else:
     from .commonsetup import TESTOUTPUT
 
@@ -112,7 +111,7 @@ class TestDbToCifExporter(unittest.TestCase):
             def getRawValue(self, key):
                 return self._values.get(key, '')
             
-            def getValueList(self, key):
+            def getValueList(self, key):  # pylint: disable=unused-argument
                 return []
             
             def newSessionObj(self):
@@ -147,7 +146,7 @@ class TestDbToCifExporter(unittest.TestCase):
         
         success = result[0] if isinstance(result, tuple) else bool(result)
         if not success:
-            raise Exception(f"Failed to create test message: {result}")
+            raise Exception(f"Failed to create test message: {result}")  # pylint: disable=broad-exception-raised
         
         return msg_obj.messageId, subject, body, sender
 
@@ -161,7 +160,7 @@ class TestDbToCifExporter(unittest.TestCase):
         
         # Parse with gemmi to validate structure
         try:
-            doc = gemmi.cif.read_file(file_path)
+            doc = gemmi.cif.read_file(file_path)  # pylint: disable=no-member
             self.assertGreater(len(doc), 0, "CIF document should have blocks")
             
             block = doc[0]  # First block should be 'messages'
@@ -272,7 +271,7 @@ class TestDbToCifExporter(unittest.TestCase):
         """Test exporting a single deposition to a custom output directory"""
         # Create a test message first
         try:
-            msg_id, subject, body, sender = self._create_test_message("SINGLE_EXPORT")
+            msg_id, _subject, _body, _sender = self._create_test_message("SINGLE_EXPORT")
             print(f"   📝 Created test message: {msg_id}")
         except Exception as e:
             self.skipTest(f"Could not create test message: {e}")
@@ -307,7 +306,7 @@ class TestDbToCifExporter(unittest.TestCase):
                     found_message = True
                     print(f"       ✅ Found test message {msg_id} in this file")
                 else:
-                    print(f"       ℹ️  Test message not in this file (checking others...)")
+                    print("       ℹ️  Test message not in this file (checking others...)")
             
             # Ensure we found our test message in at least one file
             self.assertTrue(found_message, f"Test message {msg_id} should be found in at least one exported CIF file")
@@ -332,7 +331,7 @@ class TestDbToCifExporter(unittest.TestCase):
             
             if test_file.exists():
                 # Modify the file to test overwrite protection
-                original_size = test_file.stat().st_size
+                _original_size = test_file.stat().st_size
                 with open(test_file, 'a') as f:
                     f.write("# Modified for overwrite test\n")
                 modified_size = test_file.stat().st_size
@@ -430,7 +429,7 @@ class TestDbToCifExporter(unittest.TestCase):
             try:
                 msg_id1, _, _, _ = self._create_test_message("BULK_1")
                 print(f"   📝 Created test message 1: {msg_id1}")
-            except:
+            except:  # pylint: disable=bare-except
                 print("   ⚠️  Could not create test messages, using existing data")
             
             exporter = DbToCifExporter(self.site_id)
@@ -457,7 +456,7 @@ class TestDbToCifExporter(unittest.TestCase):
         """Test that exported CIF files can be read back and parsed correctly"""
         try:
             # Create a test message with special characters
-            msg_id, subject, body, sender = self._create_test_message("ROUND_TRIP")
+            msg_id, _subject, _body, _sender = self._create_test_message("ROUND_TRIP")
             print(f"   📝 Created test message with special chars: {msg_id}")
         except Exception as e:
             self.skipTest(f"Could not create test message: {e}")
@@ -478,7 +477,7 @@ class TestDbToCifExporter(unittest.TestCase):
                 print(f"   🔄 Testing round-trip for: {cif_file.name}")
                 
                 # Parse with gemmi
-                doc = gemmi.cif.read_file(str(cif_file))
+                doc = gemmi.cif.read_file(str(cif_file))  # pylint: disable=no-member
                 block = doc[0]
                 
                 # Extract message data
@@ -502,7 +501,7 @@ class TestDbToCifExporter(unittest.TestCase):
                         # Loop format
                         tags = item.loop.tags
                         if "_pdbx_deposition_message_info.message_id" in tags:
-                            msg_id_idx = tags.index("_pdbx_deposition_message_info.message_id")
+                            _msg_id_idx = tags.index("_pdbx_deposition_message_info.message_id")
                             # Iterate using loop indices (gemmi requires loop[row, col] access)
                             for row_idx in range(item.loop.length()):
                                 msg_data = {}
@@ -515,7 +514,7 @@ class TestDbToCifExporter(unittest.TestCase):
                 # Verify we found our message
                 found_our_message = any(msg.get("message_id") == msg_id for msg in messages_found)
                 if found_our_message:
-                    print(f"       ✅ Found our test message in parsed data")
+                    print("       ✅ Found our test message in parsed data")
                 else:
                     print(f"       ⚠️  Test message {msg_id} not found in parsed data")
                     print(f"       Found message IDs: {[msg.get('message_id') for msg in messages_found]}")
@@ -573,7 +572,7 @@ class TestDbToCifExporter(unittest.TestCase):
             
             if success:
                 # If export succeeded, we should have some activity
-                print(f"   📊 Export statistics:")
+                print("   📊 Export statistics:")
                 print(f"       Depositions processed: {final_stats.depositions_processed}")
                 print(f"       Files created: {final_stats.files_created}")
                 print(f"       Messages exported: {final_stats.messages_exported}")
@@ -620,7 +619,7 @@ class TestDumpScriptIntegration(unittest.TestCase):
         import subprocess
         
         try:
-            result = subprocess.run([
+            result = subprocess.run([  # pylint: disable=subprocess-run-check
                 sys.executable, self.script_path, "--help"
             ], capture_output=True, text=True, timeout=30)
             
@@ -641,7 +640,7 @@ class TestDumpScriptIntegration(unittest.TestCase):
         import subprocess
         
         try:
-            result = subprocess.run([
+            result = subprocess.run([  # pylint: disable=subprocess-run-check
                 sys.executable, self.script_path,
                 "--site-id", self.site_id,
                 "--deposition", self.dep_id,
@@ -649,7 +648,7 @@ class TestDumpScriptIntegration(unittest.TestCase):
                 "--overwrite"
             ], capture_output=True, text=True, timeout=60)
             
-            print(f"   📤 Script output:")
+            print("   📤 Script output:")
             if result.stdout:
                 print(f"       STDOUT: {result.stdout}")
             if result.stderr:

@@ -9,20 +9,20 @@ Run:
   export WWPDB_SITE_ID=PDBE_DEV
   python -m pytest wwpdb/apps/tests-msgmodule/test_RoundTripTests.py -v -s
 """
+# pylint: disable=f-string-without-interpolation
 import os
 import sys
 import unittest
 import tempfile
 import shutil
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict
 
 # Setup test path - follow same pattern as other test files
 if __package__ is None or __package__ == "":
     from os import path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT
+    from commonsetup import TESTOUTPUT  # pylint: disable=import-error,unused-import
 else:
     from .commonsetup import TESTOUTPUT
 
@@ -109,7 +109,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         Handles both loop format (multiple messages) and key-value format (single message).
         """
-        doc = gemmi.cif.read_file(file_path)
+        doc = gemmi.cif.read_file(file_path)  # pylint: disable=no-member,unused-import
         block = doc[0]
         
         result = {"messages": [], "file_refs": [], "statuses": []}
@@ -259,7 +259,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Import to database
         migrator = CifToDbMigrator(self.site_id)
-        success = migrator._migrate_file(input_file, "messages-to-depositor", dry_run=False)
+        success = migrator._migrate_file(input_file, "messages-to-depositor", dry_run=False)  # pylint: disable=protected-access
         self.assertTrue(success, "Migration to database should succeed")
         print(f"   ✅ Imported to database")
         
@@ -290,7 +290,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Compare original and exported with detailed validation
         original_data = self._parse_cif_file(input_file)
-        exported_data = self._parse_cif_file(output_file)
+        exported_data = self._parse_cif_file(output_file)  # pylint: disable=used-before-assignment
         
         self._validate_round_trip(original_data, exported_data, "messages-to-depositor")
 
@@ -314,7 +314,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Import and export
         migrator = CifToDbMigrator(self.site_id)
-        success = migrator._migrate_file(input_file, "messages-from-depositor", dry_run=False)
+        success = migrator._migrate_file(input_file, "messages-from-depositor", dry_run=False)  # pylint: disable=protected-access
         self.assertTrue(success, "Migration to database should succeed")
         print(f"   ✅ Imported to database")
         
@@ -344,7 +344,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Verify message count and data integrity
         original_data = self._parse_cif_file(input_file)
-        exported_data = self._parse_cif_file(output_file)
+        exported_data = self._parse_cif_file(output_file)  # pylint: disable=used-before-assignment
         
         self._validate_round_trip(original_data, exported_data, "messages-from-depositor")
 
@@ -368,7 +368,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Import and export
         migrator = CifToDbMigrator(self.site_id)
-        success = migrator._migrate_file(input_file, "notes-from-annotator", dry_run=False)
+        success = migrator._migrate_file(input_file, "notes-from-annotator", dry_run=False)  # pylint: disable=protected-access
         self.assertTrue(success, "Migration to database should succeed")
         print(f"   ✅ Imported to database")
         
@@ -403,7 +403,7 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Verify message count and data integrity
         original_data = self._parse_cif_file(input_file)
-        exported_data = self._parse_cif_file(output_file)
+        exported_data = self._parse_cif_file(output_file)  # pylint: disable=possibly-used-before-assignment
         
         self._validate_round_trip(original_data, exported_data, "notes-from-annotator")
 
@@ -420,7 +420,6 @@ class TestCifDatabaseRoundTrip(unittest.TestCase):
         
         # Import database classes
         from wwpdb.apps.msgmodule.db import MessageInfo
-        from datetime import datetime
         import uuid
         
         # Create test deposition ID
@@ -513,7 +512,7 @@ Math: ∑ ∫ √ ∞
             
             # Step 4: Re-import from CIF
             print(f"   📥 Re-importing from CIF...")
-            import_success = migrator._migrate_file(
+            import_success = migrator._migrate_file(  # pylint: disable=protected-access
                 exported_cif, 
                 "messages-to-depositor", 
                 dry_run=False
@@ -569,7 +568,7 @@ Math: ∑ ∫ √ ∞
                 if test_msg:
                     session.delete(test_msg)
                     session.commit()
-            except:
+            except:  # pylint: disable=bare-except
                 pass
             session.close()
 

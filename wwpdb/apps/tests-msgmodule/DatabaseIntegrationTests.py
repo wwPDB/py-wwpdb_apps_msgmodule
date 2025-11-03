@@ -22,13 +22,12 @@ from datetime import datetime
 if __package__ is None or __package__ == "":
     from os import path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT, configInfo
+    from commonsetup import TESTOUTPUT, configInfo  # pylint: disable=import-error,unused-import
 else:
     from .commonsetup import TESTOUTPUT, configInfo
 
 # CRITICAL: Restore real ConfigInfo for database integration tests
 # The commonsetup.py mocks ConfigInfo, but we need the real one for database connectivity
-import importlib
 if 'wwpdb.utils.config.ConfigInfo' in sys.modules:
     # Remove the mock
     del sys.modules['wwpdb.utils.config.ConfigInfo']
@@ -86,7 +85,7 @@ class MockRequestObject:
     def getRawValue(self, key):
         return self._values.get(key, '')
         
-    def getValueList(self, key):
+    def getValueList(self, key):  # pylint: disable=unused-argument
         return []
     
     def newSessionObj(self):
@@ -748,7 +747,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
                 # Direct database verification as fallback
                 try:
                     from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
-                    from wwpdb.utils.config.ConfigInfo import ConfigInfo
+                    # from wwpdb.utils.config.ConfigInfo import ConfigInfo
                     
                     site_id = os.getenv("WWPDB_SITE_ID")
                     cI = ConfigInfo(site_id)
@@ -773,7 +772,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
                         else:
                             print(f"✗ Message {msg_id} not found in database either")
                             if write_success:
-                                self.fail(f"Write reported success but message not in database!")
+                                self.fail("Write reported success but message not in database!")
                             else:
                                 print("Write reported failure and message not in database - this is consistent")
                 except Exception as db_error:
@@ -888,7 +887,7 @@ class DatabaseIntegrationTests(unittest.TestCase):
         """Test to check if database tables exist and have the expected structure"""
         try:
             from wwpdb.apps.msgmodule.db.DataAccessLayer import DataAccessLayer
-            from wwpdb.utils.config.ConfigInfo import ConfigInfo
+            # from wwpdb.utils.config.ConfigInfo import ConfigInfo
             
             site_id = os.getenv("WWPDB_SITE_ID")
             cI = ConfigInfo(site_id)

@@ -1,8 +1,8 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from io import StringIO
 import sys
-import os
+import os  # pylint: disable=unused-import
 
 if __package__ is None or __package__ == "":
     from os import path
@@ -331,7 +331,7 @@ class TestMessagingIo(unittest.TestCase):
                            "Group ID should be retrievable after setting")
         elif hasattr(self.messaging_io, '_groupId'):
             # Check internal state if accessible
-            self.assertEqual(self.messaging_io._groupId, test_group_id,
+            self.assertEqual(self.messaging_io._groupId, test_group_id,  # pylint: disable=protected-access
                            "Group ID should be stored internally")
         else:
             # If we can't verify state, at least ensure method doesn't crash
@@ -487,7 +487,7 @@ class TestMessagingIo(unittest.TestCase):
 
     @patch.object(MessagingIo, "sendSingle", return_value=True)
     def test_sendSingle(self, mock_method):
-        ok = self.messaging_io.sendSingle(
+        ok = self.messaging_io.sendSingle(  # pylint: disable=no-value-for-parameter,unexpected-keyword-arg
             p_depDataSetId="D_000000",
             p_msgId="M123",
             p_sender="annotator",
