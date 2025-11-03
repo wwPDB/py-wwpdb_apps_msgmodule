@@ -96,9 +96,7 @@ class ExtractMessage(object):
             msgDI = MessagingDataImport(req_obj, verbose=self.__verbose, log=self.__log)
             filepath_msg = msgDI.getFilePath(contentType=contentType, format="pdbx")
             
-            if filepath_msg and not os.path.exists(filepath_msg):
-                    logger.warning("cannot find message file for %s", depid)
-                    return None
+            # Don't check file existence - PdbxMessageIo handles database vs file mode automatically
 
         return filepath_msg
 
