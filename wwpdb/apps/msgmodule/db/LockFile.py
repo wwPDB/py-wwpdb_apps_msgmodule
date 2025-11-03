@@ -65,7 +65,14 @@ class FileSizeLogger:
         # Check for common dummy path patterns
         dummy_indicators = ['/dummy/', '\\dummy\\', 'dummy/messaging', 'dummy\\messaging']
         
-        return any(indicator in normalized for indicator in dummy_indicators)
+        # Also treat message files as dummy when in database mode - they don't need filesystem locking
+        # since the data is read from/written to database instead of filesystem
+        message_file_patterns = ['_messages-', '_notes-']
+        
+        has_dummy_indicator = any(indicator in normalized for indicator in dummy_indicators)
+        is_message_file = any(pattern in normalized for pattern in message_file_patterns)
+        
+        return has_dummy_indicator or is_message_file
     
     def __enter__(self):
         """Enter context manager - log file size if not a dummy path.
@@ -198,7 +205,14 @@ class LockFile:
         # Check for common dummy path patterns
         dummy_indicators = ['/dummy/', '\\dummy\\', 'dummy/messaging', 'dummy\\messaging']
         
-        return any(indicator in normalized for indicator in dummy_indicators)
+        # Also treat message files as dummy when in database mode - they don't need filesystem locking
+        # since the data is read from/written to database instead of filesystem
+        message_file_patterns = ['_messages-', '_notes-']
+        
+        has_dummy_indicator = any(indicator in normalized for indicator in dummy_indicators)
+        is_message_file = any(pattern in normalized for pattern in message_file_patterns)
+        
+        return has_dummy_indicator or is_message_file
 
     def acquire(self):
         """Acquire the file lock (no-op for dummy paths).
