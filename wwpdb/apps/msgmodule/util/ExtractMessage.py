@@ -120,29 +120,37 @@ class ExtractMessage(object):
                     if ok:
                         # Store the messages data directly - no conversion needed
                         messages = pdbxMsgIo.getMessageInfo()
-                        if messages:
+                        messagesref = pdbxMsgIo.getFileReferenceInfo()
+                        if messages or messagesref:
                             # Create a simple container-like structure for compatibility
                             class SimpleContainer:
-                                def __init__(self, data):
+                                def __init__(self, data, refdata):
                                     self._data = data
+                                    self._refdata = refdata
 
                                 def getObj(self, category_name):
                                     if category_name == "pdbx_deposition_message_info":
                                         return SimpleCategory(self._data)
+                                    if category_name == "pdbx_deposition_message_file_reference":
+                                        return SimpleCategory(self._refdata, True)
                                     return None
 
                             class SimpleCategory:
-                                def __init__(self, messages):
+                                def __init__(self, messages, refcontainer=False):
                                     self._messages = messages
                                     self._attributes = list(messages[0].keys()) if messages else []
+                                    self._refcont = refcontainer
 
                                 def getItemNameList(self):
-                                    return [f"_pdbx_deposition_message_info.{attr}" for attr in self._attributes]
+                                    if self._refcont:
+                                        return [f"_pdbx_deposition_message_file_reference.{attr}" for attr in self._attributes]
+                                    else:
+                                        return [f"_pdbx_deposition_message_info.{attr}" for attr in self._attributes]
 
                                 def getRowList(self):
                                     return [[str(msg.get(attr, "")) for attr in self._attributes] for msg in self._messages]
 
-                            container = SimpleContainer(messages)
+                            container = SimpleContainer(messages, messagesref)
                             self.__lc = [container]
                         else:
                             self.__lc = []
