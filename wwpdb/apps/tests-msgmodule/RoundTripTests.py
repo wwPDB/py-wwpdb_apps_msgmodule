@@ -43,7 +43,7 @@ try:
         sys.path.insert(0, scripts_dir)
 
     import migrate_cif_to_db
-    import dump_db_to_cif
+    import wwpdb.apps.msgmodule.util.dump_db_to_cif
 
     CifToDbMigrator = migrate_cif_to_db.CifToDbMigrator
     DbToCifExporter = dump_db_to_cif.DbToCifExporter
