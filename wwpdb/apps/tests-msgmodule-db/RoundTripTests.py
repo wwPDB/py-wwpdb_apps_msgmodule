@@ -18,18 +18,6 @@ import shutil
 from datetime import datetime
 from typing import List, Dict
 
-# Setup test path - follow same pattern as other test files
-if __package__ is None or __package__ == "":
-    from os import path
-    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT  # pylint: disable=import-error,unused-import
-else:
-    from .commonsetup import TESTOUTPUT  # noqa: F401
-
-# Remove mock ConfigInfo to allow real database access
-if 'wwpdb.utils.config.ConfigInfo' in sys.modules:
-    del sys.modules['wwpdb.utils.config.ConfigInfo']
-
 try:
     import gemmi
 except ImportError:

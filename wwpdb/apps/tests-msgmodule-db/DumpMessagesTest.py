@@ -18,13 +18,6 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-if __package__ is None or __package__ == "":
-    from os import path
-    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT  # pylint: disable=import-error,unused-import
-else:
-    from .commonsetup import TESTOUTPUT  # noqa: F401
-
 # CRITICAL: Remove the mock ConfigInfo from commonsetup.py before importing anything
 # that needs real database configuration (like dump_db_to_cif which uses DataAccessLayer)
 if 'wwpdb.utils.config.ConfigInfo' in sys.modules:

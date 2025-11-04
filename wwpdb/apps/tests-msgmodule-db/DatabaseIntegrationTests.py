@@ -19,13 +19,6 @@ import unittest
 import os
 from datetime import datetime
 
-if __package__ is None or __package__ == "":
-    from os import path
-    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT, configInfo  # pylint: disable=import-error,unused-import
-else:
-    from .commonsetup import TESTOUTPUT, configInfo  # noqa: F401
-
 # CRITICAL: Restore real ConfigInfo for database integration tests
 # The commonsetup.py mocks ConfigInfo, but we need the real one for database connectivity
 if 'wwpdb.utils.config.ConfigInfo' in sys.modules:

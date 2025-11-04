@@ -4,13 +4,6 @@ from io import StringIO
 import sys
 import os  # noqa: F401 pylint: disable=unused-import  # Need for mock changes
 
-if __package__ is None or __package__ == "":
-    from os import path
-    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
-    from commonsetup import TESTOUTPUT  # noqa:  F401 pylint: disable=import-error,unused-import
-else:
-    from .commonsetup import TESTOUTPUT  # noqa: F401
-
 # Import the class to test
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
 
