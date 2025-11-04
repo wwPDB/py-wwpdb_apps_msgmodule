@@ -25,12 +25,14 @@ import datetime
 import logging
 import re
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppMessaging
 # from mmcif_utils.persist.LockFile import LockFile
 from wwpdb.apps.msgmodule.io.CompatIo import LockFile, PdbxMessageIo, getSiteId
 # from wwpdb.io.locator.PathInfo import PathInfo
 from wwpdb.apps.msgmodule.util.MessagingDataRouter import MessagingDataImport
 # from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 # from wwpdb.apps.msgmodule.db.PdbxMessageIo import PdbxMessageIo
+from wwpdb.utils.session.WebRequest import InputRequest
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,8 @@ class ExtractMessage(object):
         self.__siteId = siteId
         self.__verbose = verbose
         self.__log = log
+        self.__legacycomm = not ConfigInfoAppMessaging(siteId).get_msgdb_support()
+
         # self.__pI = PathInfo(siteId=self.__siteId, verbose=self.__verbose, log=self.__log)
         # Parameters to tune lock file management --
         self.__timeoutSeconds = 10
@@ -69,31 +73,23 @@ class ExtractMessage(object):
         else:
             logger.info("look for message file for %s in the archive", depid)
 
-            # Create minimal request object for MessagingDataRouter
-            class SimpleReqObj:
-                def __init__(self, site_id, identifier, instance="P1"):
-                    self._site_id = site_id
-                    self._identifier = identifier
-                    self._instance = instance
-
-                def getValue(self, key):
-                    if key == "WWPDB_SITE_ID":
-                        return self._site_id
-                    elif key == "identifier":
-                        return self._identifier
-                    elif key == "instance":
-                        return self._instance
-                    return None
-
-                def getSessionObj(self):
-                    return None
-
             # Get actual site ID
-            actual_site_id = self.__siteId if self.__siteId is not None else getSiteId()
+            siteId = self.__siteId if self.__siteId is not None else getSiteId()
 
             # Create request object and use MessagingDataRouter
-            req_obj = SimpleReqObj(actual_site_id, depid)
-            msgDI = MessagingDataImport(req_obj, verbose=self.__verbose, log=self.__log)
+            paramdict = {}  # {"TopSessionPath": [self.__topSessionDir]}
+            reqobj = InputRequest(paramdict, verbose=True)
+            reqobj.setValue("WWPDB_SITE_ID", siteId)
+            reqobj.setValue("identifier", depid)
+            reqobj.setValue("filesource", "archive")
+            reqobj.setValue("content_type", "msgs")
+            # These might not be necessary
+            if self.__legacycomm:
+                reqobj.setValue("instance", "")
+            else:
+                reqobj.setValue("instance", "P1")
+
+            msgDI = MessagingDataImport(reqobj, verbose=self.__verbose, log=self.__log)
             filepath_msg = msgDI.getFilePath(contentType=contentType, format="pdbx")
 
             # Don't check file existence - PdbxMessageIo handles database vs file mode automatically
