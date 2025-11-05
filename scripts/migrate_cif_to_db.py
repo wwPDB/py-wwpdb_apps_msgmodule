@@ -550,8 +550,14 @@ class CifToDbMigrator:
             logger.debug(f"No files found matching pattern: {search_pattern}")
             return None
             
+        # Filter out PREV files (backup/previous versions)
+        non_prev_files = [f for f in matching_files if "PREV" not in os.path.basename(f)]
+        if not non_prev_files:
+            logger.debug(f"No non-PREV files found for {deposition_id} {message_type}")
+            return None
+            
         # Return the latest version (highest V number)
-        latest_file = max(matching_files, key=lambda f: self._extract_version(f))
+        latest_file = max(non_prev_files, key=lambda f: self._extract_version(f))
         logger.debug(f"Found {message_type} file: {latest_file}")
         return latest_file
         
