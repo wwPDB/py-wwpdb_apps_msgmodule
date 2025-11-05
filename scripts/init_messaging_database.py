@@ -22,7 +22,7 @@ import os
 import sys
 import logging
 import argparse
-import mysql.connector
+import pymysql
 from datetime import datetime
 
 logging.basicConfig(
@@ -110,7 +110,7 @@ def create_database_if_not_exists(config):
         conn_config = config.copy()
         database_name = conn_config.pop("database")
 
-        connection = mysql.connector.connect(**conn_config)
+        connection = pymysql.connect(**conn_config)
         cursor = connection.cursor()
 
         # Create database if it doesn't exist
@@ -132,7 +132,7 @@ def drop_database_if_exists(config):
     try:
         conn_config = config.copy()
         database_name = conn_config.pop("database")
-        connection = mysql.connector.connect(**conn_config)
+        connection = pymysql.connect(**conn_config)
         cursor = connection.cursor()
         cursor.execute(f"DROP DATABASE IF EXISTS {database_name}")
         logger.info(f"Database '{database_name}' dropped (if it existed)")
@@ -236,7 +236,7 @@ def get_create_table_statements():
 def create_tables(config):
     """Create all messaging tables"""
     try:
-        connection = mysql.connector.connect(**config)
+        connection = pymysql.connect(**config)
         cursor = connection.cursor()
 
         statements = get_create_table_statements()
@@ -260,7 +260,7 @@ def create_tables(config):
 def verify_tables(config):
     """Verify that all tables were created correctly"""
     try:
-        connection = mysql.connector.connect(**config)
+        connection = pymysql.connect(**config)
         cursor = connection.cursor()
 
         # List expected tables - matching mmCIF category names

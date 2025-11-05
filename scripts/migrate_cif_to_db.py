@@ -25,8 +25,7 @@ except ImportError:
 from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 
 # Database imports - embed directly
-import mysql.connector
-from mysql.connector import pooling
+import pymysql
 import time
 
 # PathInfo for file location (optional)
@@ -203,7 +202,7 @@ class DatabaseConnection:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                self.connection = mysql.connector.connect(**self.db_config)
+                self.connection = pymysql.connect(**self.db_config)
                 logger.info("Database connection established")
                 return
             except Exception as e:
@@ -235,7 +234,7 @@ class DatabaseConnection:
                 cursor.close()
                 return result
                 
-            except mysql.connector.Error as e:
+            except Exception as e:
                 error_msg = str(e)
                 if "MySQL server has gone away" in error_msg or "Broken pipe" in error_msg:
                     if attempt < max_retries - 1:
