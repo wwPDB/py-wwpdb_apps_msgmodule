@@ -260,7 +260,7 @@ def get_database_config_from_args(args):
             "host": args.host,
             "port": args.port or 3306,
             "database": args.database,
-            "username": args.user,
+            "user": args.user,
             "password": args.password or "",
             "charset": "utf8mb4",
         }
@@ -420,7 +420,7 @@ class CifToDbMigrator:
             "host": host,
             "port": int(port),
             "database": database,
-            "username": user,
+            "user": user,
             "password": password,
             "charset": "utf8mb4",
         }
