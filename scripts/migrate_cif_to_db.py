@@ -279,9 +279,10 @@ def get_database_config_from_args(args):
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
-    def __init__(self, site_id: str = None, create_tables: bool = False, db_config: Dict = None):
+    def __init__(self, site_id: str = None, create_tables: bool = False, db_config: Dict = None, archive_directory: str = None):
         """Initialize migrator"""
         self.site_id = site_id
+        self.archive_directory = archive_directory
         
         if site_id and CONFIG_INFO_AVAILABLE:
             self.config_info = ConfigInfo(site_id)
@@ -515,23 +516,45 @@ class CifToDbMigrator:
 
 
     def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
-        """Get file path using PathInfo"""
-        if not self.path_info:
-            # Fallback: construct path manually if PathInfo not available
-            # This is a basic fallback - may need adjustment for specific sites
+        """Get file path using PathInfo or fallback to direct search"""
+        if self.path_info:
+            try:
+                return self.path_info.getFilePath(
+                    dataSetId=deposition_id,
+                    contentType=message_type,
+                    formatType="pdbx",
+                    fileSource="archive",
+                    versionId="latest",
+                )
+            except Exception as e:
+                logger.debug(f"PathInfo failed for {message_type} file for {deposition_id}: {e}")
+                
+        # Fallback: direct file search when PathInfo not available
+        deposition_dir = os.path.join(self.archive_directory, deposition_id)
+        if not os.path.exists(deposition_dir):
+            logger.debug(f"Deposition directory not found: {deposition_dir}")
             return None
             
-        try:
-            return self.path_info.getFilePath(
-                dataSetId=deposition_id,
-                contentType=message_type,
-                formatType="pdbx",
-                fileSource="archive",
-                versionId="latest",
-            )
-        except Exception as e:
-            logger.debug(f"No {message_type} file for {deposition_id}: {e}")
+        # Search for files matching the pattern
+        import glob
+        pattern = f"{deposition_id}_{message_type}_P1.cif.V*"
+        search_pattern = os.path.join(deposition_dir, pattern)
+        
+        matching_files = glob.glob(search_pattern)
+        if not matching_files:
+            logger.debug(f"No files found matching pattern: {search_pattern}")
             return None
+            
+        # Return the latest version (highest V number)
+        latest_file = max(matching_files, key=lambda f: self._extract_version(f))
+        logger.debug(f"Found {message_type} file: {latest_file}")
+        return latest_file
+        
+    def _extract_version(self, file_path: str) -> int:
+        """Extract version number from file path (e.g., V1, V2, etc.)"""
+        import re
+        match = re.search(r'\.V(\d+)(?:\.|$)', file_path)
+        return int(match.group(1)) if match else 0
 
     def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False, deferred_statuses: List = None) -> bool:
         """Migrate a single CIF file"""
@@ -816,7 +839,7 @@ def main():
                  directory=args.directory, dry_run=args.dry_run, 
                  create_tables=args.create_tables)
         
-        migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables, db_config=db_config)
+        migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables, db_config=db_config, archive_directory=args.directory)
         
         if args.deposition:
             success = migrator.migrate_deposition(args.deposition, args.dry_run)
