@@ -219,7 +219,8 @@ class DatabaseConnection:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                if not self.connection.is_connected():
+                # Check if connection is still valid (pymysql doesn't have is_connected())
+                if not self.connection or not self.connection.open:
                     self._connect()
                 
                 cursor = self.connection.cursor()
@@ -248,7 +249,7 @@ class DatabaseConnection:
     
     def close(self):
         """Close database connection"""
-        if self.connection and self.connection.is_connected():
+        if self.connection and self.connection.open:
             self.connection.close()
             logger.info("Database connection closed")
 
