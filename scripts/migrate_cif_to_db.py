@@ -474,10 +474,18 @@ class CifToDbMigrator:
         """Migrate all depositions in a directory"""
         log_event("start_directory", directory=directory_path, dry_run=dry_run)
         
-        deposition_ids = [
-            item for item in os.listdir(directory_path)
-            if os.path.isdir(os.path.join(directory_path, item)) and item.startswith('D_')
-        ]
+        # Optimized directory scanning - avoid expensive isdir() calls on NFS
+        logger.info(f"Scanning directory: {directory_path}")
+        try:
+            # Use os.scandir() for better performance on NFS
+            with os.scandir(directory_path) as entries:
+                deposition_ids = [
+                    entry.name for entry in entries
+                    if entry.is_dir() and entry.name.startswith('D_')
+                ]
+        except Exception as e:
+            logger.error(f"Failed to scan directory {directory_path}: {e}")
+            return {"successful": [], "failed": []}
         
         log_event("found_depositions", directory=directory_path, count=len(deposition_ids),
                  sample_ids=deposition_ids[:10])
