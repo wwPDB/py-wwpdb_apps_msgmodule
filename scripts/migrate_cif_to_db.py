@@ -530,6 +530,10 @@ class CifToDbMigrator:
                 logger.debug(f"PathInfo failed for {message_type} file for {deposition_id}: {e}")
                 
         # Fallback: direct file search when PathInfo not available
+        if not self.archive_directory:
+            logger.debug(f"No archive directory specified and PathInfo unavailable")
+            return None
+            
         deposition_dir = os.path.join(self.archive_directory, deposition_id)
         if not os.path.exists(deposition_dir):
             logger.debug(f"Deposition directory not found: {deposition_dir}")
@@ -828,6 +832,13 @@ def main():
     setup_logging(args.json_log, args.log_level)
 
     try:
+        # Validate arguments
+        if not args.deposition and not args.directory:
+            parser.error("Either --deposition or --directory must be specified")
+        
+        if args.deposition and not args.directory:
+            parser.error("When using --deposition, you must also specify --directory to indicate the archive location")
+        
         # Get database configuration - either from command line or ConfigInfo
         db_config = get_database_config_from_args(args)
         
