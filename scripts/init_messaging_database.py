@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Initialize the messaging database schema.
+Standalone Initialize Messaging Database Script
 
 This script creates the necessary tables for the wwPDB messaging system
 database migration from CIF file-based storage. The database schema
@@ -13,6 +13,9 @@ The content_type field differentiates between:
 - messages-to-depositor
 - messages-from-depositor
 - notes-from-annotator
+
+This is a standalone version that includes all dependencies and can be run
+directly on production servers without checking out the branch.
 """
 
 import os
@@ -28,51 +31,76 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_database_config_from_configinfo(site_id):
-    """Get database configuration from ConfigInfo instead of environment variables"""
-    if not site_id:
-        raise ValueError("site_id is required and cannot be empty")
-        
-    try:
-        from wwpdb.utils.config.ConfigInfo import ConfigInfo
-        
-        config_info = ConfigInfo(site_id)
-        
-        # Get database configuration from ConfigInfo (using messaging-specific keys)
-        host = config_info.get("SITE_MESSAGE_DB_HOST_NAME")
-        user = config_info.get("SITE_MESSAGE_DB_USER_NAME")
-        database = config_info.get("SITE_MESSAGE_DB_NAME")
-        port = config_info.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
-        password = config_info.get("SITE_MESSAGE_DB_PASSWORD", "")
-        socket = config_info.get("SITE_MESSAGE_DB_SOCKET")  # Optional socket parameter
-        
-        if not all([host, user, database]):
-            missing = [k for k, v in [("SITE_MESSAGE_DB_HOST_NAME", host), ("SITE_MESSAGE_DB_USER_NAME", user), ("SITE_MESSAGE_DB_NAME", database)] if not v]
-            raise RuntimeError(f"Missing required ConfigInfo database settings: {', '.join(missing)}")
-
+def get_database_config(args):
+    """Get database configuration from command line args or try ConfigInfo fallback"""
+    config = {}
+    
+    # First try command line arguments
+    if all([args.host, args.user, args.database]):
         config = {
-            "host": host,
-            "port": int(port),
-            "user": user,
-            "password": password,
-            "database": database,
+            "host": args.host,
+            "port": args.port or 3306,
+            "user": args.user,
+            "password": args.password or "",
+            "database": args.database,
             "charset": "utf8mb4",
         }
         
-        # Add socket if specified
-        if socket:
-            config["unix_socket"] = socket
-        
-        logger.info(f"Using database configuration from ConfigInfo for site {site_id}")
-        # Log config without password
+        if args.socket:
+            config["unix_socket"] = args.socket
+            
+        logger.info("Using database configuration from command line arguments")
         config_display = dict((k, "***" if k == "password" else v) for k, v in config.items())
         logger.info(f"Database config: {config_display}")
-        
         return config
-        
-    except Exception as e:
-        logger.error(f"Failed to get database config from ConfigInfo: {e}")
-        raise RuntimeError(f"Database configuration error: {e}")
+    
+    # Fallback to ConfigInfo if available and site_id provided
+    if args.site_id:
+        try:
+            from wwpdb.utils.config.ConfigInfo import ConfigInfo
+            
+            config_info = ConfigInfo(args.site_id)
+            
+            # Get database configuration from ConfigInfo (using messaging-specific keys)
+            host = config_info.get("SITE_MESSAGE_DB_HOST_NAME")
+            user = config_info.get("SITE_MESSAGE_DB_USER_NAME")
+            database = config_info.get("SITE_MESSAGE_DB_NAME")
+            port = config_info.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
+            password = config_info.get("SITE_MESSAGE_DB_PASSWORD", "")
+            socket = config_info.get("SITE_MESSAGE_DB_SOCKET")
+            
+            if not all([host, user, database]):
+                missing = [k for k, v in [("SITE_MESSAGE_DB_HOST_NAME", host), ("SITE_MESSAGE_DB_USER_NAME", user), ("SITE_MESSAGE_DB_NAME", database)] if not v]
+                raise RuntimeError(f"Missing required ConfigInfo database settings: {', '.join(missing)}")
+
+            config = {
+                "host": host,
+                "port": int(port),
+                "user": user,
+                "password": password,
+                "database": database,
+                "charset": "utf8mb4",
+            }
+            
+            if socket:
+                config["unix_socket"] = socket
+            
+            logger.info(f"Using database configuration from ConfigInfo for site {args.site_id}")
+            config_display = dict((k, "***" if k == "password" else v) for k, v in config.items())
+            logger.info(f"Database config: {config_display}")
+            return config
+            
+        except ImportError:
+            logger.warning("ConfigInfo not available, falling back to command line arguments")
+        except Exception as e:
+            logger.error(f"Failed to get database config from ConfigInfo: {e}")
+    
+    # If we get here, neither command line nor ConfigInfo worked
+    raise RuntimeError(
+        "Database configuration required. Please provide either:\n"
+        "1. Command line arguments: --host, --user, --database (and optionally --port, --password, --socket)\n"
+        "2. Or --site-id with properly configured ConfigInfo"
+    )
 
 
 def create_database_if_not_exists(config):
@@ -268,48 +296,55 @@ def verify_tables(config):
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="Initialize messaging database schema")
+    parser = argparse.ArgumentParser(
+        description="Initialize messaging database schema (standalone version)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Using command line database credentials:
+  python init_messaging_database_standalone.py --host localhost --user msguser --database messaging --password mypass
+
+  # Using ConfigInfo (if available):
+  python init_messaging_database_standalone.py --site-id RCSB
+
+  # Override ConfigInfo with specific credentials:
+  python init_messaging_database_standalone.py --site-id RCSB --host prod-db.example.com --user produser
+        """
+    )
+    
+    # Database connection options
+    parser.add_argument("--host", help="Database host")
+    parser.add_argument("--port", type=int, help="Database port (default: 3306)")
+    parser.add_argument("--user", help="Database user")
+    parser.add_argument("--password", help="Database password")
+    parser.add_argument("--database", help="Database name")
+    parser.add_argument("--socket", help="Unix socket path (optional)")
+    
+    # ConfigInfo fallback
+    parser.add_argument(
+        "--site-id", help="Site ID for ConfigInfo database configuration (e.g., RCSB, PDBe, PDBj, BMRB)"
+    )
+    
+    # Operations
     parser.add_argument(
         "--verify-only",
         action="store_true",
         help="Only verify existing tables, do not create",
     )
-    parser.add_argument("--drop-and-recreate", action="store_true", help="Drop and recreate the database (DANGEROUS: all data will be lost!)")
     parser.add_argument(
-        "--site-id", required=True, help="Site ID for ConfigInfo database configuration (e.g., RCSB, PDBe, PDBj, BMRB)"
+        "--drop-and-recreate", 
+        action="store_true", 
+        help="Drop and recreate the database (DANGEROUS: all data will be lost!)"
     )
-    parser.add_argument("--host", help="Database host (overrides ConfigInfo)")
-    parser.add_argument("--port", type=int, help="Database port (overrides ConfigInfo)")
-    parser.add_argument("--user", help="Database user (overrides ConfigInfo)")
-    parser.add_argument("--password", help="Database password (overrides ConfigInfo)")
-    parser.add_argument("--database", help="Database name (overrides ConfigInfo)")
 
     args = parser.parse_args()
 
-    # Get configuration from ConfigInfo
+    # Get database configuration
     try:
-        config = get_database_config_from_configinfo(args.site_id)
+        config = get_database_config(args)
     except Exception as e:
-        logger.error(f"Failed to get database configuration from ConfigInfo: {e}")
-        logger.error("You may need to provide database parameters via command line arguments")
+        logger.error(f"Database configuration error: {e}")
         sys.exit(1)
-
-    # Override with command line arguments if provided
-    if args.host:
-        config["host"] = args.host
-        logger.info(f"Overriding host with command line value: {args.host}")
-    if args.port:
-        config["port"] = args.port
-        logger.info(f"Overriding port with command line value: {args.port}")
-    if args.user:
-        config["user"] = args.user
-        logger.info(f"Overriding user with command line value: {args.user}")
-    if args.password:
-        config["password"] = args.password
-        logger.info("Overriding password with command line value")
-    if args.database:
-        config["database"] = args.database
-        logger.info(f"Overriding database with command line value: {args.database}")
 
     logger.info(
         f"Connecting to database: {config['host']}:{config['port']}/{config['database']}"
