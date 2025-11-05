@@ -14,19 +14,28 @@ from datetime import datetime, timezone
 from typing import List, Dict, Optional
 
 # Initialize ConfigInfo to get database configuration
-from wwpdb.utils.config.ConfigInfo import ConfigInfo
+try:
+    from wwpdb.utils.config.ConfigInfo import ConfigInfo
+    CONFIG_INFO_AVAILABLE = True
+except ImportError:
+    CONFIG_INFO_AVAILABLE = False
+    ConfigInfo = None
 
 # CIF parsing imports
 from mmcif_utils.message.PdbxMessageIo import PdbxMessageIo
 
-# Database imports
-from wwpdb.apps.msgmodule.db import (
-    DataAccessLayer,
-    MessageInfo,
-    MessageFileReference,
-    MessageStatus,
-)
-from wwpdb.io.locator.PathInfo import PathInfo
+# Database imports - embed directly
+import mysql.connector
+from mysql.connector import pooling
+import time
+
+# PathInfo for file location (optional)
+try:
+    from wwpdb.io.locator.PathInfo import PathInfo
+    PATH_INFO_AVAILABLE = True
+except ImportError:
+    PATH_INFO_AVAILABLE = False
+    PathInfo = None
 
 # Enhanced logging setup
 class JsonFormatter(logging.Formatter):
@@ -179,33 +188,224 @@ def unescape_non_ascii(text: str) -> str:
         return text
 
 
+# ==================== EMBEDDED DATABASE LOGIC ====================
+
+class DatabaseConnection:
+    """Simple database connection manager with retry logic"""
+    
+    def __init__(self, db_config):
+        self.db_config = db_config
+        self.connection = None
+        self._connect()
+    
+    def _connect(self):
+        """Establish database connection with retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.connection = mysql.connector.connect(**self.db_config)
+                logger.info("Database connection established")
+                return
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(f"Connection attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Failed to connect to database after {max_retries} attempts: {e}")
+                    raise
+    
+    def execute_query(self, query, params=None, fetch=False):
+        """Execute a SQL query with retry logic"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                if not self.connection.is_connected():
+                    self._connect()
+                
+                cursor = self.connection.cursor()
+                cursor.execute(query, params or ())
+                
+                result = None
+                if fetch:
+                    result = cursor.fetchall()
+                else:
+                    self.connection.commit()
+                
+                cursor.close()
+                return result
+                
+            except mysql.connector.Error as e:
+                error_msg = str(e)
+                if "MySQL server has gone away" in error_msg or "Broken pipe" in error_msg:
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** attempt
+                        logger.warning(f"Connection lost (attempt {attempt + 1}), retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        self._connect()
+                        continue
+                logger.error(f"Database query failed: {e}")
+                raise
+    
+    def close(self):
+        """Close database connection"""
+        if self.connection and self.connection.is_connected():
+            self.connection.close()
+            logger.info("Database connection closed")
+
+
+def get_database_config_from_args(args):
+    """Get database configuration from command line arguments"""
+    if all([args.host, args.user, args.database]):
+        config = {
+            "host": args.host,
+            "port": args.port or 3306,
+            "database": args.database,
+            "username": args.user,
+            "password": args.password or "",
+            "charset": "utf8mb4",
+        }
+        
+        if hasattr(args, 'socket') and args.socket:
+            config["unix_socket"] = args.socket
+            
+        logger.info("Using database configuration from command line arguments")
+        config_display = dict((k, "***" if k == "password" else v) for k, v in config.items())
+        logger.info(f"Database config: {config_display}")
+        return config
+    
+    return None
+
+
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
-    def __init__(self, site_id: str, create_tables: bool = False):
+    def __init__(self, site_id: str = None, create_tables: bool = False, db_config: Dict = None):
         """Initialize migrator"""
         self.site_id = site_id
-        self.config_info = ConfigInfo(site_id)
+        
+        if site_id and CONFIG_INFO_AVAILABLE:
+            self.config_info = ConfigInfo(site_id)
+        else:
+            self.config_info = None
+            if site_id and not CONFIG_INFO_AVAILABLE:
+                logger.warning("ConfigInfo not available - ignoring site_id parameter")
         
         # Get database configuration
-        db_config = self._get_database_config()
-        log_event("init_migrator", site_id=site_id, db_host=db_config["host"], 
-                 db_name=db_config["database"], create_tables=create_tables)
+        if db_config:
+            self.db_config = db_config
+        else:
+            self.db_config = self._get_database_config()
+        log_event("init_migrator", site_id=site_id, db_host=self.db_config["host"], 
+                 db_name=self.db_config["database"], create_tables=create_tables)
         
-        self.data_access = DataAccessLayer(db_config)
+        self.db_connection = DatabaseConnection(self.db_config)
         
         # Create tables only if explicitly requested
         if create_tables:
-            self.data_access.create_tables()
+            self._create_tables()
             log_event("tables_created", site_id=site_id)
         
         log_event("db_connected", site_id=site_id)
         
-        self.path_info = PathInfo(siteId=site_id)
+        if site_id and PATH_INFO_AVAILABLE:
+            self.path_info = PathInfo(siteId=site_id)
+        else:
+            self.path_info = None
+            if site_id and not PATH_INFO_AVAILABLE:
+                logger.warning("PathInfo not available - file path resolution may be limited")
+        
         self.stats = {"processed": 0, "migrated": 0, "errors": 0}
+
+    def _create_tables(self):
+        """Create database tables using raw SQL"""
+        
+        # Main messages table
+        create_message_table = """
+        CREATE TABLE IF NOT EXISTS pdbx_deposition_message_info (
+            ordinal_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            message_id VARCHAR(64) UNIQUE NOT NULL,
+            deposition_data_set_id VARCHAR(50) NOT NULL,
+            timestamp DATETIME NOT NULL,
+            sender VARCHAR(150) NOT NULL,
+            context_type VARCHAR(50),
+            context_value VARCHAR(255),
+            parent_message_id VARCHAR(64),
+            message_subject TEXT NOT NULL,
+            message_text LONGTEXT NOT NULL,
+            message_type VARCHAR(20) DEFAULT 'text',
+            send_status CHAR(1) DEFAULT 'Y',
+            content_type ENUM('messages-to-depositor', 'messages-from-depositor', 'notes-from-annotator') NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            
+            INDEX idx_deposition_id (deposition_data_set_id),
+            INDEX idx_message_id (message_id),
+            INDEX idx_timestamp (timestamp),
+            INDEX idx_sender (sender),
+            INDEX idx_context_type (context_type),
+            INDEX idx_content_type (content_type),
+            INDEX idx_created_at (created_at),
+            INDEX idx_ordinal_id (ordinal_id),
+            
+            FOREIGN KEY (parent_message_id) REFERENCES pdbx_deposition_message_info(message_id) ON DELETE SET NULL
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """
+        
+        # File references table
+        create_file_ref_table = """
+        CREATE TABLE IF NOT EXISTS pdbx_deposition_message_file_reference (
+            ordinal_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            message_id VARCHAR(64) NOT NULL,
+            deposition_data_set_id VARCHAR(50) NOT NULL,
+            content_type VARCHAR(50) NOT NULL,
+            content_format VARCHAR(20) NOT NULL,
+            partition_number INT DEFAULT 1,
+            version_id INT DEFAULT 1,
+            storage_type VARCHAR(20) DEFAULT 'archive',
+            upload_file_name VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            
+            INDEX idx_message_id (message_id),
+            INDEX idx_deposition_id (deposition_data_set_id),
+            INDEX idx_content_type (content_type),
+            INDEX idx_storage_type (storage_type),
+            INDEX idx_ordinal_id (ordinal_id),
+            
+            FOREIGN KEY (message_id) REFERENCES pdbx_deposition_message_info(message_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """
+        
+        # Status table
+        create_status_table = """
+        CREATE TABLE IF NOT EXISTS pdbx_deposition_message_status (
+            message_id VARCHAR(64) PRIMARY KEY,
+            deposition_data_set_id VARCHAR(50) NOT NULL,
+            read_status CHAR(1) DEFAULT 'N',
+            action_reqd CHAR(1) DEFAULT 'N',
+            for_release CHAR(1) DEFAULT 'N',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            
+            INDEX idx_deposition_id (deposition_data_set_id),
+            INDEX idx_read_status (read_status),
+            INDEX idx_action_reqd (action_reqd),
+            INDEX idx_for_release (for_release),
+            
+            FOREIGN KEY (message_id) REFERENCES pdbx_deposition_message_info(message_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """
+        
+        self.db_connection.execute_query(create_message_table)
+        self.db_connection.execute_query(create_file_ref_table)
+        self.db_connection.execute_query(create_status_table)
+        logger.info("Database tables created successfully")
 
     def _get_database_config(self) -> Dict:
         """Get database configuration from ConfigInfo"""
+        if not self.config_info:
+            raise RuntimeError("ConfigInfo not available and no database configuration provided")
+            
         # Try messaging-specific configuration first
         host = self.config_info.get("SITE_MESSAGE_DB_HOST_NAME")
         user = self.config_info.get("SITE_MESSAGE_DB_USER_NAME") 
@@ -248,7 +448,23 @@ class CifToDbMigrator:
         # Now insert all deferred statuses after all messages are in the database
         if not dry_run and success and deferred_statuses:
             for status in deferred_statuses:
-                self.data_access.create_or_update_status(status)
+                insert_query = """
+                    INSERT INTO pdbx_deposition_message_status
+                    (message_id, deposition_data_set_id, read_status, action_reqd, for_release)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    read_status = VALUES(read_status),
+                    action_reqd = VALUES(action_reqd), 
+                    for_release = VALUES(for_release),
+                    updated_at = CURRENT_TIMESTAMP
+                """
+                
+                params = (
+                    status["message_id"], status["deposition_data_set_id"],
+                    status["read_status"], status["action_reqd"], status["for_release"]
+                )
+                
+                self.db_connection.execute_query(insert_query, params)
         
         log_event("deposition_complete", deposition_id=deposition_id, success=success,
                  files_found=len(files_found), files_missing=len(files_missing))
@@ -293,6 +509,11 @@ class CifToDbMigrator:
 
     def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
         """Get file path using PathInfo"""
+        if not self.path_info:
+            # Fallback: construct path manually if PathInfo not available
+            # This is a basic fallback - may need adjustment for specific sites
+            return None
+            
         try:
             return self.path_info.getFilePath(
                 dataSetId=deposition_id,
@@ -370,8 +591,8 @@ class CifToDbMigrator:
             self.stats["errors"] += 1
             return False
 
-    def _convert_messages(self, msg_infos: List[Dict], message_type: str) -> List[MessageInfo]:
-        """Convert CIF message data to MessageInfo objects"""
+    def _convert_messages(self, msg_infos: List[Dict], message_type: str) -> List[Dict]:
+        """Convert CIF message data to dictionaries"""
         messages = []
         
         # Map message type to content type
@@ -408,57 +629,58 @@ class CifToDbMigrator:
                     msg_info.get("deposition_data_set_id", "unknown")
                 )
 
-            message = MessageInfo(
-                message_id=msg_info.get("message_id", str(uuid.uuid4())),
-                deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
-                timestamp=timestamp,
-                sender=msg_info.get("sender", ""),
-                context_type=msg_info.get("context_type"),
-                context_value=msg_info.get("context_value"),
-                parent_message_id=msg_info.get("parent_message_id"),
-                message_subject=unescape_non_ascii(msg_info.get("message_subject", "")),
-                message_text=unescape_non_ascii(message_text),
-                message_type=msg_info.get("message_type", "text"),
-                send_status=msg_info.get("send_status", "Y"),
-                content_type=content_type,
-            )
+            message = {
+                "message_id": msg_info.get("message_id", str(uuid.uuid4())),
+                "deposition_data_set_id": msg_info.get("deposition_data_set_id", ""),
+                "timestamp": timestamp,
+                "sender": msg_info.get("sender", ""),
+                "context_type": msg_info.get("context_type"),
+                "context_value": msg_info.get("context_value"),
+                "parent_message_id": msg_info.get("parent_message_id"),
+                "message_subject": unescape_non_ascii(msg_info.get("message_subject", "")),
+                "message_text": unescape_non_ascii(message_text),
+                "message_type": msg_info.get("message_type", "text"),
+                "send_status": msg_info.get("send_status", "Y"),
+                "content_type": content_type,
+            }
             messages.append(message)
         
         return messages
 
-    def _convert_file_refs(self, file_refs: List[Dict]) -> List[MessageFileReference]:
-        """Convert file references"""
-        return [
-            MessageFileReference(
-                message_id=ref.get("message_id", ""),
-                deposition_data_set_id=ref.get("deposition_data_set_id", ""),
-                content_type=ref.get("content_type", ""),
-                content_format=ref.get("content_format", ""),
-                partition_number=int(ref.get("partition_number", 1)),
-                version_id=int(ref.get("version_id", 1)),
-                storage_type=ref.get("storage_type", "archive"),
-                upload_file_name=ref.get("upload_file_name"),
-            )
-            for ref in file_refs
-        ]
+    def _convert_file_refs(self, file_refs: List[Dict]) -> List[Dict]:
+        """Convert file references to dictionaries"""
+        converted_refs = []
+        for ref in file_refs:
+            converted_ref = {
+                "message_id": ref.get("message_id", ""),
+                "deposition_data_set_id": ref.get("deposition_data_set_id", ""),
+                "content_type": ref.get("content_type", ""),
+                "content_format": ref.get("content_format", ""),
+                "partition_number": int(ref.get("partition_number", 1)),
+                "version_id": int(ref.get("version_id", 1)),
+                "storage_type": ref.get("storage_type", "archive"),
+                "upload_file_name": ref.get("upload_file_name"),
+            }
+            converted_refs.append(converted_ref)
+        return converted_refs
 
-    def _convert_statuses(self, statuses: List[Dict]) -> List[MessageStatus]:
-        """Convert status records"""
-        return [
-            MessageStatus(
-                message_id=status.get("message_id", ""),
-                deposition_data_set_id=status.get("deposition_data_set_id", ""),
-                read_status=status.get("read_status", "N"),
-                action_reqd=status.get("action_reqd", "N"),
-                for_release=status.get("for_release", "N"),
-            )
-            for status in statuses
-        ]
+    def _convert_statuses(self, statuses: List[Dict]) -> List[Dict]:
+        """Convert status records to dictionaries"""
+        converted_statuses = []
+        for status in statuses:
+            converted_status = {
+                "message_id": status.get("message_id", ""),
+                "deposition_data_set_id": status.get("deposition_data_set_id", ""),
+                "read_status": status.get("read_status", "N"),
+                "action_reqd": status.get("action_reqd", "N"),
+                "for_release": status.get("for_release", "N"),
+            }
+            converted_statuses.append(converted_status)
+        return converted_statuses
 
-    def _store_data(self, messages: List[MessageInfo], file_refs: List[MessageFileReference], 
-                    statuses: List[MessageStatus]) -> bool:
-        """Store data in database"""
-        deposition_id = messages[0].deposition_data_set_id if messages else "unknown"
+    def _store_data(self, messages: List[Dict], file_refs: List[Dict], statuses: List[Dict]) -> bool:
+        """Store data in database using raw SQL"""
+        deposition_id = messages[0]["deposition_data_set_id"] if messages else "unknown"
         
         try:
             # Store messages
@@ -466,24 +688,71 @@ class CifToDbMigrator:
             duplicate_count = 0
             
             for message in messages:
-                if self.data_access.get_message_by_id(message.message_id):
+                # Check for duplicates
+                check_query = "SELECT COUNT(*) FROM pdbx_deposition_message_info WHERE message_id = %s"
+                result = self.db_connection.execute_query(check_query, (message["message_id"],), fetch=True)
+                
+                if result[0][0] > 0:
                     duplicate_count += 1
                     log_event("message_duplicate", deposition_id=deposition_id, 
-                             message_id=message.message_id)
+                             message_id=message["message_id"])
                     continue
-                    
-                if not self.data_access.create_message(message):
-                    log_event("message_store_failed", deposition_id=deposition_id,
-                             message_id=message.message_id)
-                    return False
+                
+                # Insert message
+                insert_query = """
+                    INSERT INTO pdbx_deposition_message_info 
+                    (message_id, deposition_data_set_id, timestamp, sender, context_type, 
+                     context_value, parent_message_id, message_subject, message_text, 
+                     message_type, send_status, content_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                
+                params = (
+                    message["message_id"], message["deposition_data_set_id"], message["timestamp"],
+                    message["sender"], message["context_type"], message["context_value"],
+                    message["parent_message_id"], message["message_subject"], message["message_text"],
+                    message["message_type"], message["send_status"], message["content_type"]
+                )
+                
+                self.db_connection.execute_query(insert_query, params)
                 stored_count += 1
 
-            # Store file references and statuses
+            # Store file references
             for file_ref in file_refs:
-                self.data_access.create_file_reference(file_ref)
+                insert_query = """
+                    INSERT INTO pdbx_deposition_message_file_reference
+                    (message_id, deposition_data_set_id, content_type, content_format,
+                     partition_number, version_id, storage_type, upload_file_name)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                
+                params = (
+                    file_ref["message_id"], file_ref["deposition_data_set_id"], file_ref["content_type"],
+                    file_ref["content_format"], file_ref["partition_number"], file_ref["version_id"],
+                    file_ref["storage_type"], file_ref["upload_file_name"]
+                )
+                
+                self.db_connection.execute_query(insert_query, params)
             
+            # Store statuses
             for status in statuses:
-                self.data_access.create_or_update_status(status)
+                insert_query = """
+                    INSERT INTO pdbx_deposition_message_status
+                    (message_id, deposition_data_set_id, read_status, action_reqd, for_release)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                    read_status = VALUES(read_status),
+                    action_reqd = VALUES(action_reqd), 
+                    for_release = VALUES(for_release),
+                    updated_at = CURRENT_TIMESTAMP
+                """
+                
+                params = (
+                    status["message_id"], status["deposition_data_set_id"],
+                    status["read_status"], status["action_reqd"], status["for_release"]
+                )
+                
+                self.db_connection.execute_query(insert_query, params)
 
             log_event("store_complete", deposition_id=deposition_id,
                      messages_stored=stored_count, duplicates_skipped=duplicate_count,
@@ -508,12 +777,20 @@ def main():
     parser.add_argument("--deposition", help="Single deposition ID to migrate")
     parser.add_argument("--directory", help="Directory containing deposition subdirectories")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without writing to database")
-    parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
+    parser.add_argument("--site-id", help="Site ID (RCSB, PDBe, PDBj, BMRB)")
     parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
     parser.add_argument("--json-log", help="Path to JSON log file for structured logging")
     parser.add_argument("--log-level", default="INFO",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                         help="Console and JSON log level")
+    
+    # Database connection options (for standalone operation)
+    parser.add_argument("--host", help="Database host")
+    parser.add_argument("--port", type=int, help="Database port (default: 3306)")
+    parser.add_argument("--user", help="Database user")
+    parser.add_argument("--password", help="Database password")
+    parser.add_argument("--database", help="Database name")
+    parser.add_argument("--socket", help="Unix socket path (optional)")
 
     args = parser.parse_args()
 
@@ -521,11 +798,18 @@ def main():
     setup_logging(args.json_log, args.log_level)
 
     try:
+        # Get database configuration - either from command line or ConfigInfo
+        db_config = get_database_config_from_args(args)
+        
+        if not db_config and not args.site_id:
+            logger.error("Either --site-id or database connection parameters (--host, --user, --database) must be provided")
+            sys.exit(1)
+        
         log_event("migration_start", site_id=args.site_id, deposition=args.deposition,
                  directory=args.directory, dry_run=args.dry_run, 
                  create_tables=args.create_tables)
         
-        migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables)
+        migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables, db_config=db_config)
         
         if args.deposition:
             success = migrator.migrate_deposition(args.deposition, args.dry_run)
@@ -548,7 +832,7 @@ def main():
         sys.exit(1)
     finally:
         try:
-            migrator.data_access.close()
+            migrator.db_connection.close()
         except:
             pass
 
