@@ -5,24 +5,40 @@
 
 ---
 
-## 1. Configuration Requirements
+## 1. Configuration Options
 
-Add this variable to your site configuration:
+**Option A: Command Line Credentials (Recommended for Production)**
+
+Pass database credentials directly via command line arguments:
+
+````bash
+python script.py --host db.server.com --user dbuser --password dbpass --database messaging_db
+````
+
+**Option B: Site Configuration (ConfigInfo)**
+
+Add these variables to your site configuration:
 
 ````bash
 # filepath: site.cfg
 # ...existing code...
-wwpdb_messaging_db_name = wwpdb_messaging  # or your preferred database name
+site_message_db_name = wwpdb_messaging  # or your preferred database name
+site_message_db_host_name = db.server.com
+site_message_db_user_name = messaging_user
+site_message_db_password = secure_password
+site_message_db_port_number = 3306  # optional, defaults to 3306
 # ...existing code...
 ````
 
-The migration scripts will use existing site configuration variables:
+*Note: Site config variables are lowercase, but ConfigInfo converts them to uppercase when accessed by the scripts (SITE_MESSAGE_DB_HOST_NAME, etc.)*
 
-- `SITE_DB_HOST_NAME`
-- `SITE_DB_PORT_NUMBER`
-- `SITE_DB_ADMIN_USER`
-- `SITE_DB_ADMIN_PASS`
-- `WWPDB_MESSAGING_DB_NAME` (new, required)
+Then use with `--site-id` parameter:
+
+````bash
+python script.py --site-id RCSB
+````
+
+**Priority:** Command line arguments override ConfigInfo when both are provided.
 
 ---
 
@@ -49,14 +65,20 @@ Three tables mirror mmCIF categories:
 Creates database and tables with proper indexes and foreign keys.
 
 ````bash
-# Create schema in production
+# Using command line credentials (recommended for production)
+python init_messaging_database.py --host db.server.com --user dbuser --password dbpass --database messaging_db
+
+# Using site configuration
 python init_messaging_database.py --site-id RCSB
 
 # Verify existing schema only
 python init_messaging_database.py --site-id RCSB --verify-only
 
 # Drop and recreate (DESTRUCTIVE)
-python init_messaging_database.py --site-id RCSB --drop-and-recreate
+python init_messaging_database.py --host db.server.com --user dbuser --password dbpass --database messaging_db --drop-and-recreate
+
+# Using Unix socket connection
+python init_messaging_database.py --host localhost --socket /tmp/mysql.sock --user dbuser --database messaging_db
 ````
 
 ### Data Migration: `migrate_cif_to_db.py`
@@ -64,25 +86,39 @@ python init_messaging_database.py --site-id RCSB --drop-and-recreate
 Migrates CIF messages to database. **Idempotent** - safe to re-run.
 
 ````bash
-# Dry run (no database writes)
+# Dry run with command line credentials (no database writes)
+python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --directory /path/to/D_* --dry-run
+
+# Using site configuration
 python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --dry-run
 
 # Single deposition
-python migrate_cif_to_db.py --site-id RCSB --deposition D_123456
+python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --deposition D_123456
 
 # Bulk migration with logging
 python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --json-log migration.json
 
 # Create tables if needed
-python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --create-tables
+python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --directory /path/to/D_* --create-tables
+
+# Mixed approach: site config with credential override
+python migrate_cif_to_db.py --site-id RCSB --host prod-db.server.com --user prod_user --directory /path/to/D_*
 ````
 
 **Key behaviors:**
 
+- **Standalone scripts** - No dependencies on wwpdb.apps.msgmodule modules
 - Existing `message_id` entries are **skipped** (duplicate-safe)
 - JSON logs record all operations for auditing
 - UTF-8 encoding for message content
 - Preserves parent-child message relationships
+- Raw SQL operations for optimal performance
+
+**Dependencies:**
+- `mysql.connector` - Database connectivity
+- `mmcif_utils.message.PdbxMessageIo` - CIF file parsing
+- `wwpdb.utils.config.ConfigInfo` - Optional, for site configuration
+- `wwpdb.io.locator.PathInfo` - Optional, for file path resolution
 
 ---
 
@@ -95,12 +131,20 @@ python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --create-tab
 1. **Create production schema**
 
    ````bash
+   # Using command line credentials (recommended for production)
+   python init_messaging_database.py --host db.server.com --user dbuser --password dbpass --database messaging_db
+   
+   # Or using site configuration
    python init_messaging_database.py --site-id <SITE>
    ````
 
 2. **Validate with dry run**
 
    ````bash
+   # Using command line credentials
+   python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --directory /path/to/messages --dry-run
+   
+   # Or using site configuration
    python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --dry-run
    ````
 
@@ -109,6 +153,10 @@ python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --create-tab
 1. **Bulk migration**
 
    ````bash
+   # Using command line credentials
+   python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --directory /path/to/messages --json-log backfill.json
+   
+   # Or using site configuration
    python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --json-log backfill.json
    ````
 
@@ -121,6 +169,10 @@ python migrate_cif_to_db.py --site-id RCSB --directory /path/to/D_* --create-tab
 **Re-runs** to catch new CIF messages (duplicates are safely skipped):
 
 ````bash
+# Using command line credentials
+python migrate_cif_to_db.py --host db.server.com --user dbuser --password dbpass --database messaging_db --directory /path/to/messages --json-log delta-$(date +%F).json
+
+# Or using site configuration
 python migrate_cif_to_db.py --site-id <SITE> --directory /path/to/messages --json-log delta-$(date +%F).json
 ````
 
