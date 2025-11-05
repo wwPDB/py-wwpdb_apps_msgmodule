@@ -118,6 +118,67 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def unescape_non_ascii(text: str) -> str:
+    """
+    Decode Unicode escape sequences in text, including surrogate pairs for emoji.
+    
+    Converts \\uXXXX sequences back to actual Unicode characters.
+    This is the reverse operation of escape_non_ascii() in dump_db_to_cif.py.
+    
+    Handles both BMP characters (\\uXXXX) and surrogate pairs (\\uD8XX\\uDCXX)
+    for characters outside the Basic Multilingual Plane (like emoji).
+    
+    Args:
+        text: String potentially containing \\uXXXX escape sequences
+        
+    Returns:
+        String with escape sequences decoded to Unicode characters
+        
+    Examples:
+        >>> unescape_non_ascii("caf\\u00e9")
+        'café'
+        >>> unescape_non_ascii("\\u4f60\\u597d")
+        '你好'
+        >>> unescape_non_ascii("\\ud83e\\uddec")  # Surrogate pair for 🧬
+        '🧬'
+    """
+    if not text or '\\u' not in text:
+        return text
+    
+    try:
+        # Python's unicode-escape codec doesn't handle surrogate pairs correctly
+        # We need to decode them manually
+        import re
+        
+        def decode_match(match):
+            escape_seq = match.group(0)
+            try:
+                # Try direct unicode-escape decoding first
+                return escape_seq.encode('utf-8').decode('unicode-escape')
+            except:
+                return escape_seq
+        
+        # First pass: decode individual \uXXXX sequences
+        # This will create surrogate characters that need to be combined
+        result = re.sub(r'\\u[0-9a-fA-F]{4}', decode_match, text)
+        
+        # Second pass: encode to UTF-16, then decode back to UTF-8
+        # This properly combines surrogate pairs into full Unicode characters
+        try:
+            # Encode as UTF-16 (which handles surrogates), then decode as UTF-8
+            result = result.encode('utf-16', 'surrogatepass').decode('utf-16')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            # If surrogate handling fails, return the first-pass result
+            pass
+        
+        return result
+        
+    except Exception as e:
+        # If decoding fails, return original text
+        logger.warning(f"Failed to unescape text: {e}")
+        return text
+
+
 class CifToDbMigrator:
     """Migrates message data from CIF files to database"""
 
@@ -145,12 +206,14 @@ class CifToDbMigrator:
 
     def _get_database_config(self) -> Dict:
         """Get database configuration from ConfigInfo"""
-        host = self.config_info.get("SITE_DB_HOST_NAME")
-        user = self.config_info.get("SITE_DB_ADMIN_USER")
-        database = self.config_info.get("WWPDB_MESSAGING_DB_NAME")
-        port = self.config_info.get("SITE_DB_PORT_NUMBER", "3306")
-        password = self.config_info.get("SITE_DB_ADMIN_PASS", "")
-        
+        # Try messaging-specific configuration first
+        host = self.config_info.get("SITE_MESSAGE_DB_HOST_NAME")
+        user = self.config_info.get("SITE_MESSAGE_DB_USER_NAME") 
+        database = self.config_info.get("SITE_MESSAGE_DB_NAME")
+        port = self.config_info.get("SITE_MESSAGE_DB_PORT_NUMBER", "3306")
+        password = self.config_info.get("SITE_MESSAGE_DB_PASSWORD", "")
+        # socket = self.config_info.get("SITE_MESSAGE_DB_SOCKET")  # Optional socket parameter
+
         if not all([host, user, database]):
             raise RuntimeError("Missing required database configuration")
 
@@ -171,15 +234,21 @@ class CifToDbMigrator:
         success = True
         files_found = []
         files_missing = []
+        deferred_statuses = []  # Collect statuses to insert after all messages
         
         for msg_type in message_types:
             file_path = self._get_file_path(deposition_id, msg_type)
             if file_path and os.path.exists(file_path):
                 files_found.append({"type": msg_type, "path": file_path})
-                if not self._migrate_file(file_path, msg_type, dry_run):
+                if not self._migrate_file(file_path, msg_type, dry_run, deferred_statuses):
                     success = False
             else:
                 files_missing.append({"type": msg_type, "expected_path": file_path})
+        
+        # Now insert all deferred statuses after all messages are in the database
+        if not dry_run and success and deferred_statuses:
+            for status in deferred_statuses:
+                self.data_access.create_or_update_status(status)
         
         log_event("deposition_complete", deposition_id=deposition_id, success=success,
                  files_found=len(files_found), files_missing=len(files_missing))
@@ -236,7 +305,7 @@ class CifToDbMigrator:
             logger.debug(f"No {message_type} file for {deposition_id}: {e}")
             return None
 
-    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False) -> bool:
+    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False, deferred_statuses: List = None) -> bool:
         """Migrate a single CIF file"""
         deposition_id = os.path.basename(os.path.dirname(file_path))
         filename = os.path.basename(file_path)
@@ -275,11 +344,14 @@ class CifToDbMigrator:
                          message="File parsed successfully but contains no messages")
                 return True
 
-            # Store in database
+            # Store messages and file refs immediately, but defer statuses
             if not dry_run:
-                success = self._store_data(messages, file_refs, statuses)
+                success = self._store_data(messages, file_refs, [])  # Empty list for statuses
                 if success:
                     self.stats["migrated"] += len(messages)
+                    # Collect statuses to be inserted later
+                    if deferred_statuses is not None:
+                        deferred_statuses.extend(statuses)
                     log_event("store_success", deposition_id=deposition_id, 
                              messages_stored=len(messages))
                 else:
@@ -323,6 +395,19 @@ class CifToDbMigrator:
                     except ValueError:
                         continue
 
+            # Get message text and check size
+            message_text = msg_info.get("message_text", "")
+            message_text_size = len(message_text.encode('utf-8'))
+            
+            # Log if message is unusually large (> 1MB)
+            if message_text_size > 1024 * 1024:
+                logger.warning(
+                    "Large message detected: %s (%.2f MB) for deposition %s",
+                    msg_info.get("message_id", "unknown"),
+                    message_text_size / (1024 * 1024),
+                    msg_info.get("deposition_data_set_id", "unknown")
+                )
+
             message = MessageInfo(
                 message_id=msg_info.get("message_id", str(uuid.uuid4())),
                 deposition_data_set_id=msg_info.get("deposition_data_set_id", ""),
@@ -331,8 +416,8 @@ class CifToDbMigrator:
                 context_type=msg_info.get("context_type"),
                 context_value=msg_info.get("context_value"),
                 parent_message_id=msg_info.get("parent_message_id"),
-                message_subject=msg_info.get("message_subject", ""),
-                message_text=msg_info.get("message_text", ""),
+                message_subject=unescape_non_ascii(msg_info.get("message_subject", "")),
+                message_text=unescape_non_ascii(message_text),
                 message_type=msg_info.get("message_type", "text"),
                 send_status=msg_info.get("send_status", "Y"),
                 content_type=content_type,
