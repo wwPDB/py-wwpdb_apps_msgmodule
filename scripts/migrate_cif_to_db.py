@@ -1,7 +1,23 @@
 """
 Migration utility to convert existing CIF message files to database records.
 
-This script migrates CIF message files to the new database format.
+This script migrates CIF message files to the new database format with support
+for both initial bulk migration and incremental delta updates.
+
+Key Features:
+- Hierarchical message ordering (parents before children)
+- Incremental migration support (skips existing records)
+- Proper handling of foreign key relationships
+- Comprehensive structured logging
+- Dry-run mode for validation
+
+Migration Modes:
+1. Initial Migration: Migrates all CIF files to empty database
+2. Incremental Migration: Only processes new/changed messages (default behavior)
+3. Force Overwrite: Overwrites existing records (use --force-overwrite flag)
+
+For periodic delta updates, run the script regularly without --force-overwrite
+to safely import only new messages while preserving existing data.
 """
 
 import os
@@ -82,6 +98,8 @@ EVENT_LEVELS = {
     "single_migration_complete": logging.INFO,
     "bulk_migration_complete": logging.INFO,
     "hierarchy_sorted": logging.INFO,
+    "file_ref_duplicate": logging.INFO,
+    "status_unchanged": logging.INFO,
 }
 
 def setup_logging(json_log_file=None, log_level: str = "INFO"):
@@ -203,7 +221,17 @@ class CifToDbMigrator:
         log_event("db_connected", site_id=site_id)
         
         self.path_info = PathInfo(siteId=site_id)
-        self.stats = {"processed": 0, "migrated": 0, "errors": 0}
+        self.stats = {
+            "files_processed": 0, 
+            "messages_migrated": 0, 
+            "messages_skipped": 0,
+            "file_refs_migrated": 0,
+            "file_refs_skipped": 0, 
+            "statuses_stored": 0,
+            "statuses_updated": 0,
+            "statuses_skipped": 0,
+            "errors": 0
+        }
 
     def _get_database_config(self) -> Dict:
         """Get database configuration from ConfigInfo"""
@@ -227,9 +255,10 @@ class CifToDbMigrator:
             "charset": "utf8mb4",
         }
 
-    def migrate_deposition(self, deposition_id: str, dry_run: bool = False) -> bool:
+    def migrate_deposition(self, deposition_id: str, dry_run: bool = False, force_overwrite: bool = False) -> bool:
         """Migrate all message files for a deposition in proper order"""
-        log_event("start_deposition", deposition_id=deposition_id, dry_run=dry_run)
+        log_event("start_deposition", deposition_id=deposition_id, dry_run=dry_run, 
+                 force_overwrite=force_overwrite)
         
         message_types = ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]
         files_found = []
@@ -272,7 +301,7 @@ class CifToDbMigrator:
         
         # Step 3: Store data in proper order
         if not dry_run:
-            success = self._store_deposition_data(deposition_id, sorted_messages, all_file_refs, all_statuses)
+            success = self._store_deposition_data(deposition_id, sorted_messages, all_file_refs, all_statuses, force_overwrite)
         else:
             success = True
             log_event("dry_run", deposition_id=deposition_id, 
@@ -285,9 +314,9 @@ class CifToDbMigrator:
                  messages_processed=len(sorted_messages))
         return success
 
-    def migrate_directory(self, directory_path: str, dry_run: bool = False) -> Dict:
+    def migrate_directory(self, directory_path: str, dry_run: bool = False, force_overwrite: bool = False) -> Dict:
         """Migrate all depositions in a directory"""
-        log_event("start_directory", directory=directory_path, dry_run=dry_run)
+        log_event("start_directory", directory=directory_path, dry_run=dry_run, force_overwrite=force_overwrite)
         
         deposition_ids = [
             item for item in os.listdir(directory_path)
@@ -302,7 +331,7 @@ class CifToDbMigrator:
         
         for i, deposition_id in enumerate(deposition_ids, 1):
             try:
-                if self.migrate_deposition(deposition_id, dry_run):
+                if self.migrate_deposition(deposition_id, dry_run, force_overwrite):
                     successful.append(deposition_id)
                 else:
                     failed.append(deposition_id)
@@ -328,7 +357,7 @@ class CifToDbMigrator:
         
         log_event("process_file", deposition_id=deposition_id, file_path=file_path,
                  filename=filename, message_type=message_type)
-        self.stats["processed"] += 1
+        self.stats["files_processed"] += 1
 
         try:
             # Check if file is empty first
@@ -423,15 +452,24 @@ class CifToDbMigrator:
         return result
 
     def _store_deposition_data(self, deposition_id: str, messages: List[MessageInfo], 
-                              file_refs: List[MessageFileReference], statuses: List[MessageStatus]) -> bool:
-        """Store all data for a deposition in the correct order"""
+                              file_refs: List[MessageFileReference], statuses: List[MessageStatus],
+                              force_overwrite: bool = False) -> bool:
+        """Store all data for a deposition in the correct order
+        
+        Args:
+            deposition_id: ID of the deposition being migrated
+            messages: List of messages to store
+            file_refs: List of file references to store  
+            statuses: List of message statuses to store
+            force_overwrite: If True, skip duplicate checks and overwrite existing records
+        """
         try:
             # Step 1: Store messages in hierarchical order
             stored_count = 0
             duplicate_count = 0
             
             for message in messages:
-                if self.data_access.get_message_by_id(message.message_id):
+                if not force_overwrite and self.data_access.get_message_by_id(message.message_id):
                     duplicate_count += 1
                     log_event("message_duplicate", deposition_id=deposition_id, 
                              message_id=message.message_id)
@@ -443,28 +481,84 @@ class CifToDbMigrator:
                     return False
                 stored_count += 1
 
-            self.stats["migrated"] += stored_count
+            # Update global stats
+            self.stats["messages_migrated"] += stored_count
+            self.stats["messages_skipped"] += duplicate_count
 
             # Step 2: Store file references (now that all messages exist)
             file_refs_stored = 0
+            file_refs_skipped = 0
             for file_ref in file_refs:
+                # Check if file reference already exists to prevent duplicates (unless force_overwrite)
+                if not force_overwrite:
+                    existing_refs = self.data_access.file_reference_dao.get_by_message_id(file_ref.message_id)
+                    existing_ref = next((ref for ref in existing_refs 
+                                       if ref.content_type == file_ref.content_type 
+                                       and ref.partition_number == file_ref.partition_number), None)
+                    if existing_ref:
+                        file_refs_skipped += 1
+                        log_event("file_ref_duplicate", deposition_id=deposition_id,
+                                 message_id=file_ref.message_id, content_type=file_ref.content_type,
+                                 partition_number=file_ref.partition_number)
+                        continue
+                    
                 if self.data_access.create_file_reference(file_ref):
                     file_refs_stored += 1
 
+            # Update global stats for file references
+            self.stats["file_refs_migrated"] += file_refs_stored
+            self.stats["file_refs_skipped"] += file_refs_skipped
+
             # Step 3: Store statuses (now that all messages exist)  
             statuses_stored = 0
+            statuses_updated = 0
+            statuses_skipped = 0
             for status in statuses:
-                if self.data_access.create_or_update_status(status):
-                    statuses_stored += 1
+                if force_overwrite:
+                    # Force overwrite mode - always update
+                    if self.data_access.create_or_update_status(status):
+                        statuses_updated += 1
+                else:
+                    # Check if status already exists
+                    existing_status = self.data_access.message_status_dao.get_by_message_id(status.message_id)
+                    if existing_status:
+                        # For statuses, we might want to update them as they can change
+                        # (read_status, action_reqd, for_release can be modified)
+                        if self._status_needs_update(existing_status, status):
+                            if self.data_access.create_or_update_status(status):
+                                statuses_updated += 1
+                        else:
+                            statuses_skipped += 1
+                            log_event("status_unchanged", deposition_id=deposition_id,
+                                     message_id=status.message_id)
+                    else:
+                        # New status record
+                        if self.data_access.create_or_update_status(status):
+                            statuses_stored += 1
+
+            # Update global stats for statuses
+            self.stats["statuses_stored"] += statuses_stored
+            self.stats["statuses_updated"] += statuses_updated
+            self.stats["statuses_skipped"] += statuses_skipped
 
             log_event("store_complete", deposition_id=deposition_id,
-                     messages_stored=stored_count, duplicates_skipped=duplicate_count,
-                     file_refs_stored=file_refs_stored, statuses_stored=statuses_stored)
+                     messages_stored=stored_count, messages_skipped=duplicate_count,
+                     file_refs_stored=file_refs_stored, file_refs_skipped=file_refs_skipped,
+                     statuses_stored=statuses_stored, statuses_updated=statuses_updated, 
+                     statuses_skipped=statuses_skipped)
             return True
             
         except Exception as e:
             log_event("store_exception", deposition_id=deposition_id, error=str(e))
             return False
+
+    def _status_needs_update(self, existing_status: MessageStatus, new_status: MessageStatus) -> bool:
+        """Check if status record needs updating based on field differences"""
+        return (
+            existing_status.read_status != new_status.read_status or
+            existing_status.action_reqd != new_status.action_reqd or
+            existing_status.for_release != new_status.for_release
+        )
 
     def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
         """Get file path using PathInfo"""
@@ -566,25 +660,76 @@ class CifToDbMigrator:
         ]
 
     def print_stats(self):
-        """Print simple migration statistics"""
+        """Print detailed migration statistics"""
         print(f"Migration Summary:")
-        print(f"  Files processed: {self.stats['processed']}")
-        print(f"  Messages migrated: {self.stats['migrated']}")
+        print(f"  Files processed: {self.stats['files_processed']}")
+        print(f"  Messages:")
+        print(f"    - Migrated: {self.stats['messages_migrated']}")
+        print(f"    - Skipped (duplicates): {self.stats['messages_skipped']}")
+        print(f"  File References:")
+        print(f"    - Migrated: {self.stats['file_refs_migrated']}")
+        print(f"    - Skipped (duplicates): {self.stats['file_refs_skipped']}")
+        print(f"  Message Statuses:")
+        print(f"    - New: {self.stats['statuses_stored']}")
+        print(f"    - Updated: {self.stats['statuses_updated']}")
+        print(f"    - Skipped (unchanged): {self.stats['statuses_skipped']}")
         print(f"  Errors: {self.stats['errors']}")
+        
+        # Calculate totals
+        total_processed = (self.stats['messages_migrated'] + self.stats['messages_skipped'] + 
+                          self.stats['file_refs_migrated'] + self.stats['file_refs_skipped'] +
+                          self.stats['statuses_stored'] + self.stats['statuses_updated'] + 
+                          self.stats['statuses_skipped'])
+        if total_processed > 0:
+            incremental_ratio = ((self.stats['messages_skipped'] + self.stats['file_refs_skipped'] + 
+                                self.stats['statuses_skipped']) / total_processed) * 100
+            print(f"  Incremental efficiency: {incremental_ratio:.1f}% (records skipped as duplicates)")
 
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="Migrate CIF message files to database")
+    parser = argparse.ArgumentParser(
+        description="Migrate CIF message files to database with incremental update support",
+        epilog="""
+Examples:
+  # Initial bulk migration (create tables and migrate all)
+  %(prog)s --site-id RCSB --directory /path/to/depositions --create-tables
+
+  # Incremental delta migration (safe for periodic updates)  
+  %(prog)s --site-id RCSB --directory /path/to/depositions
+
+  # Single deposition with dry-run
+  %(prog)s --site-id RCSB --deposition D_1234567890 --dry-run
+
+  # Force overwrite existing records (use with caution)
+  %(prog)s --site-id RCSB --directory /path/to/depositions --force-overwrite
+
+  # With structured logging
+  %(prog)s --site-id RCSB --directory /path/to/depositions --json-log migration.log --log-level DEBUG
+
+Notes:
+  - Default behavior is incremental (skips existing records)
+  - Messages are processed in hierarchical order (parents before children)
+  - File references and statuses are only stored after all messages exist
+  - Use --dry-run to validate before actual migration
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--deposition", help="Single deposition ID to migrate")
     parser.add_argument("--directory", help="Directory containing deposition subdirectories")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated without writing to database")
-    parser.add_argument("--site-id", required=True, help="Site ID (RCSB, PDBe, PDBj, BMRB)")
-    parser.add_argument("--create-tables", action="store_true", help="Create database tables if they don't exist")
-    parser.add_argument("--json-log", help="Path to JSON log file for structured logging")
+    parser.add_argument("--dry-run", action="store_true", 
+                        help="Show what would be migrated without writing to database")
+    parser.add_argument("--site-id", required=True, 
+                        help="Site ID (RCSB, PDBe, PDBj, BMRB)")
+    parser.add_argument("--create-tables", action="store_true", 
+                        help="Create database tables if they don't exist")
+    parser.add_argument("--json-log", 
+                        help="Path to JSON log file for structured logging")
     parser.add_argument("--log-level", default="INFO",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                         help="Console and JSON log level")
+    parser.add_argument("--force-overwrite", action="store_true",
+                        help="Force overwrite of existing records (disables incremental mode safety checks)")
 
     args = parser.parse_args()
 
@@ -599,10 +744,10 @@ def main():
         migrator = CifToDbMigrator(args.site_id, create_tables=args.create_tables)
         
         if args.deposition:
-            success = migrator.migrate_deposition(args.deposition, args.dry_run)
+            success = migrator.migrate_deposition(args.deposition, args.dry_run, args.force_overwrite)
             log_event("single_migration_complete", deposition=args.deposition, success=success)
         elif args.directory:
-            results = migrator.migrate_directory(args.directory, args.dry_run)
+            results = migrator.migrate_directory(args.directory, args.dry_run, args.force_overwrite)
             log_event("bulk_migration_complete", directory=args.directory, 
                      successful=len(results["successful"]), failed=len(results["failed"]))
         else:
