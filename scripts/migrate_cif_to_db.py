@@ -5,9 +5,9 @@ This script migrates CIF message files to the new database format with support
 for both initial bulk migration and incremental delta updates.
 
 Key Features:
-- Hierarchical message ordering (parents before children)
+- Chronological message ordering (by timestamp)
 - Incremental migration support (skips existing records)
-- Proper handling of foreign key relationships
+- Atomic processing (message + file refs + status together)
 - Comprehensive structured logging
 - Dry-run mode for validation
 
@@ -71,6 +71,7 @@ EVENT_LEVELS = {
     "corrupted_file": logging.ERROR,
     "store_failed": logging.ERROR,
     "message_store_failed": logging.ERROR,
+    "status_create_failed": logging.ERROR,
     "deposition_exception": logging.ERROR,
     "migration_exception": logging.ERROR,
     # warnings
@@ -97,7 +98,7 @@ EVENT_LEVELS = {
     "migration_complete": logging.INFO,
     "single_migration_complete": logging.INFO,
     "bulk_migration_complete": logging.INFO,
-    "hierarchy_sorted": logging.INFO,
+    "chronological_sort": logging.INFO,
     "file_ref_duplicate": logging.INFO,
     "status_unchanged": logging.INFO,
 }
@@ -256,7 +257,7 @@ class CifToDbMigrator:
         }
 
     def migrate_deposition(self, deposition_id: str, dry_run: bool = False, force_overwrite: bool = False) -> bool:
-        """Migrate all message files for a deposition in proper order"""
+        """Migrate all message files for a deposition in chronological order"""
         log_event("start_deposition", deposition_id=deposition_id, dry_run=dry_run, 
                  force_overwrite=force_overwrite)
         
@@ -264,10 +265,10 @@ class CifToDbMigrator:
         files_found = []
         files_missing = []
         
-        # Step 1: Parse all files and collect all data
+        # Parse all files and collect data
         all_messages = []
-        all_file_refs = []
-        all_statuses = []
+        all_file_refs = {}  # message_id -> [file_refs]
+        all_statuses = {}   # message_id -> status
         parse_success = True
         
         for msg_type in message_types:
@@ -277,8 +278,13 @@ class CifToDbMigrator:
                 messages, file_refs, statuses = self._parse_file(file_path, msg_type)
                 if messages is not None:  # None indicates parse failure
                     all_messages.extend(messages)
-                    all_file_refs.extend(file_refs)
-                    all_statuses.extend(statuses)
+                    # Group file refs and statuses by message_id
+                    for ref in file_refs:
+                        if ref.message_id not in all_file_refs:
+                            all_file_refs[ref.message_id] = []
+                        all_file_refs[ref.message_id].append(ref)
+                    for status in statuses:
+                        all_statuses[status.message_id] = status
                 else:
                     parse_success = False
             else:
@@ -296,17 +302,20 @@ class CifToDbMigrator:
                      message="No messages found to migrate")
             return True
         
-        # Step 2: Sort messages by parent-child relationships
-        sorted_messages = self._sort_messages_by_hierarchy(all_messages)
+        # Sort messages chronologically - this handles all ordering needs
+        sorted_messages = sorted(all_messages, key=lambda m: m.timestamp)
+        log_event("chronological_sort", deposition_id=deposition_id, total_messages=len(sorted_messages))
         
-        # Step 3: Store data in proper order
+        # Store data in chronological order
         if not dry_run:
-            success = self._store_deposition_data(deposition_id, sorted_messages, all_file_refs, all_statuses, force_overwrite)
+            success = self._store_deposition_data_chronologically(
+                deposition_id, sorted_messages, all_file_refs, all_statuses, force_overwrite)
         else:
             success = True
+            total_file_refs = sum(len(refs) for refs in all_file_refs.values())
             log_event("dry_run", deposition_id=deposition_id, 
                      would_migrate_messages=len(sorted_messages),
-                     would_migrate_file_refs=len(all_file_refs),
+                     would_migrate_file_refs=total_file_refs,
                      would_migrate_statuses=len(all_statuses))
         
         log_event("deposition_complete", deposition_id=deposition_id, success=success,
@@ -392,85 +401,36 @@ class CifToDbMigrator:
             self.stats["errors"] += 1
             return None, None, None  # Signal parse failure
 
-    def _sort_messages_by_hierarchy(self, messages: List[MessageInfo]) -> List[MessageInfo]:
-        """Sort messages so parent messages come before their children"""
-        if not messages:
-            return messages
+    def _store_deposition_data_chronologically(self, deposition_id: str, messages: List[MessageInfo], 
+                                             file_refs_by_msg_id: Dict[str, List[MessageFileReference]], 
+                                             statuses_by_msg_id: Dict[str, MessageStatus],
+                                             force_overwrite: bool = False) -> bool:
+        """Store all data for a deposition in chronological order
         
-        # Create a map of message_id -> message for quick lookups
-        message_map = {msg.message_id: msg for msg in messages}
-        
-        # Separate root messages (no parent) from child messages
-        root_messages = []
-        child_messages = []
-        
-        for message in messages:
-            # A root message has parent_message_id equal to its own message_id
-            # A child message has parent_message_id different from its own message_id
-            if not message.parent_message_id or message.parent_message_id == message.message_id:
-                root_messages.append(message)
-            else:
-                child_messages.append(message)
-        
-        # Sort root messages by timestamp
-        root_messages.sort(key=lambda m: m.timestamp)
-        
-        # Build the result list by processing messages in dependency order
-        result = []
-        processed_ids = set()
-        
-        def add_message_and_children(message):
-            """Recursively add a message and all its children"""
-            if message.message_id in processed_ids:
-                return
-            
-            result.append(message)
-            processed_ids.add(message.message_id)
-            
-            # Find and add children of this message
-            children = [m for m in child_messages 
-                       if m.parent_message_id == message.message_id]
-            children.sort(key=lambda m: m.timestamp)  # Sort children by timestamp
-            
-            for child in children:
-                add_message_and_children(child)
-        
-        # Process all root messages and their descendants
-        for root_message in root_messages:
-            add_message_and_children(root_message)
-        
-        # Add any orphaned child messages (parents not in this deposition)
-        orphaned_children = [m for m in child_messages if m.message_id not in processed_ids]
-        orphaned_children.sort(key=lambda m: m.timestamp)
-        result.extend(orphaned_children)
-        
-        deposition_id = messages[0].deposition_data_set_id if messages else "unknown"
-        log_event("hierarchy_sorted", deposition_id=deposition_id,
-                 total_messages=len(messages), root_messages=len(root_messages),
-                 child_messages=len(child_messages), orphaned_children=len(orphaned_children))
-        
-        return result
-
-    def _store_deposition_data(self, deposition_id: str, messages: List[MessageInfo], 
-                              file_refs: List[MessageFileReference], statuses: List[MessageStatus],
-                              force_overwrite: bool = False) -> bool:
-        """Store all data for a deposition in the correct order
+        Process each message and its associated file references and status in timestamp order.
+        This simple approach avoids complex hierarchy management while ensuring proper ordering.
         
         Args:
             deposition_id: ID of the deposition being migrated
-            messages: List of messages to store
-            file_refs: List of file references to store  
-            statuses: List of message statuses to store
+            messages: List of messages sorted by timestamp
+            file_refs_by_msg_id: Dict mapping message_id to its file references
+            statuses_by_msg_id: Dict mapping message_id to its status record
             force_overwrite: If True, skip duplicate checks and overwrite existing records
         """
         try:
-            # Step 1: Store messages in hierarchical order
-            stored_count = 0
-            duplicate_count = 0
+            messages_stored = 0
+            messages_skipped = 0
+            file_refs_stored = 0
+            file_refs_skipped = 0
+            statuses_stored = 0
+            statuses_updated = 0
+            statuses_skipped = 0
             
+            # Process each message chronologically with its associated data
             for message in messages:
+                # Store message
                 if not force_overwrite and self.data_access.get_message_by_id(message.message_id):
-                    duplicate_count += 1
+                    messages_skipped += 1
                     log_event("message_duplicate", deposition_id=deposition_id, 
                              message_id=message.message_id)
                     continue
@@ -479,70 +439,59 @@ class CifToDbMigrator:
                     log_event("message_store_failed", deposition_id=deposition_id,
                              message_id=message.message_id)
                     return False
-                stored_count += 1
+                messages_stored += 1
 
-            # Update global stats
-            self.stats["messages_migrated"] += stored_count
-            self.stats["messages_skipped"] += duplicate_count
+                # Store file references for this message
+                for file_ref in file_refs_by_msg_id.get(message.message_id, []):
+                    if not force_overwrite:
+                        existing_refs = self.data_access.file_reference_dao.get_by_message_id(file_ref.message_id)
+                        existing_ref = next((ref for ref in existing_refs 
+                                           if ref.content_type == file_ref.content_type 
+                                           and ref.version_id == file_ref.version_id
+                                           and ref.partition_number == file_ref.partition_number), None)
+                        if existing_ref:
+                            file_refs_skipped += 1
+                            log_event("file_ref_duplicate", deposition_id=deposition_id,
+                                     message_id=file_ref.message_id, content_type=file_ref.content_type,
+                                     partition_number=file_ref.partition_number)
+                            continue
+                        
+                    if self.data_access.create_file_reference(file_ref):
+                        file_refs_stored += 1
 
-            # Step 2: Store file references (now that all messages exist)
-            file_refs_stored = 0
-            file_refs_skipped = 0
-            for file_ref in file_refs:
-                # Check if file reference already exists to prevent duplicates (unless force_overwrite)
-                if not force_overwrite:
-                    existing_refs = self.data_access.file_reference_dao.get_by_message_id(file_ref.message_id)
-                    existing_ref = next((ref for ref in existing_refs 
-                                       if ref.content_type == file_ref.content_type 
-                                       and ref.partition_number == file_ref.partition_number), None)
-                    if existing_ref:
-                        file_refs_skipped += 1
-                        log_event("file_ref_duplicate", deposition_id=deposition_id,
-                                 message_id=file_ref.message_id, content_type=file_ref.content_type,
-                                 partition_number=file_ref.partition_number)
-                        continue
-                    
-                if self.data_access.create_file_reference(file_ref):
-                    file_refs_stored += 1
-
-            # Update global stats for file references
-            self.stats["file_refs_migrated"] += file_refs_stored
-            self.stats["file_refs_skipped"] += file_refs_skipped
-
-            # Step 3: Store statuses (now that all messages exist)  
-            statuses_stored = 0
-            statuses_updated = 0
-            statuses_skipped = 0
-            for status in statuses:
-                if force_overwrite:
-                    # Force overwrite mode - always update
-                    if self.data_access.create_or_update_status(status):
-                        statuses_updated += 1
-                else:
-                    # Check if status already exists
-                    existing_status = self.data_access.message_status_dao.get_by_message_id(status.message_id)
-                    if existing_status:
-                        # For statuses, we might want to update them as they can change
-                        # (read_status, action_reqd, for_release can be modified)
-                        if self._status_needs_update(existing_status, status):
-                            if self.data_access.create_or_update_status(status):
-                                statuses_updated += 1
-                        else:
+                # Store status for this message  
+                if message.message_id in statuses_by_msg_id:
+                    status = statuses_by_msg_id[message.message_id]
+                    if force_overwrite:
+                        # Force overwrite mode - always update
+                        if self.data_access.create_or_update_status(status):
+                            statuses_updated += 1
+                    else:
+                        # Only create status if none exists - never update existing status
+                        existing_status = self.data_access.message_status_dao.get_by_message_id(status.message_id)
+                        if existing_status:
                             statuses_skipped += 1
                             log_event("status_unchanged", deposition_id=deposition_id,
                                      message_id=status.message_id)
-                    else:
-                        # New status record
-                        if self.data_access.create_or_update_status(status):
+                        # else:
+                        #     # No status exists - safe to create from CIF data
+                        #     if self.data_access.create_or_update_status(status):
+                        elif not self.data_access.create_or_update_status(status):
+                            log_event("status_create_failed", deposition_id=deposition_id,
+                                     message_id=status.message_id,)
+                        else:
                             statuses_stored += 1
-
-            # Update global stats for statuses
+            # Update global stats
+            self.stats["messages_migrated"] += messages_stored
+            self.stats["messages_skipped"] += messages_skipped
+            self.stats["file_refs_migrated"] += file_refs_stored
+            self.stats["file_refs_skipped"] += file_refs_skipped
             self.stats["statuses_stored"] += statuses_stored
             self.stats["statuses_updated"] += statuses_updated
             self.stats["statuses_skipped"] += statuses_skipped
 
             log_event("store_complete", deposition_id=deposition_id,
-                     messages_stored=stored_count, messages_skipped=duplicate_count,
+                     messages_stored=messages_stored, messages_skipped=messages_skipped,
                      file_refs_stored=file_refs_stored, file_refs_skipped=file_refs_skipped,
                      statuses_stored=statuses_stored, statuses_updated=statuses_updated, 
                      statuses_skipped=statuses_skipped)
@@ -552,13 +501,7 @@ class CifToDbMigrator:
             log_event("store_exception", deposition_id=deposition_id, error=str(e))
             return False
 
-    def _status_needs_update(self, existing_status: MessageStatus, new_status: MessageStatus) -> bool:
-        """Check if status record needs updating based on field differences"""
-        return (
-            existing_status.read_status != new_status.read_status or
-            existing_status.action_reqd != new_status.action_reqd or
-            existing_status.for_release != new_status.for_release
-        )
+
 
     def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
         """Get file path using PathInfo"""
@@ -709,8 +652,8 @@ Examples:
 
 Notes:
   - Default behavior is incremental (skips existing records)
-  - Messages are processed in hierarchical order (parents before children)
-  - File references and statuses are only stored after all messages exist
+  - Messages are processed chronologically by timestamp
+  - File references and statuses are stored atomically with each message
   - Use --dry-run to validate before actual migration
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
