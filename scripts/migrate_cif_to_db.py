@@ -81,6 +81,7 @@ EVENT_LEVELS = {
     "migration_complete": logging.INFO,
     "single_migration_complete": logging.INFO,
     "bulk_migration_complete": logging.INFO,
+    "hierarchy_sorted": logging.INFO,
 }
 
 def setup_logging(json_log_file=None, log_level: str = "INFO"):
@@ -227,31 +228,61 @@ class CifToDbMigrator:
         }
 
     def migrate_deposition(self, deposition_id: str, dry_run: bool = False) -> bool:
-        """Migrate all message files for a deposition"""
+        """Migrate all message files for a deposition in proper order"""
         log_event("start_deposition", deposition_id=deposition_id, dry_run=dry_run)
         
         message_types = ["messages-from-depositor", "messages-to-depositor", "notes-from-annotator"]
-        success = True
         files_found = []
         files_missing = []
-        deferred_statuses = []  # Collect statuses to insert after all messages
+        
+        # Step 1: Parse all files and collect all data
+        all_messages = []
+        all_file_refs = []
+        all_statuses = []
+        parse_success = True
         
         for msg_type in message_types:
             file_path = self._get_file_path(deposition_id, msg_type)
             if file_path and os.path.exists(file_path):
                 files_found.append({"type": msg_type, "path": file_path})
-                if not self._migrate_file(file_path, msg_type, dry_run, deferred_statuses):
-                    success = False
+                messages, file_refs, statuses = self._parse_file(file_path, msg_type)
+                if messages is not None:  # None indicates parse failure
+                    all_messages.extend(messages)
+                    all_file_refs.extend(file_refs)
+                    all_statuses.extend(statuses)
+                else:
+                    parse_success = False
             else:
                 files_missing.append({"type": msg_type, "expected_path": file_path})
         
-        # Now insert all deferred statuses after all messages are in the database
-        if not dry_run and success and deferred_statuses:
-            for status in deferred_statuses:
-                self.data_access.create_or_update_status(status)
+        if not parse_success:
+            log_event("deposition_complete", deposition_id=deposition_id, success=False,
+                     files_found=len(files_found), files_missing=len(files_missing),
+                     message="Failed to parse one or more files")
+            return False
+        
+        if not all_messages:
+            log_event("deposition_complete", deposition_id=deposition_id, success=True,
+                     files_found=len(files_found), files_missing=len(files_missing),
+                     message="No messages found to migrate")
+            return True
+        
+        # Step 2: Sort messages by parent-child relationships
+        sorted_messages = self._sort_messages_by_hierarchy(all_messages)
+        
+        # Step 3: Store data in proper order
+        if not dry_run:
+            success = self._store_deposition_data(deposition_id, sorted_messages, all_file_refs, all_statuses)
+        else:
+            success = True
+            log_event("dry_run", deposition_id=deposition_id, 
+                     would_migrate_messages=len(sorted_messages),
+                     would_migrate_file_refs=len(all_file_refs),
+                     would_migrate_statuses=len(all_statuses))
         
         log_event("deposition_complete", deposition_id=deposition_id, success=success,
-                 files_found=len(files_found), files_missing=len(files_missing))
+                 files_found=len(files_found), files_missing=len(files_missing),
+                 messages_processed=len(sorted_messages))
         return success
 
     def migrate_directory(self, directory_path: str, dry_run: bool = False) -> Dict:
@@ -290,23 +321,8 @@ class CifToDbMigrator:
                  success_rate=f"{len(successful)/len(deposition_ids)*100:.1f}%" if deposition_ids else "0%")
         return {"successful": successful, "failed": failed}
 
-
-    def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
-        """Get file path using PathInfo"""
-        try:
-            return self.path_info.getFilePath(
-                dataSetId=deposition_id,
-                contentType=message_type,
-                formatType="pdbx",
-                fileSource="archive",
-                versionId="latest",
-            )
-        except Exception as e:
-            logger.debug(f"No {message_type} file for {deposition_id}: {e}")
-            return None
-
-    def _migrate_file(self, file_path: str, message_type: str, dry_run: bool = False, deferred_statuses: List = None) -> bool:
-        """Migrate a single CIF file"""
+    def _parse_file(self, file_path: str, message_type: str) -> tuple:
+        """Parse a single CIF file and return messages, file refs, and statuses"""
         deposition_id = os.path.basename(os.path.dirname(file_path))
         filename = os.path.basename(file_path)
         
@@ -321,7 +337,7 @@ class CifToDbMigrator:
                 log_event("empty_file", deposition_id=deposition_id, filename=filename,
                          file_path=file_path, message_type=message_type,
                          message="CIF file is empty (0 bytes)")
-                return True  # Empty files are not errors
+                return [], [], []  # Empty files return empty lists, not None
             
             # Parse CIF file
             msg_io = PdbxMessageIo(verbose=False)
@@ -329,7 +345,7 @@ class CifToDbMigrator:
                 log_event("corrupted_file", deposition_id=deposition_id, filename=filename,
                          file_path=file_path, message_type=message_type, file_size=file_size,
                          message="CIF file exists but cannot be parsed (possibly corrupted)")
-                return False  # Corrupted files are actual errors
+                return None, None, None  # Signal parse failure
 
             # Convert data
             messages = self._convert_messages(msg_io.getMessageInfo(), message_type)
@@ -339,36 +355,130 @@ class CifToDbMigrator:
             log_event("parse_ok", deposition_id=deposition_id, filename=filename,
                      messages=len(messages), file_refs=len(file_refs), statuses=len(statuses))
 
-            if not messages:
-                log_event("no_messages", deposition_id=deposition_id, filename=filename,
-                         message="File parsed successfully but contains no messages")
-                return True
-
-            # Store messages and file refs immediately, but defer statuses
-            if not dry_run:
-                success = self._store_data(messages, file_refs, [])  # Empty list for statuses
-                if success:
-                    self.stats["migrated"] += len(messages)
-                    # Collect statuses to be inserted later
-                    if deferred_statuses is not None:
-                        deferred_statuses.extend(statuses)
-                    log_event("store_success", deposition_id=deposition_id, 
-                             messages_stored=len(messages))
-                else:
-                    self.stats["errors"] += 1
-                    log_event("store_failed", deposition_id=deposition_id, filename=filename)
-                    return False
-            else:
-                log_event("dry_run", deposition_id=deposition_id, 
-                         would_migrate=len(messages))
-
-            return True
+            return messages, file_refs, statuses
 
         except Exception as e:
             log_event("parse_exception", deposition_id=deposition_id, filename=filename,
                      file_path=file_path, message_type=message_type, error=str(e))
             self.stats["errors"] += 1
+            return None, None, None  # Signal parse failure
+
+    def _sort_messages_by_hierarchy(self, messages: List[MessageInfo]) -> List[MessageInfo]:
+        """Sort messages so parent messages come before their children"""
+        if not messages:
+            return messages
+        
+        # Create a map of message_id -> message for quick lookups
+        message_map = {msg.message_id: msg for msg in messages}
+        
+        # Separate root messages (no parent) from child messages
+        root_messages = []
+        child_messages = []
+        
+        for message in messages:
+            # A root message has parent_message_id equal to its own message_id
+            # A child message has parent_message_id different from its own message_id
+            if not message.parent_message_id or message.parent_message_id == message.message_id:
+                root_messages.append(message)
+            else:
+                child_messages.append(message)
+        
+        # Sort root messages by timestamp
+        root_messages.sort(key=lambda m: m.timestamp)
+        
+        # Build the result list by processing messages in dependency order
+        result = []
+        processed_ids = set()
+        
+        def add_message_and_children(message):
+            """Recursively add a message and all its children"""
+            if message.message_id in processed_ids:
+                return
+            
+            result.append(message)
+            processed_ids.add(message.message_id)
+            
+            # Find and add children of this message
+            children = [m for m in child_messages 
+                       if m.parent_message_id == message.message_id]
+            children.sort(key=lambda m: m.timestamp)  # Sort children by timestamp
+            
+            for child in children:
+                add_message_and_children(child)
+        
+        # Process all root messages and their descendants
+        for root_message in root_messages:
+            add_message_and_children(root_message)
+        
+        # Add any orphaned child messages (parents not in this deposition)
+        orphaned_children = [m for m in child_messages if m.message_id not in processed_ids]
+        orphaned_children.sort(key=lambda m: m.timestamp)
+        result.extend(orphaned_children)
+        
+        deposition_id = messages[0].deposition_data_set_id if messages else "unknown"
+        log_event("hierarchy_sorted", deposition_id=deposition_id,
+                 total_messages=len(messages), root_messages=len(root_messages),
+                 child_messages=len(child_messages), orphaned_children=len(orphaned_children))
+        
+        return result
+
+    def _store_deposition_data(self, deposition_id: str, messages: List[MessageInfo], 
+                              file_refs: List[MessageFileReference], statuses: List[MessageStatus]) -> bool:
+        """Store all data for a deposition in the correct order"""
+        try:
+            # Step 1: Store messages in hierarchical order
+            stored_count = 0
+            duplicate_count = 0
+            
+            for message in messages:
+                if self.data_access.get_message_by_id(message.message_id):
+                    duplicate_count += 1
+                    log_event("message_duplicate", deposition_id=deposition_id, 
+                             message_id=message.message_id)
+                    continue
+                    
+                if not self.data_access.create_message(message):
+                    log_event("message_store_failed", deposition_id=deposition_id,
+                             message_id=message.message_id)
+                    return False
+                stored_count += 1
+
+            self.stats["migrated"] += stored_count
+
+            # Step 2: Store file references (now that all messages exist)
+            file_refs_stored = 0
+            for file_ref in file_refs:
+                if self.data_access.create_file_reference(file_ref):
+                    file_refs_stored += 1
+
+            # Step 3: Store statuses (now that all messages exist)  
+            statuses_stored = 0
+            for status in statuses:
+                if self.data_access.create_or_update_status(status):
+                    statuses_stored += 1
+
+            log_event("store_complete", deposition_id=deposition_id,
+                     messages_stored=stored_count, duplicates_skipped=duplicate_count,
+                     file_refs_stored=file_refs_stored, statuses_stored=statuses_stored)
+            return True
+            
+        except Exception as e:
+            log_event("store_exception", deposition_id=deposition_id, error=str(e))
             return False
+
+    def _get_file_path(self, deposition_id: str, message_type: str) -> Optional[str]:
+        """Get file path using PathInfo"""
+        try:
+            return self.path_info.getFilePath(
+                dataSetId=deposition_id,
+                contentType=message_type,
+                formatType="pdbx",
+                fileSource="archive",
+                versionId="latest",
+            )
+        except Exception as e:
+            logger.debug(f"No {message_type} file for {deposition_id}: {e}")
+            return None
 
     def _convert_messages(self, msg_infos: List[Dict], message_type: str) -> List[MessageInfo]:
         """Convert CIF message data to MessageInfo objects"""
@@ -454,45 +564,6 @@ class CifToDbMigrator:
             )
             for status in statuses
         ]
-
-    def _store_data(self, messages: List[MessageInfo], file_refs: List[MessageFileReference], 
-                    statuses: List[MessageStatus]) -> bool:
-        """Store data in database"""
-        deposition_id = messages[0].deposition_data_set_id if messages else "unknown"
-        
-        try:
-            # Store messages
-            stored_count = 0
-            duplicate_count = 0
-            
-            for message in messages:
-                if self.data_access.get_message_by_id(message.message_id):
-                    duplicate_count += 1
-                    log_event("message_duplicate", deposition_id=deposition_id, 
-                             message_id=message.message_id)
-                    continue
-                    
-                if not self.data_access.create_message(message):
-                    log_event("message_store_failed", deposition_id=deposition_id,
-                             message_id=message.message_id)
-                    return False
-                stored_count += 1
-
-            # Store file references and statuses
-            for file_ref in file_refs:
-                self.data_access.create_file_reference(file_ref)
-            
-            for status in statuses:
-                self.data_access.create_or_update_status(status)
-
-            log_event("store_complete", deposition_id=deposition_id,
-                     messages_stored=stored_count, duplicates_skipped=duplicate_count,
-                     file_refs_stored=len(file_refs), statuses_stored=len(statuses))
-            return True
-            
-        except Exception as e:
-            log_event("store_exception", deposition_id=deposition_id, error=str(e))
-            return False
 
     def print_stats(self):
         """Print simple migration statistics"""
