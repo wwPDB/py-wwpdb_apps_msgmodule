@@ -257,7 +257,11 @@ class CifToDbMigrator:
         }
 
     def migrate_deposition(self, deposition_id: str, dry_run: bool = False, force_overwrite: bool = False) -> bool:
-        """Migrate all message files for a deposition in chronological order"""
+        """Migrate all message files for a deposition in chronological order
+        
+        Note: This method loads all messages for the deposition into memory for sorting.
+        For depositions with thousands of messages, consider memory usage implications.
+        """
         log_event("start_deposition", deposition_id=deposition_id, dry_run=dry_run, 
                  force_overwrite=force_overwrite)
         
@@ -473,14 +477,13 @@ class CifToDbMigrator:
                             statuses_skipped += 1
                             log_event("status_unchanged", deposition_id=deposition_id,
                                      message_id=status.message_id)
-                        # else:
-                        #     # No status exists - safe to create from CIF data
-                        #     if self.data_access.create_or_update_status(status):
-                        elif not self.data_access.create_or_update_status(status):
-                            log_event("status_create_failed", deposition_id=deposition_id,
-                                     message_id=status.message_id,)
                         else:
-                            statuses_stored += 1
+                            # No status exists - safe to create from CIF data
+                            if self.data_access.create_or_update_status(status):
+                                statuses_stored += 1
+                            else:
+                                log_event("status_create_failed", deposition_id=deposition_id,
+                                         message_id=status.message_id)
             # Update global stats
             self.stats["messages_migrated"] += messages_stored
             self.stats["messages_skipped"] += messages_skipped
