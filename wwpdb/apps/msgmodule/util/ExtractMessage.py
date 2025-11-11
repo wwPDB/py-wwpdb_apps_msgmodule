@@ -130,8 +130,14 @@ class ExtractMessage(object):
 
                                 def getObj(self, category_name):
                                     if category_name == "pdbx_deposition_message_info":
+                                        # Only return category if messages exist
+                                        if not self._data:
+                                            return None
                                         return SimpleCategory(self._data)
                                     if category_name == "pdbx_deposition_message_file_reference":
+                                        # Only return category if file references exist
+                                        if not self._refdata:
+                                            return None
                                         return SimpleCategory(self._refdata, True)
                                     return None
 
