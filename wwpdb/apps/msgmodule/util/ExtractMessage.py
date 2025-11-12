@@ -613,24 +613,42 @@ class ExtractMessage(object):
         ret = None
         self.__readMsgFile(depid, contentType=msg_content, b_use_cache=b_use_cache, test_folder=test_folder)
 
+        logger.debug("Deposition %s: Message containers loaded: %d", depid, len(self.__lc))
+        
         if len(self.__lc) >= 1:
             c0 = self.__lc[0]
             # Now check messages
-
+            
+            # Debug: Let's see what categories are available
+            logger.debug("Deposition %s: Container type: %s", depid, type(c0))
+            logger.debug("Deposition %s: Container has getObj method: %s", depid, hasattr(c0, 'getObj'))
+            
             catObj = c0.getObj("pdbx_deposition_message_info")
             if catObj is None:
-                logger.debug("Deposition %s no pdbx_deposition_message_info category", depid)
+                logger.debug("Deposition %s: NO pdbx_deposition_message_info category found", depid)
+                # Let's try to see what's available in the container
+                if hasattr(c0, '_data'):
+                    logger.debug("Deposition %s: Container _data: %s", depid, c0._data)
+                if hasattr(c0, '_refdata'):
+                    logger.debug("Deposition %s: Container _refdata: %s", depid, c0._refdata)
                 return None
+            else:
+                logger.debug("Deposition %s: Found pdbx_deposition_message_info category", depid)
 
             #
             # Get column name index.
             #
             itDict = {}
             itNameList = catObj.getItemNameList()
+            logger.debug("Deposition %s: Available item names: %s", depid, itNameList)
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
             #
-            # Check if required fields exist
+            logger.debug("Deposition %s: itDict keys: %s", depid, list(itDict.keys()))
+            logger.debug("Deposition %s: Looking for timestamp key: '_pdbx_deposition_message_info.timestamp'", depid)
+            logger.debug("Deposition %s: Looking for send_status key: '_pdbx_deposition_message_info.send_status'", depid)
+            
+            # Check if required fields exist to prevent KeyError
             if "_pdbx_deposition_message_info.timestamp" not in itDict:
                 logger.warning("Deposition %s: timestamp field not found in message info", depid)
                 return None
