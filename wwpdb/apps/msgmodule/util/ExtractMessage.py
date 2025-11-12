@@ -630,6 +630,14 @@ class ExtractMessage(object):
             for idxIt, itName in enumerate(itNameList):
                 itDict[str(itName).lower()] = idxIt
             #
+            # Check if required fields exist
+            if "_pdbx_deposition_message_info.timestamp" not in itDict:
+                logger.warning("Deposition %s: timestamp field not found in message info", depid)
+                return None
+            if "_pdbx_deposition_message_info.send_status" not in itDict:
+                logger.warning("Deposition %s: send_status field not found in message info", depid)
+                return None
+                
             idxTimeStamp = itDict["_pdbx_deposition_message_info.timestamp"]
             idxSendStatus = itDict["_pdbx_deposition_message_info.send_status"]
 
