@@ -78,6 +78,11 @@ class PdbxMessageIo:
     def newBlock(self, blockId: str) -> None:
         self.__impl.newBlock(blockId)
 
+    def getCurrentContainerId(self):
+        """  Return the name of current container.
+        """
+        return self.__impl.getCurrentContainerId()
+
     def nextMessageOrdinal(self) -> int:
         return self.__impl.nextMessageOrdinal()
 

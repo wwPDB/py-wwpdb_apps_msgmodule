@@ -662,6 +662,12 @@ class PdbxMessageIo:
         """
         self._block_id = blockId
 
+    def getCurrentContainerId(self):
+        """  Return the name of current container.
+        """
+        return "message"
+
+
     # --------- Ordinal helpers (kept for API compatibility) ---------
 
     def nextMessageOrdinal(self) -> int:
