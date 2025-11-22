@@ -667,7 +667,6 @@ class PdbxMessageIo:
         """
         return "message"
 
-
     # --------- Ordinal helpers (kept for API compatibility) ---------
 
     def nextMessageOrdinal(self) -> int:
