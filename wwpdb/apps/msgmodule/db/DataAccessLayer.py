@@ -81,14 +81,18 @@ def _get_or_create_engine(db_config: Dict):
                 echo=False  # Set to True for SQL debugging
             )
 
-            # Test connection and set max_allowed_packet for large messages
+            # Test connection
+            # NOTE: Disabled SET SESSION max_allowed_packet due to permission restrictions in production.
+            # Production database users typically lack SUPER privilege required for session-level settings.
+            # The application relies on the server's GLOBAL max_allowed_packet setting configured by the DBA.
+            # If large message inserts fail due to packet size, the DBA must increase GLOBAL max_allowed_packet.
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-                try:
-                    conn.execute(text("SET SESSION max_allowed_packet=67108864"))
-                    logger.info("Set SESSION max_allowed_packet to 64MB for large messages")
-                except Exception as e:
-                    logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")  # pylint: disable=logging-fstring-interpolation
+                # try:
+                #     conn.execute(text("SET SESSION max_allowed_packet=67108864"))
+                #     logger.info("Set SESSION max_allowed_packet to 64MB for large messages")
+                # except Exception as e:
+                #     logger.warning(f"Could not set max_allowed_packet (may require SUPER privilege): {e}")  # pylint: disable=logging-fstring-interpolation
 
                 logger.info("Database connection test successful")
 
@@ -236,18 +240,19 @@ class BaseDAO(Generic[ModelType]):
         Returns:
             bool: True if creation succeeded, False otherwise
 
-        Note:
-            Automatically sets SESSION max_allowed_packet to 64MB for large messages
         """
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 with self.db_connection.get_session() as session:
-                    # Ensure max_allowed_packet is set for this session
-                    try:
-                        session.execute(text("SET SESSION max_allowed_packet=67108864"))
-                    except Exception:
-                        pass  # Ignore if we can't set it
+                    # NOTE: SET SESSION max_allowed_packet is disabled due to permission restrictions.
+                    # Production database users lack SUPER privilege. The application relies on the server's
+                    # GLOBAL max_allowed_packet setting. If inserts fail due to packet size, the DBA must
+                    # increase the global setting via: SET GLOBAL max_allowed_packet=...
+                    # try:
+                    #     session.execute(text("SET SESSION max_allowed_packet=67108864"))
+                    # except Exception:
+                    #     pass  # Ignore if we can't set it
 
                     session.add(obj)
                     session.commit()

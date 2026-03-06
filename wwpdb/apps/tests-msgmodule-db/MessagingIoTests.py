@@ -4,8 +4,21 @@ from io import StringIO
 import sys
 import os  # noqa: F401 pylint: disable=unused-import  # Need for mock changes
 
+# Allow local mock-only unit testing when MySQL client library is unavailable.
+try:
+    import MySQLdb  # noqa: F401  pylint: disable=unused-import
+except ImportError:
+    sys.modules['MySQLdb'] = Mock()
+
+try:
+    from wwpdb.utils.nmr.NmrDpUtility import NmrDpUtility  # noqa: F401  pylint: disable=unused-import
+except ImportError:
+    sys.modules['wwpdb.utils.nmr'] = Mock()
+    sys.modules['wwpdb.utils.nmr.NmrDpUtility'] = Mock(NmrDpUtility=Mock())
+
 # Import the class to test
 from wwpdb.apps.msgmodule.io.MessagingIo import MessagingIo
+from wwpdb.apps.msgmodule.io import CompatIo
 
 
 class TestMessagingIo(unittest.TestCase):
@@ -21,8 +34,14 @@ class TestMessagingIo(unittest.TestCase):
         self.session_obj.getRelativePath.return_value = 'relative_path'
         self.req_obj.newSessionObj.return_value = self.session_obj
 
-        # Initialize MessagingIo instance
-        self.messaging_io = MessagingIo(self.req_obj, verbose=False, log=StringIO())
+        # Initialize MessagingIo instance with config dependencies mocked so tests remain unit-level.
+        with patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppMessaging') as mock_cfg_app, \
+             patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfo') as mock_cfg, \
+             patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppEm') as mock_cfg_em:
+            mock_cfg_app.return_value.get_msgdb_support.return_value = True
+            mock_cfg.return_value.get.return_value = {}
+            mock_cfg_em.return_value.get_emd_mapping_file_path.return_value = '/tmp/emd_map_v2.cif'
+            self.messaging_io = MessagingIo(self.req_obj, verbose=False, log=StringIO())
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfo')
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppEm')
@@ -94,6 +113,92 @@ class TestMessagingIo(unittest.TestCase):
         with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
             msg_dict = self.messaging_io.getMsg('test_id', 'D_000000')
         self.assertEqual(msg_dict['message_id'], 'test_id')
+
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
+    @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
+    @patch('os.access')
+    def test_getMsg_passes_site_id_to_pdbx_message_io(self, mock_access, mock_data_import, mock_pdbx_io):
+        """Verify MessagingIo always forwards explicit site_id into PdbxMessageIo."""
+        # Ensure request object returns stable values for all keys used in constructor and method.
+        value_map = {
+            'WWPDB_SITE_ID': 'WWPDB_DEPLOY_TEST',
+            'identifier': 'D_000000',
+            'content_type': 'msgs',
+            'groupid': '',
+        }
+        self.req_obj.getValue.side_effect = lambda key: value_map.get(key, 'test_value')
+
+        mock_access.return_value = True
+
+        mock_data_instance = Mock()
+        mock_data_import.return_value = mock_data_instance
+        mock_data_instance.getFilePath.return_value = '/tmp/message_file.cif'
+
+        mock_pdbx_instance = Mock()
+        mock_pdbx_io.return_value = mock_pdbx_instance
+        mock_pdbx_instance.read.return_value = True
+        mock_pdbx_instance.getMessageInfo.return_value = [
+            {
+                'message_id': 'test_id',
+                'message_text': 'test_text',
+                'timestamp': '2020-01-01 00:00:00',
+                'message_type': 'text',
+                'message_subject': 'Test Subject',
+                'sender': 'test_sender'
+            }
+        ]
+
+        # Re-initialize so __siteId picks up mapped WWPDB_SITE_ID.
+        with patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppMessaging') as mock_cfg_app, \
+             patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfo') as mock_cfg, \
+             patch('wwpdb.apps.msgmodule.io.MessagingIo.ConfigInfoAppEm') as mock_cfg_em:
+            mock_cfg_app.return_value.get_msgdb_support.return_value = True
+            mock_cfg.return_value.get.return_value = {}
+            mock_cfg_em.return_value.get_emd_mapping_file_path.return_value = '/tmp/emd_map_v2.cif'
+            self.messaging_io = MessagingIo(self.req_obj, verbose=False, log=StringIO())
+
+        with patch.object(self.messaging_io, '_MessagingIo__isWorkflow', return_value=True):
+            self.messaging_io.getMsg('test_id', 'D_000000')
+
+        self.assertGreaterEqual(mock_pdbx_io.call_count, 1)
+        for _args, kwargs in mock_pdbx_io.call_args_list:
+            self.assertEqual(kwargs.get('site_id'), 'WWPDB_DEPLOY_TEST')
+
+
+class TestCompatIoRouting(unittest.TestCase):
+    """Focused unit tests for CompatIo routing logic using only mocks."""
+
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.PdbxMessageIoLegacy')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.PdbxMessageIoDb')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.ConfigInfoAppMessaging')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.getSiteId')
+    def test_explicit_site_id_used_for_routing(self, mock_get_site, mock_cfg_app, mock_db_impl, mock_legacy_impl):
+        """Explicit site_id must be used and getSiteId() must not be consulted."""
+        mock_get_site.return_value = 'AUTO_SITE'
+        mock_cfg_app.return_value.get_msgdb_support.return_value = True
+
+        CompatIo.PdbxMessageIo(site_id='EXPLICIT_SITE', verbose=False)
+
+        mock_get_site.assert_not_called()
+        mock_cfg_app.assert_called_once_with('EXPLICIT_SITE')
+        mock_db_impl.assert_called_once()
+        mock_legacy_impl.assert_not_called()
+
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.PdbxMessageIoLegacy')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.PdbxMessageIoDb')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.ConfigInfoAppMessaging')
+    @patch('wwpdb.apps.msgmodule.io.CompatIo.getSiteId')
+    def test_none_site_id_falls_back_to_getSiteId(self, mock_get_site, mock_cfg_app, mock_db_impl, mock_legacy_impl):
+        """When site_id is None, wrapper should resolve via getSiteId()."""
+        mock_get_site.return_value = 'AUTO_SITE'
+        mock_cfg_app.return_value.get_msgdb_support.return_value = False
+
+        CompatIo.PdbxMessageIo(site_id=None, verbose=False)
+
+        mock_get_site.assert_called_once_with()
+        mock_cfg_app.assert_called_once_with('AUTO_SITE')
+        mock_legacy_impl.assert_called_once()
+        mock_db_impl.assert_not_called()
 
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.PdbxMessageIo')
     @patch('wwpdb.apps.msgmodule.io.MessagingIo.MessagingDataImport')
