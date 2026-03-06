@@ -114,7 +114,9 @@ class ExtractMessage(object):
             logger.info("read message file for %s at %s", depid, filepath_msg)
 
             try:
-                pdbxMsgIo = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
+                # Pass site_id explicitly to keep DB/file routing deterministic.
+                siteId = self.__siteId if self.__siteId is not None else getSiteId()
+                pdbxMsgIo = PdbxMessageIo(site_id=siteId, verbose=self.__verbose, log=self.__log)
                 with LockFile(filepath_msg, timeoutSeconds=self.__timeoutSeconds, retrySeconds=self.__retrySeconds, verbose=self.__verbose, log=self.__log):
                     ok = pdbxMsgIo.read(filepath_msg, deposition_id=depid)
                     if ok:
@@ -695,7 +697,9 @@ class ExtractMessage(object):
         dep_fpath = self.__getMsgFilePath(depid, "messages-from-depositor", test_folder=None)
         bio_fpath = self.__getMsgFilePath(depid, "messages-to-depositor", test_folder=None)
 
-        pdbxMsgIo_frmDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
+        # Reuse one resolved site_id for both reads so they follow the same backend.
+        siteId = self.__siteId if self.__siteId is not None else getSiteId()
+        pdbxMsgIo_frmDpstr = PdbxMessageIo(site_id=siteId, verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_frmDpstr.read(dep_fpath, deposition_id=depid)
         if not ok:
             return []
@@ -704,7 +708,7 @@ class ExtractMessage(object):
             pdbxMsgIo_frmDpstr.getMessageInfo()
         )  # in recordSetLst we now have a list of dictionaries with item names as keys and respective data for values
 
-        pdbxMsgIo_toDpstr = PdbxMessageIo(verbose=self.__verbose, log=self.__log)
+        pdbxMsgIo_toDpstr = PdbxMessageIo(site_id=siteId, verbose=self.__verbose, log=self.__log)
         ok = pdbxMsgIo_toDpstr.read(bio_fpath, deposition_id=depid)
         if not ok:
             # Assume all messages unacknowledged
