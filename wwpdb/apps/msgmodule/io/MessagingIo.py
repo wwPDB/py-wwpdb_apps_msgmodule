@@ -1437,10 +1437,10 @@ class MessagingIo(object):
             elif p_tmpltType == "remind-unlocked":
                 msgTmplt = MessagingTemplates.msgTmplt_remindUnlocked
                 attachFiles = False
-                isNote = True
+                # isNote = True
                 # Need all ids
                 accstr = templateDict["accession_ids"]
-                subject = "ARCHIVED: Please attend to your unlocked deposition session - " + accstr
+                subject = "Please attend to your unlocked deposition session - " + accstr
             elif p_tmpltType == "approval-impl":  # CS 2024-04-04 change implicit-approved to approval-impl to match frontend drop-down
                 msgTmplt = MessagingTemplates.msgTmplt_approvalImplicit_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_approvalImplicit
                 attachFiles = False
@@ -1468,14 +1468,14 @@ class MessagingIo(object):
             elif p_tmpltType == "reminder":  # CS 2024-04-04 change type from remind-feedback to reminder to match frontend drop-down
                 msgTmplt = MessagingTemplates.msgTmplt_reminder_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder
                 attachFiles = False
-                isNote = True
+                # isNote = True
                 # Need all ids
                 accstr = templateDict["accession_ids"]
                 subject = "REMINDER: Still awaiting feedback for " + accstr
             elif p_tmpltType == "reminder-auth-to-rel":  # CS 2024-09-09 add process to send reminder on AUTH entry deposited as REL
                 msgTmplt = MessagingTemplates.msgTmplt_reminder_auth_to_rel_em if p_isEmdbEntry else MessagingTemplates.msgTmplt_reminder_auth_to_rel
                 attachFiles = False
-                isNote = True
+                # isNote = True
                 accstr = templateDict["accession_ids"]
                 subject = "REMINDER: Upcoming release of " + accstr
             else:
