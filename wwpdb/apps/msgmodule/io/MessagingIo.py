@@ -1581,8 +1581,8 @@ class MessagingIo(object):
         # No files are being attached
         fileRefList = []
 
-        # We are archiving notes
-        isNote = True
+        # We are archiving notes -- not any more 3/30/26
+        # isNote = True
 
         contextType = p_tmpltType  # CS 2024-04-04 record message type, following frontend message-to-depositor drop-down list, default at "other"
         contextVal = None
