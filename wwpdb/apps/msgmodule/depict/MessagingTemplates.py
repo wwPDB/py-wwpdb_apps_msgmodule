@@ -69,7 +69,7 @@ Twitter: http://twitter.com/#!/buildmodels
     msgTmplt_site_contact_details_pdbe = """
 --------------------------------------------------------------------------------------------------------------
 Protein Data Bank in Europe (PDBe) and Electron Microscopy Data Bank (EMDB), wwPDB partner sites
-https://www.PDBe.org | https://www.emdatabank.org
+http://ebi.ac.uk/pdbe | http://ebi.ac.uk/emdb
 EMBL's European Bioinformatics Institute
 Wellcome Trust Genome Campus
 Hinxton, Cambridge, CB10 1SD, UK
