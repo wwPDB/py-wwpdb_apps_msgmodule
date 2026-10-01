@@ -4193,6 +4193,12 @@ class MsgTmpltHlpr(object):
         else:
             p_returnDict["msg_closing"] = MessagingTemplates.msgTmplt_closing % p_returnDict
 
+        # DAOTHER-10577: short sign-off prefilled when Reply is used
+        p_returnDict["msg_reply_signature"] = MessagingTemplates.msgTmplt_reply % {
+            "full_name_annotator": p_returnDict.get("full_name_annotator") or "",
+            "annotator_group_signoff": p_returnDict.get("annotator_group_signoff") or MessagingTemplates.msgTmplt_annotatorGroupSignoff,
+        }
+
         #######################
         # SUPERCEDE PROCESSING # CS 2023-10-20
         #######################

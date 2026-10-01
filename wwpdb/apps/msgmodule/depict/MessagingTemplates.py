@@ -31,6 +31,7 @@
 #    2022-02-27    CS     add template for Map-only withdrawn
 #    2023-10-20    CS     add/modify various templates for superseding entry release, EM model-only and map-only
 #    2024-09-09    CS     add templates msgTmplt_reminder_auth_to_rel and msgTmplt_reminder_auth_to_rel_em
+#    2026-10-01           DAOTHER-10577  Add msgTmplt_reply sign-off for Communication Reply.
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -46,12 +47,26 @@ __version__ = "V0.02"
 class MessagingTemplates(object):
     """Convenience class to serve as source of message templates for dynamic population"""
 
-    msgTmplt_closing = """Sincerely yours,
+    msgTmplt_closing = """Kind regards,
 
 %(full_name_annotator)s
 
 %(annotator_group_signoff)s
 %(site_contact_details)s
+"""
+
+    # DAOTHER-10577: Reply starts blank apart from this sign-off. Same name and
+    # group line as the letter closings, without the site contact block.
+    # Leading blank lines leave room to type the message above the sign-off.
+    msgTmplt_reply = """
+
+
+
+Kind regards,
+
+%(full_name_annotator)s
+
+%(annotator_group_signoff)s
 """
     msgTmplt_annotatorGroupSignoff = "The wwPDB Biocuration Staff"
 

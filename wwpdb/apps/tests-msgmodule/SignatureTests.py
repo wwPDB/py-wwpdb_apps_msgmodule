@@ -138,6 +138,12 @@ class TestSignatures(unittest.TestCase):
 
                 self.assertIn(chk, closing)
 
+                reply = rdict["msg_reply_signature"]
+                self.assertIn("Kind regards,", reply)
+                self.assertIn(chk, reply)
+                self.assertNotIn("-----", reply)
+                self.assertTrue(reply.startswith("\n"))
+
 
 if __name__ == "__main__":
     unittest.main()
