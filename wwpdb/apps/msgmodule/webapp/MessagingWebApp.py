@@ -1227,8 +1227,10 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
-    def _verifyOrConvertId(self, id_to_check):  # CS 2024-08-30
-        """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
+    def _verifyOrConvertId(self, id_to_check, db_da_internal, wf_db_api):  # CS 2024-08-30
+        """Verify whether an id is valid site-specific deposition id (D_##...).
+        A deposition id is accepted when it is known to DA_INTERNAL (submitted or processed entries) or to the
+        local workflow database (allocated but not yet submitted entries).
         If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert
         such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
         The verification and conversion is site-id specific, and do NOT work cross sites or corss site-ids.
@@ -1236,25 +1238,32 @@ class MessagingWebAppWorker(object):
         extended pdb id is handled by truncate the last 4 characters for temporary use.
 
         Args:
-            id (_type_): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
+            id_to_check (str): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
+            db_da_internal (DaInternalDb): DA_INTERNAL DB utility, created once per request and reused for every id
+            wf_db_api (WfDbApi): workflow DB api, created once per request and reused for every id
 
         Returns:
-            _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
+            str: verfied or converted deposition id at the same site, or 'None' for invalid id input
         """
-        id_to_check = id_to_check.strip()
+        id_to_check = id_to_check.strip().upper()
         if not id_to_check:
             return None
 
-        logger.info("verify or convert id: %s through DA_INTERNAL DB", id_to_check)
-        db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
-        id_to_check = id_to_check.upper()
+        logger.info("verify or convert id: %s", id_to_check)
         if id_to_check.startswith("D_"):  # format of deposition id
             dep_id = id_to_check
-            if db_da_internal.verifyDepId(dep_id):
-                logger.debug("%s is valid deposition id at this site", dep_id)
-                return dep_id  # return the input id itself is vefified
-            else:
+            if not re.match(r"D_[0-9]{6,10}\Z", dep_id):
+                logger.error("%s is not in the supported deposition id format", dep_id)
                 return None
+            if db_da_internal.verifyDepId(dep_id):
+                logger.debug("%s is valid deposition id at this site (found in DA_INTERNAL)", dep_id)
+                return dep_id  # return the input id itself is vefified
+            logger.info("%s not found in DA_INTERNAL, checking workflow database", dep_id)
+            if wf_db_api.exist({"DEP_SET_ID": dep_id}):
+                logger.debug("%s is valid deposition id at this site (found in workflow database)", dep_id)
+                return dep_id
+            logger.error("%s not found in DA_INTERNAL or in the workflow database", dep_id)
+            return None
         elif id_to_check.startswith("EMD-"):  # format of EMDB ID
             emdb_id = id_to_check
             if db_da_internal.verifyEmdbId(emdb_id):
@@ -1343,11 +1352,15 @@ class MessagingWebAppWorker(object):
         #
         # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
+        # database helpers are created once per request and reused for every target id
+        dbDaInternal = DaInternalDb(siteId=self.__siteId)
+        wfDbApi = WfDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+
         bOk = False  # initiate bOk in case of exit from loop below
         for depId in depIdLst:
             depId = depId.strip()
             logger.debug("start processing %s", depId)
-            depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
+            depId_2 = self._verifyOrConvertId(depId, dbDaInternal, wfDbApi)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
             logger.debug("verified or converted id %s", depId_2)
 
             if not depId_2:
