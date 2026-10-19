@@ -142,6 +142,19 @@ class VerifyOrConvertIdTests(unittest.TestCase):
         self.assertIsNone(self.worker._verifyOrConvertId("EMD-12345", da, wf))
         wf.exist.assert_not_called()
 
+    def test_workflow_lookup_failure_is_logged_and_reraised(self):
+        da = make_da_internal()
+        wf = make_workflow_db()
+        db_error = RuntimeError("workflow database unavailable")
+        wf.exist.side_effect = db_error
+        with self.assertLogs(MODULE, level="ERROR") as captured:
+            with self.assertRaises(RuntimeError) as raised:
+                self.worker._verifyOrConvertId("D_1000000002", da, wf)
+        self.assertIs(raised.exception, db_error)
+        self.assertTrue(any(record.exc_info for record in captured.records))
+        self.assertTrue(any("D_1000000002" in record.getMessage() for record in captured.records))
+        da.verifyDepId.assert_called_once_with("D_1000000002")
+
 
 class FakeRequest(object):
     """Dictionary backed stand-in for the web request object."""
@@ -166,7 +179,8 @@ class PropagateMsgTests(unittest.TestCase):
         worker._MessagingWebAppWorker__reqObj = FakeRequest({"identifier": "d_1000000001,D_1000000002,D_1000000003", "subject": "A subject"})
         worker._MessagingWebAppWorker__siteId = SITE_ID
         worker._MessagingWebAppWorker__verbose = False
-        worker._MessagingWebAppWorker__lfh = Mock()
+        log = Mock()
+        worker._MessagingWebAppWorker__lfh = log
         worker.statusApi = Mock()
         worker.statusApi.getGroupId.return_value = ""
 
@@ -183,8 +197,7 @@ class PropagateMsgTests(unittest.TestCase):
             worker._archiveMsg()
 
         da_ctor.assert_called_once_with(siteId=SITE_ID)
-        self.assertEqual(wf_ctor.call_count, 1)
-        self.assertEqual(wf_ctor.call_args[1]["siteId"], SITE_ID)
+        wf_ctor.assert_called_once_with(siteId=SITE_ID, verbose=False, log=log)
         self.assertEqual(msging_io.processMsg.call_count, 2)
         response_ctor.return_value.addDictionaryItems.assert_called_once_with({"success": {"D_1000000001": "true", "D_1000000002": "true", "D_1000000003": "false", "job": "ok"}})
 
