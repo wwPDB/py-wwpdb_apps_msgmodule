@@ -31,8 +31,9 @@
 #    2022-02-27    CS     add template for Map-only withdrawn
 #    2023-10-20    CS     add/modify various templates for superseding entry release, EM model-only and map-only
 #    2024-09-09    CS     add templates msgTmplt_reminder_auth_to_rel and msgTmplt_reminder_auth_to_rel_em
-#    2026-10-01           DAOTHER-10577  Add msgTmplt_reply sign-off for Communication Reply.
-#    2026-10-20           DAOTHER-10694  Add 3-month and 6-month hold extension templates.
+#    2026-10-01    DH     DAOTHER-10577  Add msgTmplt_reply sign-off for Communication Reply.
+#    2026-10-20    DH     DAOTHER-10577  Greeting on reply and letter closings is Sincerely yours.
+#    2026-10-20    DH     DAOTHER-10694  Add 3-month and 6-month hold extension templates.
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -48,7 +49,7 @@ __version__ = "V0.02"
 class MessagingTemplates(object):
     """Convenience class to serve as source of message templates for dynamic population"""
 
-    msgTmplt_closing = """Kind regards,
+    msgTmplt_closing = """Sincerely yours,
 
 %(full_name_annotator)s
 
@@ -63,7 +64,7 @@ class MessagingTemplates(object):
 
 
 
-Kind regards,
+Sincerely yours,
 
 %(full_name_annotator)s
 
