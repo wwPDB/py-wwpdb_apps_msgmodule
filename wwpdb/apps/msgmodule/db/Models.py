@@ -71,8 +71,8 @@ class MessageInfo(Base):
     message_type = Column(String(20), nullable=True, default='text')
     send_status = Column(CHAR(1), nullable=True, default='Y')
     content_type = Column(Enum('messages-to-depositor', 'messages-from-depositor', 'notes-from-annotator', name='content_type_enum'), nullable=False, index=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp(), index=True)
-    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp(), index=True)  # pylint: disable=not-callable
+    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())  # pylint: disable=not-callable
 
     # Relationships
     status = relationship("MessageStatus", back_populates="message", uselist=False, cascade="all, delete-orphan")
@@ -120,7 +120,7 @@ class MessageFileReference(Base):
     version_id = Column(Integer, nullable=True, default=1)
     storage_type = Column(String(20), nullable=True, default='archive', index=True)
     upload_file_name = Column(String(255), nullable=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())  # pylint: disable=not-callable
 
     # Add unique constraint to ensure idempotent inserts
     __table_args__ = (
@@ -167,8 +167,8 @@ class MessageStatus(Base):
     read_status = Column(CHAR(1), nullable=True, default='N', index=True)
     action_reqd = Column(CHAR(1), nullable=True, default='N', index=True)
     for_release = Column(CHAR(1), nullable=True, default='N', index=True)
-    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())
-    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    created_at = Column(DateTime, nullable=True, default=func.current_timestamp())  # pylint: disable=not-callable
+    updated_at = Column(DateTime, nullable=True, default=func.current_timestamp(), onupdate=func.current_timestamp())  # pylint: disable=not-callable
 
     # Relationships
     message = relationship("MessageInfo", back_populates="status")

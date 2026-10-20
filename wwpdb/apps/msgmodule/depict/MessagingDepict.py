@@ -38,6 +38,7 @@
 #    2016-09-14    ZF     In doRender() function, introducing support for group deposition
 #    2022-02-28    CS     add processs to deal with map_only withdrawn template
 #    2023-10-20    CS     Further separate scenarios in choosing template for EM model-map, map-only, model-only, and whether this entry supersedes others.
+#    2026-10-20           DAOTHER-10694  Add 3-month and 6-month hold extension templates.
 ##
 ##
 """
@@ -262,6 +263,13 @@ class MessagingDepict(object):
         #     (MessagingTemplates.msgTmplt_approvalImplicit_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_approvalImplicit % strParamDict)
         # )  # noqa: E501
         strParamDict["msg_tmplt_reminder"] = (MessagingTemplates.msgTmplt_reminder_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_reminder % strParamDict)
+
+        # DAOTHER-10694. Same hold-until date the Approval letter already prints.
+        extensionDict = dict(strParamDict)
+        if b_em and strParamDict.get("expire_date_em_map"):
+            extensionDict["expire_date"] = strParamDict["expire_date_em_map"]
+        strParamDict["msg_tmplt_extension-3mo"] = MessagingTemplates.msgTmplt_extension3mo % extensionDict
+        strParamDict["msg_tmplt_extension-6mo"] = MessagingTemplates.msgTmplt_extension6mo % extensionDict
 
         # CS 2022-02-27 add map-only withdrawn template;
         # CS 2023-10-20 start, further seperate all scenarios of EM model-map, model-only, and map-only. The selection process needs to be optimized later.

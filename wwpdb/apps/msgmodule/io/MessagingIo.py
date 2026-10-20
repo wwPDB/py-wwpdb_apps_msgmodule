@@ -1612,6 +1612,55 @@ class MessagingIo(object):
 
         return bOk
 
+    def sendHoldExtensionNotice(self, depId, months, holdDate, sender):
+        """Send the Extension 3 months or Extension 6 months letter.
+
+        holdDate is the YYYY-MM-DD value just saved in the hold-date field.
+        The letter quotes that date. The Approval expire_date is one year
+        from deposition for HPUB and EM entries, so it is not used here.
+
+        Returns True when the message was sent.
+        """
+        months = str(months).strip()
+        holdDate = str(holdDate).strip()
+        if months not in ("3", "6"):
+            logger.error("Hold extension months must be 3 or 6, got %s", months)
+            return False
+        if len(holdDate) != 10 or holdDate[4] != "-" or holdDate[7] != "-":
+            logger.error("Hold extension date is not YYYY-MM-DD: %s", holdDate)
+            return False
+
+        self.__reqObj.setValue("content_type", "msgs")
+        self.__reqObj.setValue("filesource", "archive")
+        self.__reqObj.setValue("identifier", depId)
+        if sender:
+            self.__reqObj.setValue("sender", sender)
+
+        # Rebuild from the archive model so the sign-off matches the file just saved.
+        self.__dbFilePath = os.path.join(self.__sessionPath, depId + "_modelFileData.db")
+        if os.path.exists(self.__dbFilePath):
+            try:
+                os.remove(self.__dbFilePath)
+            except OSError:
+                logger.exception("Could not refresh message template data for %s", depId)
+
+        self.initializeDataStore()
+        templateDict = {"identifier": depId}
+        self.getMsgTmpltDataItems(templateDict)
+        templateDict["expire_date"] = DateUtil.date_to_display(holdDate)
+
+        accession = templateDict.get("accession_ids") or depId
+        if months == "3":
+            body = MessagingTemplates.msgTmplt_extension3mo % templateDict
+            subject = "Hold period extended by three months for " + accession
+            tmpltType = "extension-3mo"
+        else:
+            body = MessagingTemplates.msgTmplt_extension6mo % templateDict
+            subject = "Hold period extended by six months for " + accession
+            tmpltType = "extension-6mo"
+
+        return self.sendSingle(depId, subject, body, p_sender=sender or "auto", p_tmpltType=tmpltType)
+
     def getMsgTmpltDataItems(self, p_returnDict):
         msgTmpltHelper = MsgTmpltHlpr(self.__reqObj, self.__dbFilePath, self.__verbose, self.__lfh)
         msgTmpltHelper.populateTmpltDict(p_returnDict)

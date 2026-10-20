@@ -33,6 +33,7 @@
 #    2024-09-09    CS     add templates msgTmplt_reminder_auth_to_rel and msgTmplt_reminder_auth_to_rel_em
 #    2026-10-01    DH     DAOTHER-10577  Add msgTmplt_reply sign-off for Communication Reply.
 #    2026-10-20    DH     DAOTHER-10577  Greeting on reply and letter closings is Sincerely yours.
+#    2026-10-20    DH     DAOTHER-10694  Add 3-month and 6-month hold extension templates.
 ##
 """
 Convenience class to serve as source of message templates for dynamic population
@@ -178,6 +179,30 @@ We have not heard from you since we sent you the validation report, processed PD
 In accordance with wwPDB policies (http://www.wwpdb.org/documentation/policy), if we find a publication describing the entry, it will be released with CAVEAT records highlighting any outstanding issues.  If after %(expire_date)s (one year from the deposition date) we are unable to find a publication describing this structure, the entry may be withdrawn if there remain outstanding issues, otherwise the entry will be released.
 
 Thank you for your attention.
+
+%(msg_closing)s
+"""
+
+    # DAOTHER-10694. Date is the same hold-until date used by the Approval letters.
+    # msg_closing supplies Kind regards, the curator name, and the site signature.
+    msgTmplt_extension3mo = """Dear Depositors,
+
+Thank you for your message.
+
+The hold period for your entry has been extended by an additional three months and is now set to expire on %(expire_date)s.
+
+%(msg_closing)s
+"""
+
+    msgTmplt_extension6mo = """Dear Depositors,
+
+Thank you for your message.
+
+The hold period for your entry has been extended by an additional six months and is now set to expire on %(expire_date)s.
+
+Please note that this is the maximum hold extension permitted by the wwPDB. If, after this date, you still require your entry to remain unreleased, you will need to withdraw the deposition and submit a new deposition.
+
+To facilitate a future deposition, metadata from the current deposition, including author information and other relevant details, can be imported into a new deposition session. This option is available under "Based on a previous wwPDB deposition" in the "File Upload" section of the deposition interface.
 
 %(msg_closing)s
 """
