@@ -1227,34 +1227,54 @@ class MessagingWebAppWorker(object):
     def _forwardMsg(self):
         return self._propagateMsg("forward")
 
-    def _verifyOrConvertId(self, id_to_check):  # CS 2024-08-30
-        """Verify whether an id is valid site-specific deposition id (D_##...) through DA_INTERNAL DB.
-        If the id is not a deposition id, verify whether it's PDB ID or EMDB ID, and if so, attempt to convert
-        such ids to valid deposition id, which aims to handle message archving based on PDB or EMDB ID.
-        The verification and conversion is site-id specific, and do NOT work cross sites or corss site-ids.
-        Because DA_INTERNAL DB doesn't record pdb extension id at the time this function is created,
-        extended pdb id is handled by truncate the last 4 characters for temporary use.
+    def _verifyOrConvertId(self, id_to_check, db_da_internal, wf_db_api):  # CS 2024-08-30
+        """Verify a target id for archiving or forwarding a message, converting it to a deposition id when needed.
+
+        The id is trimmed and upper-cased, then handled by its form:
+
+        * Deposition id (``D_`` followed by 6 to 10 digits): accepted when it is found in DA_INTERNAL, which covers
+          submitted and processed entries, or otherwise in the local workflow database, which also covers entries that
+          have been allocated but not yet submitted. A ``D_`` id of any other form is rejected without a lookup.
+        * EMDB id (``EMD-...``), extended PDB id (``PDB_`` plus 8 characters) or PDB id (4 characters): looked up in
+          DA_INTERNAL and converted to the corresponding deposition id.
+
+        Verification and conversion are specific to the site of the database helpers and do not work across sites.
+
+        Exceptions raised by either database helper propagate to the caller. Workflow lookup exceptions are
+        additionally logged at their source and re-raised unchanged.
 
         Args:
-            id (_type_): Deposition id, PDB ID, extended PDB ID, or EMDB ID, or any input text string as ID
+            id_to_check (str): deposition id, PDB id, extended PDB id or EMDB id
+            db_da_internal (DaInternalDb): DA_INTERNAL database utility, created once per request and reused for each id
+            wf_db_api (WfDbApi): workflow database api, created once per request and reused for each id
 
         Returns:
-            _type_: verfied or converted deposition id at the same site, or 'None' for invalid id input
+            str: the verified or converted deposition id, or None if the id is empty, malformed or not found
         """
-        id_to_check = id_to_check.strip()
+        id_to_check = id_to_check.strip().upper()
         if not id_to_check:
             return None
 
-        logger.info("verify or convert id: %s through DA_INTERNAL DB", id_to_check)
-        db_da_internal = DaInternalDb()  # connect to DA_INTERNAL DB utility
-        id_to_check = id_to_check.upper()
+        logger.info("verify or convert id: %s", id_to_check)
         if id_to_check.startswith("D_"):  # format of deposition id
             dep_id = id_to_check
-            if db_da_internal.verifyDepId(dep_id):
-                logger.debug("%s is valid deposition id at this site", dep_id)
-                return dep_id  # return the input id itself is vefified
-            else:
+            if not re.match(r"D_[0-9]{6,10}\Z", dep_id):
+                logger.warning("%s is not in the supported deposition id format", dep_id)
                 return None
+            if db_da_internal.verifyDepId(dep_id):
+                logger.debug("%s is valid deposition id at this site (found in DA_INTERNAL)", dep_id)
+                return dep_id  # the input id itself is verified
+            logger.info("%s not found in DA_INTERNAL, checking workflow database", dep_id)
+            try:
+                in_workflow = wf_db_api.exist({"DEP_SET_ID": dep_id})
+            except Exception:
+                logger.exception("workflow database lookup failed for %s", dep_id)
+                raise
+            if in_workflow:
+                logger.debug("%s is valid deposition id at this site (found in workflow database)", dep_id)
+                return dep_id
+            logger.warning("%s not found in DA_INTERNAL or in the workflow database", dep_id)
+            return None
         elif id_to_check.startswith("EMD-"):  # format of EMDB ID
             emdb_id = id_to_check
             if db_da_internal.verifyEmdbId(emdb_id):
@@ -1263,10 +1283,6 @@ class MessagingWebAppWorker(object):
             else:
                 return None
         elif id_to_check.startswith("PDB_") and len(id_to_check) == 12:  # format of extended PDB ID
-            # pdb_id = id_to_check[-4:]  # truncate the last 4 chars as temporary solution
-            # if db_da_internal.verifyPdbId(pdb_id):
-            #     logger.debug("%s is valid extended PDB ID, convert it to deposition id", id_to_check)
-            #     return db_da_internal.convertPdbIdToDepId(pdb_id)  # PDB->dep conversion
             pdb_ext_id = id_to_check
             if db_da_internal.verifyExtendedPdbId(pdb_ext_id):
                 logger.debug("%s is valid extended PDB ID, convert it to deposition id", pdb_ext_id)
@@ -1343,15 +1359,19 @@ class MessagingWebAppWorker(object):
         #
         # statusApi = StatusDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
 
+        # database helpers are created once per request and reused for every target id
+        db_da_internal = DaInternalDb(siteId=self.__siteId)
+        wf_db_api = WfDbApi(siteId=self.__siteId, verbose=self.__verbose, log=self.__lfh)
+
         bOk = False  # initiate bOk in case of exit from loop below
         for depId in depIdLst:
             depId = depId.strip()
             logger.debug("start processing %s", depId)
-            depId_2 = self._verifyOrConvertId(depId)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
+            depId_2 = self._verifyOrConvertId(depId, db_da_internal, wf_db_api)  # CS 2024-08-30 verify dep id or convert PDB/EMDB ID to dep id for archiving
             logger.debug("verified or converted id %s", depId_2)
 
             if not depId_2:
-                logger.error("fail to verify or convert the input id %s", depId)  # skip unverified id
+                logger.warning("fail to verify or convert the input id %s", depId)  # skip unverified id
                 rtrnDict["success"][depId] = "false"
                 continue
 
