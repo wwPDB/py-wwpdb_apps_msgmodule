@@ -1406,12 +1406,15 @@ class MessagingWebAppWorker(object):
         # typically only notes actually authored by annotators trigger the Notes indicator in the WFM UI, but annotators have
         # requested that notes generated via emails archived/flagged from BMRB should also trigger the indicator
         #
-        if (bOk is True) and (contentType == "notes") and (self._getNotesFlaggingStatus() == "false") and (flagMsg == "y"):
+        # flagMsg is checked before reading the flagging status, which creates the status file and fails for a deposition
+        # without an archive directory
+        #
+        if (bOk is True) and (contentType == "notes") and (flagMsg == "y") and (self._getNotesFlaggingStatus() == "false"):
             self.__reqObj.setValue("activate_notes_flagging", "true")
             self._toggleNotesFlagging()
             bGlobalStatusCheckReqd = True
         #
-        if (bOk is True) and (contentType == "notes") and (self._getNotesFlaggingStatus("bmrb") == "false") and (flagMsg == "y"):
+        if (bOk is True) and (contentType == "notes") and (flagMsg == "y") and (self._getNotesFlaggingStatus("bmrb") == "false"):
             self.__reqObj.setValue("activate_notes_flagging_bmrb", "true")
             self._toggleNotesFlagging("bmrb")
             bGlobalStatusCheckReqd = True
