@@ -4,6 +4,8 @@
 # Tests for deposition id verification used when archiving or forwarding messages.
 #
 # pylint: disable=protected-access
+import os
+import tempfile
 import unittest
 
 try:
@@ -200,6 +202,41 @@ class PropagateMsgTests(unittest.TestCase):
         wf_ctor.assert_called_once_with(siteId=SITE_ID, verbose=False, log=log)
         self.assertEqual(msging_io.processMsg.call_count, 2)
         response_ctor.return_value.addDictionaryItems.assert_called_once_with({"success": {"D_1000000001": "true", "D_1000000002": "true", "D_1000000003": "false", "job": "ok"}})
+
+    def _archive_to_workflow_only_target(self, request_values, archive_dir):
+        """Archive a note to a deposition known only to the workflow database, whose archive directory is ``archive_dir``.
+
+        The flag status file helpers are not mocked, so the real filesystem access is exercised.
+        """
+        worker = make_worker()
+        worker._MessagingWebAppWorker__reqObj = FakeRequest(dict({"identifier": "D_1000000002", "subject": "A subject"}, **request_values))
+        worker._MessagingWebAppWorker__siteId = SITE_ID
+        worker._MessagingWebAppWorker__verbose = False
+        worker._MessagingWebAppWorker__lfh = Mock()
+        worker.statusApi = Mock()
+        worker.statusApi.getGroupId.return_value = ""
+
+        da = make_da_internal()
+        wf = make_workflow_db(known_dep_ids=["D_1000000002"])
+        msging_io = Mock()
+        msging_io.processMsg.return_value = (True, False, [])
+
+        def flag_file_path(subtype=""):
+            return os.path.join(archive_dir, "NOTES_FLAGGING_STATUS" + ("_" + subtype if subtype else ""))
+
+        with patch.object(worker, "_MessagingWebAppWorker__getSession"), patch.object(worker, "_MessagingWebAppWorker__getNotesFlaggingStatusFilePath", side_effect=flag_file_path), patch(
+            MODULE + ".DaInternalDb", return_value=da
+        ), patch(MODULE + ".WfDbApi", return_value=wf), patch(MODULE + ".MessagingIo", return_value=msging_io), patch(MODULE + ".Message"), patch(MODULE + ".ResponseContent") as response_ctor:
+            worker._archiveMsg()
+        return msging_io, response_ctor
+
+    def test_unflagged_archive_to_target_without_archive_directory_succeeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_archive_dir = os.path.join(tmp, "D_1000000002")
+            msging_io, response_ctor = self._archive_to_workflow_only_target({}, missing_archive_dir)
+            self.assertFalse(os.path.exists(missing_archive_dir))
+        msging_io.processMsg.assert_called_once()
+        response_ctor.return_value.addDictionaryItems.assert_called_once_with({"success": {"D_1000000002": "true", "job": "ok"}})
 
 
 if __name__ == "__main__":
