@@ -224,9 +224,13 @@ class PropagateMsgTests(unittest.TestCase):
         def flag_file_path(subtype=""):
             return os.path.join(archive_dir, "NOTES_FLAGGING_STATUS" + ("_" + subtype if subtype else ""))
 
-        with patch.object(worker, "_MessagingWebAppWorker__getSession"), patch.object(worker, "_MessagingWebAppWorker__getNotesFlaggingStatusFilePath", side_effect=flag_file_path), patch(
-            MODULE + ".DaInternalDb", return_value=da
-        ), patch(MODULE + ".WfDbApi", return_value=wf), patch(MODULE + ".MessagingIo", return_value=msging_io), patch(MODULE + ".Message"), patch(MODULE + ".ResponseContent") as response_ctor:
+        with patch.object(worker, "_MessagingWebAppWorker__getSession"), patch.object(
+            worker, "_MessagingWebAppWorker__getNotesFlaggingStatusFilePath", side_effect=flag_file_path
+        ), patch(MODULE + ".DaInternalDb", return_value=da), patch(MODULE + ".WfDbApi", return_value=wf), patch(MODULE + ".MessagingIo", return_value=msging_io), patch(
+            MODULE + ".Message"
+        ), patch(
+            MODULE + ".ResponseContent"
+        ) as response_ctor:
             worker._archiveMsg()
         return msging_io, response_ctor
 
