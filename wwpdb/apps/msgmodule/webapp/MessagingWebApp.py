@@ -1282,7 +1282,7 @@ class MessagingWebAppWorker(object):
                 return db_da_internal.convertEmdbIdToDepId(emdb_id)  # EMDB->dep conversion
             else:
                 return None
-        elif id_to_check.startswith("PDB_") and len(id_to_check) == 12:  # format of extended PDB ID
+        elif id_to_check.upper().startswith("PDB_") and len(id_to_check) == 12:  # format of extended PDB ID
             pdb_ext_id = id_to_check
             if db_da_internal.verifyExtendedPdbId(pdb_ext_id):
                 logger.debug("%s is valid extended PDB ID, convert it to deposition id", pdb_ext_id)

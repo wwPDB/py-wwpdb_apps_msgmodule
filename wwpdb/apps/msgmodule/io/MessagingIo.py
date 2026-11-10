@@ -147,6 +147,7 @@ import smtplib
 import sys
 import textwrap
 import time
+from typing import List
 
 try:
     from html import unescape
@@ -3730,9 +3731,9 @@ class MsgTmpltHlpr(object):
         #     "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
         # }
 
-        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}  # CS 2023-11-02
+        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)", "PDB_EXT": "%(pdb_ext_id)s", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}  # CS 2023-11-02
 
-        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}  # CS 2023-11-02
+        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)", "PDB_EXT": "PDB ENTRY %(pdb_ext_id)s", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}  # CS 2023-11-02
 
         if self.__verbose and self.__debug:
             for value in self.__expMethodList:
@@ -3941,7 +3942,10 @@ class MsgTmpltHlpr(object):
                     logger.info("problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
                 logger.exception("Problem recovering date from PdbxPersist")
 
-    def __getAccessionIdString(self, idList):
+    def __getAccessionIdString(self, idList: List[str], extpdbonly: bool=False) -> str:
+        """Produces accession id string for substitution based on the PDB list
+           If extpdbonly is set, then if PDB ID == Extended PDB ID - adjust
+        """
         sAccessionIdsString = ""
         sAnd = ""
         #
@@ -3953,7 +3957,12 @@ class MsgTmpltHlpr(object):
         for nIndex, sId in enumerate(idList):
             if nIndex > 0:
                 sAnd = " and "
-            sIDstring = mapping[sId]
+
+            lookup = sId
+            if lookup == "PDB" and extpdbonly:
+                lookup = "PDB_EXT"
+
+            sIDstring = mapping[lookup]
             sAccessionIdsString += sAnd + sIDstring
             if self.__debug:
                 logger.info("+index %s, sId: '%s'", nIndex, sId)
@@ -3975,7 +3984,8 @@ class MsgTmpltHlpr(object):
         p_returnDict["pdb_id"] = self.__pdbId if (self.__pdbId is not None and len(self.__pdbId) > 0 and self.__pdbId != "?") else "[PDBID NOT AVAIL]"
         p_returnDict["pdb_ext_id"] = self.__pdbExtId if (self.__pdbExtId is not None and len(self.__pdbExtId) > 0 and self.__pdbExtId != "?") else "[PDBEXTID NOT AVAIL]"  # CS 2023-11-02
         p_returnDict["emdb_id"] = self.__emdbId if (self.__emdbId is not None and len(self.__emdbId) > 0 and self.__emdbId != "?") else "[EMDBID NOT AVAIL]"
-        p_returnDict["accession_ids"] = (self.__getAccessionIdString(accessionIdList)) % p_returnDict
+        all_extended = p_returnDict["pdb_id"] == p_returnDict["pdb_ext_id"]  # do they match?
+        p_returnDict["accession_ids"] = (self.__getAccessionIdString(accessionIdList, extpdbonly=all_extended)) % p_returnDict
         rqstdNumber = "multi" if (len(accessionIdList) > 1) else "single"
         dictHasHave = {"single": "has ", "multi": "have "}
         p_returnDict["has_have"] = dictHasHave[rqstdNumber]
@@ -4147,7 +4157,8 @@ class MsgTmpltHlpr(object):
                 else:
                     emReleasedIdList = ["PDB"] if self.__emModelReleased else ["EMDB"] if self.__emMapReleased else []
 
-                p_returnDict["accession_ids_em_rel"] = (self.__getAccessionIdString(emReleasedIdList)) % p_returnDict
+                all_extended = p_returnDict.get("pdb_id") == p_returnDict.get("pdb_ext_id")  # do they match?
+                p_returnDict["accession_ids_em_rel"] = (self.__getAccessionIdString(emReleasedIdList, extpdbonly=all_extended)) % p_returnDict
 
             else:
                 p_returnDict["accession_ids_em_rel"] = p_returnDict["accession_ids"]
@@ -4276,7 +4287,9 @@ class MsgTmpltHlpr(object):
             acc.append("PDB")
         if self.__statusCodeEmMap == "OBS":
             acc.append("EMDB")
-        p_returnDict["obs_ids"] = self.__getAccessionIdString(acc) % p_returnDict
+
+        all_extended = p_returnDict.get("pdb_id") == p_returnDict.get("pdb_ext_id")  # do they match?
+        p_returnDict["obs_ids"] = self.__getAccessionIdString(acc, extpdbonly=all_extended) % p_returnDict
         p_returnDict["obs_id_types"] = acc
 
         dt = self.__obsDate
