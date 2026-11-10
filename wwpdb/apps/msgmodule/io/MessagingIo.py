@@ -3731,9 +3731,17 @@ class MsgTmpltHlpr(object):
         #     "NEUTRON DIFFRACTION": "PDB ID %(pdb_id)s",
         # }
 
-        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)", "PDB_EXT": "%(pdb_ext_id)s", "EMDB": "EMDB ID %(emdb_id)s", "BMRB": "PDB ID %(pdb_id)s"}  # CS 2023-11-02
+        self.__idMapToString = {"PDB": "%(pdb_ext_id)s (PDB ID %(pdb_id)s)",
+                                "PDB_EXT": "%(pdb_ext_id)s",
+                                "EMDB": "EMDB ID %(emdb_id)s",
+                                "BMRB": "PDB ID %(pdb_id)s"
+                                }
 
-        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)", "PDB_EXT": "PDB ENTRY %(pdb_ext_id)s", "EMDB": "EMDB entry ID %(emdb_id)s", "BMRB": "PDB entry ID %(pdb_id)s"}  # CS 2023-11-02
+        self.__idMapToString_EM = {"PDB": "PDB entry %(pdb_ext_id)s (PDB ID %(pdb_id)s)",
+                                   "PDB_EXT": "PDB ENTRY %(pdb_ext_id)s",
+                                   "EMDB": "EMDB entry ID %(emdb_id)s",
+                                   "BMRB": "PDB entry ID %(pdb_id)s"
+                                   }
 
         if self.__verbose and self.__debug:
             for value in self.__expMethodList:
@@ -3942,7 +3950,7 @@ class MsgTmpltHlpr(object):
                     logger.info("problem recovering data into PdbxPersist from db file at: %s", self.__dbFilePath)
                 logger.exception("Problem recovering date from PdbxPersist")
 
-    def __getAccessionIdString(self, idList: List[str], extpdbonly: bool=False) -> str:
+    def __getAccessionIdString(self, idList: List[str], extpdbonly: bool = False) -> str:
         """Produces accession id string for substitution based on the PDB list
            If extpdbonly is set, then if PDB ID == Extended PDB ID - adjust
         """
