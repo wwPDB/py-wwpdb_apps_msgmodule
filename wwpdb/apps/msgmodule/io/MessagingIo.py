@@ -3760,6 +3760,7 @@ class MsgTmpltHlpr(object):
         #
         self.__pdbId = None
         self.__pdbExtId = None
+        self.__pdbDoi = None  # DOI from database2
         self.__entryAuthrs = []
         self.__title = None
         self.__obsReplacePdb = None
@@ -4086,9 +4087,7 @@ class MsgTmpltHlpr(object):
         else:
             p_returnDict[
                 "doinotice"
-            ] = "Your entry has been assigned the following PDB DOI: https://doi.org/10.2210/pdb{}/pdb\n\nPlease use the above PDB DOI link to access your data.\n".format(
-                p_returnDict["pdb_id"]
-            )
+            ] = f"Your entry has been assigned the following PDB DOI: https://doi.org/{self.__pdbDoi}\n\nPlease use the above PDB DOI link to access your data.\n"
 
         #######################
         # EM ENTRY PROCESSING #
@@ -4510,6 +4509,7 @@ class MsgTmpltHlpr(object):
                 idxDbId = itDict["_database_2.database_id"]
                 idxDbCode = itDict["_database_2.database_code"]
                 idxDbExtCode = itDict.get("_database_2.pdbx_database_accession", None)  # CS 2023-11-02
+                idxDbDoi = itDict.get("_database_2.pdbx_doi")  # index lowercased above - why?
 
                 for row in catObj.getRowList():
                     try:
@@ -4520,10 +4520,19 @@ class MsgTmpltHlpr(object):
                         else:
                             dbExtCode = None
 
+                        if idxDbDoi:
+                            dbDoi = row[idxDbDoi]
+                        else:
+                            dbDoi = None
+
                         if dbId.upper() == p_IdType:
                             if p_IdType == "PDB":
                                 self.__pdbId = dbCode
                                 self.__pdbExtId = dbExtCode  # CS 2023-11-02
+                                if dbDoi:
+                                    self.__pdbDoi = dbDoi
+                                else:
+                                    self.__pdbDoi = getBackupDoi(dbCode)
                             elif p_IdType == "EMDB":
                                 self.__emdbId = dbCode
 
@@ -5329,3 +5338,14 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
         if self.__verbose:
             logger.info("following email address found to be invalid: %s\n", email)
         return False
+
+def getBackupDoi(pdbid: str) -> str:
+    """Returns the DOI for a given PDB id.  If PDB id is invalid return '' """
+    if pdbid is None:
+        return ""
+    pdb_l = pdbid.lower()
+    if len(pdb_l) == 4:
+        return f"10.2210/pdb{pdb_l}/pdb"
+    if pdb_l.startswith("pdb_0000"):
+        return f"10.2210/pdb{pdb_l[8:]}/pdb"
+    return f"10.2210/{pdb_l}/pdb"
