@@ -5339,6 +5339,7 @@ Please use the latest annotated mmCIF file (attached) to start a new deposition 
             logger.info("following email address found to be invalid: %s\n", email)
         return False
 
+
 def getBackupDoi(pdbid: str) -> str:
     """Returns the DOI for a given PDB id.  If PDB id is invalid return '' """
     if pdbid is None:
