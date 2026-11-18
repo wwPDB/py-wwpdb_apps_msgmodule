@@ -183,8 +183,8 @@ Thank you for your attention.
 %(msg_closing)s
 """
 
-    # DAOTHER-10694. Date is the same hold-until date used by the Approval letters.
-    # msg_closing supplies Kind regards, the curator name, and the site signature.
+    # DAOTHER-10694. expire_date here is the hold date saved in the status module.
+    # For HPUB and EM, the Approval letter keeps one year from deposition.
     msgTmplt_extension3mo = """Dear Depositors,
 
 Thank you for your message.
