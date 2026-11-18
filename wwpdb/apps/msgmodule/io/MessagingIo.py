@@ -287,7 +287,16 @@ class MessagingIo(object):
         #
         self.__groupId = groupId
 
-    def initializeDataStore(self):
+    def refreshDataStore(self):
+        """Reread the archive model into the session snapshot.
+
+        initializeDataStore keeps the first snapshot for the session. A hold
+        date saved in the status module after that would not appear in the
+        message templates.
+        """
+        self.initializeDataStore(force=True)
+
+    def initializeDataStore(self, force=False):
         """Internalize data files"""
 
         if self.__isWorkflow():
@@ -298,6 +307,11 @@ class MessagingIo(object):
 
             @lockutils.synchronized("msgmoduledb-lock", external=True, lock_path=dirp)
             def initdb():
+                if force and os.path.exists(self.__dbFilePath):
+                    try:
+                        os.remove(self.__dbFilePath)
+                    except OSError:
+                        logger.exception("Could not refresh message template data at %s", self.__dbFilePath)
                 if not os.access(self.__dbFilePath, os.R_OK):
                     logger.debug("DB File not present %s", self.__dbFilePath)
 
@@ -3781,6 +3795,7 @@ class MsgTmpltHlpr(object):
         self.__dpstnDateEmMap = None
         self.__releaseDateEmMap = None
         self.__expireDateEmMap = None
+        self.__holdDateEmMap = None  # em_admin.map_hold_date, the EM hold date saved by the status module
         self.__entryStatusEmMap = None
         #
         self.__statusCode = None
@@ -4014,6 +4029,7 @@ class MsgTmpltHlpr(object):
         p_returnDict["auth_rel_status_code_map"] = self.__authRelStatusCodeMap if (self.__authRelStatusCodeMap is not None and len(self.__authRelStatusCodeMap) > 0) else "[NOT AVAILABLE]"  # CS 2023-10-20  # noqa: E501
 
         p_returnDict["expire_date"] = self.__expireDate
+        p_returnDict["hold_date"] = self.__holdDate if self.__holdDate is not None else ""
         p_returnDict["recvd_date"] = (
             du.date_to_display(self.__initRecvdDate)
             if (self.__initRecvdDate is not None and len(self.__initRecvdDate) > 0 and self.__isNotCifNull(self.__initRecvdDate))
@@ -4186,6 +4202,7 @@ class MsgTmpltHlpr(object):
             p_returnDict["entry_status_em_map"] = self.__entryStatusEmMap if (self.__entryStatusEmMap is not None and len(self.__entryStatusEmMap) > 0) else "[NOT AVAILABLE]"
             p_returnDict["auth_rel_status_code_em_rel"] = p_returnDict["auth_rel_status_code"]
             p_returnDict["expire_date_em_map"] = self.__expireDateEmMap
+            p_returnDict["hold_date_em_map"] = self.__holdDateEmMap if self.__holdDateEmMap is not None else ""
             #
             p_returnDict["outbound_rprt_date_em"] = (
                 self.__lastOutboundRprtDateEm if (self.__lastOutboundRprtDateEm is not None and len(self.__lastOutboundRprtDateEm) > 0) else "[NOT AVAILABLE]"
@@ -4747,6 +4764,7 @@ class MsgTmpltHlpr(object):
                 idxDpstnDate = itDict["_em_admin.deposition_date"]
                 # idxDpstnSite = itDict['_em_admin.deposition_site']
                 idxMapReleaseDate = itDict["_em_admin.map_release_date"]
+                idxMapHoldDate = itDict.get("_em_admin.map_hold_date")
                 # idxHeaderReleaseDate=itDict['_em_admin.header_release_date']
 
                 for row in catObj.getRowList():
@@ -4754,9 +4772,17 @@ class MsgTmpltHlpr(object):
                         self.__statusCodeEmMap = (str(row[idxStatusCode])).upper()
                         self.__dpstnDateEmMap = str(row[idxDpstnDate])
                         self.__releaseDateEmMap = str(row[idxMapReleaseDate])
+                        if idxMapHoldDate is not None:
+                            self.__holdDateEmMap = str(row[idxMapHoldDate])
 
                     except:  # noqa: E722 pylint: disable=bare-except
                         pass
+
+                du = DateUtil()
+                if self.__holdDateEmMap is None or len(self.__holdDateEmMap) < 1 or self.__isCifNull(self.__holdDateEmMap):
+                    self.__holdDateEmMap = ""
+                else:
+                    self.__holdDateEmMap = du.date_to_display(self.__holdDateEmMap)
 
                 if self.__statusCodeEmMap is not None and len(self.__statusCodeEmMap) > 0:
                     if self.__statusCodeEmMap == "HPUB":

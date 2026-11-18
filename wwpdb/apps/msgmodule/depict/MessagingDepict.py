@@ -39,6 +39,7 @@
 #    2022-02-28    CS     add processs to deal with map_only withdrawn template
 #    2023-10-20    CS     Further separate scenarios in choosing template for EM model-map, map-only, model-only, and whether this entry supersedes others.
 #    2026-10-20           DAOTHER-10694  Add 3-month and 6-month hold extension templates.
+#    2026-11-18    DH     DAOTHER-10694  Extension letters quote the hold date saved in the status module.
 ##
 ##
 """
@@ -64,6 +65,33 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _usable_letter_date(value):
+    """True when value is a date we can quote, rather than a missing-date placeholder."""
+    text = str(value or "").strip()
+    return bool(text) and not text.startswith("[") and text not in (".", "?")
+
+
+def extension_letter_date(param_dict, is_em):
+    """Date quoted by the 3-month and 6-month extension letters.
+
+    The status module stores an extended hold on date_hold_coordinates and,
+    for an EM map, on em_admin.map_hold_date. The Approval expire date stays
+    one year from deposition for HPUB and EM entries, so it does not move
+    when that hold date is extended.
+    """
+    if is_em:
+        if _usable_letter_date(param_dict.get("hold_date_em_map")):
+            return param_dict["hold_date_em_map"]
+        # Model-only EM has no map hold. The extended date is the PDB hold date.
+        if param_dict.get("modelonly") == "true" and _usable_letter_date(param_dict.get("hold_date")):
+            return param_dict["hold_date"]
+        if _usable_letter_date(param_dict.get("expire_date_em_map")):
+            return param_dict["expire_date_em_map"]
+    if _usable_letter_date(param_dict.get("hold_date")):
+        return param_dict["hold_date"]
+    return param_dict.get("expire_date") or ""
 
 
 class MessagingDepict(object):
@@ -250,7 +278,9 @@ class MessagingDepict(object):
         # if self.__verbose:
         #     logger.info("CStrack+++ call MessagingIo class from MessagingDepict.getMsgTmplts()")
         msgingIo = MessagingIo(p_reqObj, self.__verbose, self.__lfh)
-        msgingIo.initializeDataStore()  # THIS CALL MUST BE MADE HERE TO SUPPORT ALL DOWNSTREAM PROCESSING IN NEED OF DATA PARSED FROM THE COORDINATE FILE
+        # Reread the archive model. The session snapshot otherwise stays at the
+        # first open, so a hold date saved later in the status module is missed.
+        msgingIo.refreshDataStore()
         msgingIo.getMsgTmpltDataItems(strParamDict)
         starterMsgBody = msgingIo.getStarterMsgBody()
         #
@@ -264,10 +294,10 @@ class MessagingDepict(object):
         # )  # noqa: E501
         strParamDict["msg_tmplt_reminder"] = (MessagingTemplates.msgTmplt_reminder_em % strParamDict) if b_em else (MessagingTemplates.msgTmplt_reminder % strParamDict)
 
-        # DAOTHER-10694. Same hold-until date the Approval letter already prints.
+        # DAOTHER-10694. Quote the hold date saved by the status module.
+        # Approval expire_date stays one year from deposition for HPUB and EM.
         extensionDict = dict(strParamDict)
-        if b_em and strParamDict.get("expire_date_em_map"):
-            extensionDict["expire_date"] = strParamDict["expire_date_em_map"]
+        extensionDict["expire_date"] = extension_letter_date(strParamDict, b_em)
         strParamDict["msg_tmplt_extension-3mo"] = MessagingTemplates.msgTmplt_extension3mo % extensionDict
         strParamDict["msg_tmplt_extension-6mo"] = MessagingTemplates.msgTmplt_extension6mo % extensionDict
 
