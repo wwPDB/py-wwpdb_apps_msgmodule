@@ -3813,6 +3813,7 @@ class MsgTmpltHlpr(object):
         self.__obsDate = None
         # self.__sprDate = None
         self.__obsEmDate = None
+        self.__obsEmAdminDate = None  # em_admin.obsoleted_date
         #
         self.__citAuthors = []
         self.__citTitle = None
@@ -4316,13 +4317,15 @@ class MsgTmpltHlpr(object):
         p_returnDict["obs_ids"] = self.__getAccessionIdString(acc, extpdbonly=all_extended) % p_returnDict
         p_returnDict["obs_id_types"] = acc
 
-        dt = self.__obsDate
-        if dt is None:
-            dt = self.__obsEmDate
-        if dt is None:
-            dt = self.__releaseDate
-
-        p_returnDict["obs_date"] = dt
+        # __obsDate/__obsEmDate hold "[none listed]" when their category exists without a date,
+        # so they cannot be chained with "is None" checks.
+        p_returnDict["obs_date"] = DateUtil.select_obsolete_date(
+            acc,
+            pdb_obs_date=self.__obsDate,
+            em_obs_date=self.__obsEmDate,
+            em_admin_obs_date=self.__obsEmAdminDate,
+            fallback_date=self.__releaseDate,
+        )
         p_returnDict["obs_repl_pdb"] = self.__obsReplacePdb
         pdb_repl = None
         em_repl = None
@@ -4765,6 +4768,7 @@ class MsgTmpltHlpr(object):
                 # idxDpstnSite = itDict['_em_admin.deposition_site']
                 idxMapReleaseDate = itDict["_em_admin.map_release_date"]
                 idxMapHoldDate = itDict.get("_em_admin.map_hold_date")
+                idxObsoletedDate = itDict.get("_em_admin.obsoleted_date")
                 # idxHeaderReleaseDate=itDict['_em_admin.header_release_date']
 
                 for row in catObj.getRowList():
@@ -4774,11 +4778,17 @@ class MsgTmpltHlpr(object):
                         self.__releaseDateEmMap = str(row[idxMapReleaseDate])
                         if idxMapHoldDate is not None:
                             self.__holdDateEmMap = str(row[idxMapHoldDate])
+                        if idxObsoletedDate is not None:
+                            self.__obsEmAdminDate = str(row[idxObsoletedDate])
 
                     except:  # noqa: E722 pylint: disable=bare-except
                         pass
 
                 du = DateUtil()
+                if self.__obsEmAdminDate is None or len(self.__obsEmAdminDate) < 1 or self.__isCifNull(self.__obsEmAdminDate):
+                    self.__obsEmAdminDate = None
+                else:
+                    self.__obsEmAdminDate = du.date_to_display(self.__obsEmAdminDate)
                 if self.__holdDateEmMap is None or len(self.__holdDateEmMap) < 1 or self.__isCifNull(self.__holdDateEmMap):
                     self.__holdDateEmMap = ""
                 else:

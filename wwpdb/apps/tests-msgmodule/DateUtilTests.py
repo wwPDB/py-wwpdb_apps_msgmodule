@@ -38,6 +38,20 @@ class DateUtilTests(unittest.TestCase):
         self._testsame("?", "[UNKNOWN]")
         # 2018 is not a leap year - no conversion
         self._testsame("2018-02-29", "2018-02-29")
+
+    def testSelectObsoleteDate(self):
+        """Tests choice of obsolete date for the obsolete notification"""
+        sel = DateUtil.select_obsolete_date
+        rel = "18 November 2026"
+        # Map-only obsoletion: PDB placeholder must not block EM dates or fallback
+        self.assertEqual(sel(["EMDB"], "[none listed]", "[none listed]", None, rel), rel)
+        self.assertEqual(sel(["EMDB"], "[none listed]", "[none listed]", "4 March 2026", rel), "4 March 2026")
+        self.assertEqual(sel(["EMDB"], "1 May 2025", "2 June 2025", None, rel), "2 June 2025")
+        self.assertEqual(sel(["EMDB"], None, "[UNKNOWN]", "", rel), rel)
+        # Model obsoletion prefers PDB date
+        self.assertEqual(sel(["PDB"], "1 May 2025", "2 June 2025", None, rel), "1 May 2025")
+        self.assertEqual(sel(["PDB", "EMDB"], "[none listed]", "2 June 2025", None, rel), "2 June 2025")
+        self.assertEqual(sel([], None, None, None, rel), rel)
         self._testsame("2016-02-29", "29 February 2016")
 
     def testDateTime(self):

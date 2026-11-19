@@ -23,6 +23,28 @@ class DateUtil(object):
         pass
 
     @staticmethod
+    def select_obsolete_date(obs_id_types, pdb_obs_date=None, em_obs_date=None, em_admin_obs_date=None, fallback_date=None):
+        """Pick the display date for an obsolete notification.
+
+        Candidates that are empty or display placeholders ("[none listed]", "[UNKNOWN]") are skipped.
+        EM dates are preferred when only the EMDB entry is obsoleted (map-only obsoletion);
+        otherwise the PDB date is preferred. fallback_date is used when no candidate is usable.
+        """
+
+        def usable(d):
+            return d is not None and len(str(d).strip()) > 0 and d not in ("[none listed]", "[UNKNOWN]")
+
+        if "EMDB" in obs_id_types and "PDB" not in obs_id_types:
+            candidates = [em_admin_obs_date, em_obs_date, pdb_obs_date]
+        else:
+            candidates = [pdb_obs_date, em_admin_obs_date, em_obs_date]
+
+        for d in candidates:
+            if usable(d):
+                return d
+        return fallback_date
+
+    @staticmethod
     def date_to_display(date):
         """Converts incoming dateIn from ISO 8601 YYYY-MM-DD to Month number, year
         If dateIn is '.' or '?' returns [UNKNOWN]. If date cannot be parsed, returns date.
