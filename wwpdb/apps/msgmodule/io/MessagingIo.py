@@ -128,6 +128,7 @@
 #    2024-04-04    CS     Add context_type to autoMsg() and sendSingle() to match frontend message-to-depositor drop-down list
 #    2024-09-09    CS     Add process to send reminder on AUTH entry deposited as REL
 #    2024-09-18    CS     Change statusCode selection in __getDefaultMsgTmpltType for map-only entries
+#    2026-11-27    dh     loadDepositionModel() so a later letter does not reuse the first entry's model snapshot.
 ##
 """
 Class to manage persistence/retrieval of messaging data
@@ -294,6 +295,20 @@ class MessagingIo(object):
         date saved in the status module after that would not appear in the
         message templates.
         """
+        self.initializeDataStore(force=True)
+
+    def loadDepositionModel(self, depId):
+        """Read one deposition's archive model into its own snapshot.
+
+        The default file is ``<session>/modelFileData.db``. initializeDataStore
+        keeps that first copy for the whole session. A batch of letters must
+        not fill a later subject from the first entry's model.
+        """
+        depId = str(depId or "").strip()
+        if not depId:
+            raise ValueError("A deposition id is required to load the message model.")
+        self.__reqObj.setValue("identifier", depId)
+        self.__dbFilePath = os.path.join(self.__sessionPath, depId + "_modelFileData.db")
         self.initializeDataStore(force=True)
 
     def initializeDataStore(self, force=False):
